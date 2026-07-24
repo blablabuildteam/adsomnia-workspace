@@ -1,0 +1,38 @@
+import type { Metadata } from "next";
+import { Libre_Franklin, Sen } from "next/font/google";
+import "./globals.css";
+
+const sen = Sen({
+  variable: "--font-sen",
+  subsets: ["latin"],
+  weight: ["400", "600", "700", "800"],
+});
+
+const libreFranklin = Libre_Franklin({
+  variable: "--font-libre",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+export const metadata: Metadata = {
+  title: "Adsomnia — Production Framework",
+  description:
+    "Interactive visual map of the Adsomnia Production Framework process.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html
+      lang="en"
+      className={`${sen.variable} ${libreFranklin.variable} h-full overflow-x-hidden antialiased`}
+    >
+      <body className="flex min-h-full min-w-0 flex-col overflow-x-hidden">
+        {children}
+      </body>
+    </html>
+  );
+}

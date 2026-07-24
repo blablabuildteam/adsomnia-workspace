@@ -1,0 +1,39 @@
+---
+description: Adsomnia Production Framework visualizer — brand, workflow stages, and UX requirements
+alwaysApply: true
+---
+
+# Adsomnia Production Framework Visualizer
+
+Scope: interactive process map of the Production Framework. This repo will later expand into the full Adsomnia Workspace platform.
+
+## Language
+
+- **UI and content are English only.** Stage names, inputs, outputs, labels, and copy must be shown in English.
+- Source PDFs/briefs may use Dutch (Idee, Validatie, Productie, etc.) — translate for display; optional `nameNl` is reference-only, never primary UI text.
+- `html` lang should be `en`.
+
+## Brand
+
+- Background: `#000000` / `#0B0B0B`, text `#FFFFFF`
+- Display type: bold condensed/impact sans (Oswald, Bebas Neue, Syne Heavy) — uppercase headers
+- Parties (legend / filter): Adsomnia; Bending The Rules (Production execution lane); Harlem Next (Production lane for IT/Product, Data & Pricing); blablabuild (AI innovation partner)
+- Party colors: Adsomnia `#FFFFFF` on `#000000`; BTR `#FF3B1F`; Harlem Next `#7E90A3`; blablabuild volt `#CEFF00`
+- UI: sharp corners, thin borders `#222222` or white, high-tech raw aesthetic (“TRAFFIC NEVER SLEEPS”) — Adsomnia chrome stays B&W (no gold)
+
+## Workflow (English labels)
+
+1. Fast-Track: requests &lt; 4 hours → skips **all** standard stages and goes straight into Production & Reporting; ticket created in Adsomnia Workspace System Fast-Track View
+2. Idea → Validation → Scoping → Go/No-Go → Project Setup → Onboarding & Kickoff → Production & Reporting (governance + weekly leadership updates)
+3. **Lead party choice (Scoping & Production):** always choose **one** lead party (BTR / Harlem Next / blablabuild / Adsomnia Internal). Multiple parties may collaborate under that lead — collaboration does not replace the lead decision.
+
+## Visualizer UX
+
+- Horizontal timeline/flowchart with stage cards (role, name, inputs top, outputs bottom)
+- Click → detail drawer/modal; Fast-Track toggle; party filter highlight
+- Presentation-ready for client reviews
+
+## Source materials
+
+- Brief: `.cursor/rules/CURSOR_TASK_BRIEF.md`
+- Original PDF (Dutch): `docs/Adsomnia-Production-Framework.pdf` — source of truth for process structure; display in English
