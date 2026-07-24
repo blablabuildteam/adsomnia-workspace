@@ -5,6 +5,8 @@ export type Party = {
   label: string;
   short: string;
   color: string;
+  /** Optional chip fill (defaults to transparent). */
+  background?: string;
 };
 
 export const PARTIES: Party[] = [
@@ -12,7 +14,13 @@ export const PARTIES: Party[] = [
   { id: "btr", label: "Bending The Rules", short: "BTR", color: "#FF3B1F" },
   { id: "hn", label: "Harlem Next", short: "HN", color: "#7E90A3" },
   { id: "bbb", label: "blablabuild", short: "BBB", color: "#CEFF00" },
-  { id: "as", label: "Adsomnia Internal", short: "AS", color: "#BDBDBD" },
+  {
+    id: "as",
+    label: "Adsomnia Internal",
+    short: "AS",
+    color: "#FFFFFF",
+    background: "#000000",
+  },
 ];
 
 export type StageBranch = {
@@ -51,8 +59,11 @@ export type WorkflowStage = {
   fastTrackLanding?: boolean;
 };
 
-/** Phrase used for UI highlighting of the system of record. */
+/** Phrase used for UI highlighting of the Workspace system of record. */
 export const WORKSPACE_SYSTEM = "Adsomnia Workspace System";
+
+/** Delivery / backlog tooling used alongside Workspace (Setup + Production). */
+export const JIRA_SYSTEM = "Jira";
 
 export const STAGES: WorkflowStage[] = [
   {
@@ -154,9 +165,9 @@ export const STAGES: WorkflowStage[] = [
       "Assigned main executor (Harlem Next — IT/Product, Data & Pricing; Bending The Rules; blablabuild; or Adsomnia Internal)",
     ],
     outputs: [
-      `A fully configured project environment in the ${WORKSPACE_SYSTEM} (and linked external Jira for HN/BTR)`,
-      "Created Epics, Milestones, and target delivery dates",
-      "Assigned team members, roles, and permissions / access rights",
+      `Dual tooling: project environment in the ${WORKSPACE_SYSTEM}, linked to Jira (required for HN/BTR; used for delivery backlog across parties)`,
+      `Created Epics, Milestones, and target delivery dates in ${WORKSPACE_SYSTEM} and mirrored/linked in Jira`,
+      "Assigned team members, roles, and permissions / access rights in both systems as needed",
       "Linked project documentation (Business Case, Requirements & Scoping Proposal)",
       "Defined reporting route — linked to central Now / Next / Later / Rollout dashboards",
       "Scheduled meeting cadence with team members",
@@ -171,6 +182,7 @@ export const STAGES: WorkflowStage[] = [
     parties: ["adsomnia"],
     inputs: [
       `Fully configured Project Environment from the ${WORKSPACE_SYSTEM} — project structure, Epics, Milestones, delivery dates`,
+      "Linked Jira project / boards for execution backlog (especially HN/BTR)",
       "Linked documentation (Lean Business Case, Scoping & Requirements)",
       "Team & Permissions — assigned members (internal and/or external partners HN, BTR, blablabuild) and access rights",
       "Proposed Meeting Cadence — e.g. weekly status sync with Coen, demos, escalation sessions",
@@ -191,14 +203,15 @@ export const STAGES: WorkflowStage[] = [
     owner: "Head of Production + Project Managers",
     parties: ["adsomnia", "btr", "hn", "bbb", "as"],
     inputs: [
-      `Active project in the ${WORKSPACE_SYSTEM} with prioritized Now / Next / Later backlog`,
+      `Active project status & governance in the ${WORKSPACE_SYSTEM}`,
+      "Execution backlog and day-to-day delivery work tracked in Jira (Now / Next / Later)",
       "Lead party for Production — one of AS, BBB, BTR, or HN is always in the lead (with a Project Manager)",
       "Optional collaborating parties when delivery needs more than one partner",
       "Agreed meeting cadence and reporting route to Head of Production",
     ],
     outputs: [
-      "Lead party runs delivery (daily stand-ups & weekly reports); collaborators contribute under that lead",
-      "Project Governance overseen by Head of Production",
+      "Lead party runs delivery in Jira (daily stand-ups & weekly reports); collaborators contribute under that lead",
+      `Project Governance and Workspace status managed in the ${WORKSPACE_SYSTEM} by Head of Production`,
       `Weekly Leadership Updates + Manage Workspace Status — Head of Production → Leadership via the ${WORKSPACE_SYSTEM}`,
     ],
     fastTrackLanding: true,

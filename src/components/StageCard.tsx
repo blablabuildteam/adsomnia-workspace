@@ -2,6 +2,7 @@
 
 import { ArrowDown, ChevronRight, Users } from "lucide-react";
 import { HighlightedText } from "@/components/HighlightedText";
+import { JiraChip } from "@/components/JiraChip";
 import { WorkspaceChip } from "@/components/WorkspaceChip";
 import {
   getParty,
@@ -35,9 +36,9 @@ export function StageCard({
     !activeParty ||
     stage.parties.includes(activeParty) ||
     stage.branches?.some((b) => b.party === activeParty);
-  const touchesWorkspace = [...stage.inputs, ...stage.outputs].some((t) =>
-    t.includes(WORKSPACE_SYSTEM),
-  );
+  const stageText = [...stage.inputs, ...stage.outputs, ...(stage.layers?.flatMap((l) => l.items) ?? [])];
+  const touchesWorkspace = stageText.some((t) => t.includes(WORKSPACE_SYSTEM));
+  const touchesJira = stageText.some((t) => /\bJira\b|\bJIRA\b/.test(t));
 
   return (
     <button
@@ -90,9 +91,10 @@ export function StageCard({
         <span className="leading-snug">{stage.owner}</span>
       </div>
 
-      {touchesWorkspace && (
-        <div className="flex items-center border-b border-border bg-white/[0.03] px-4 py-2">
-          <WorkspaceChip />
+      {(touchesWorkspace || touchesJira) && (
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-border bg-white/[0.03] px-4 py-2">
+          {touchesWorkspace && <WorkspaceChip />}
+          {touchesJira && <JiraChip />}
         </div>
       )}
 
@@ -126,7 +128,9 @@ export function StageCard({
                 "flex gap-2 border-l-2 pl-2",
                 item.includes(WORKSPACE_SYSTEM)
                   ? "border-foreground/70"
-                  : "border-transparent",
+                  : /\bJira\b|\bJIRA\b/.test(item)
+                    ? "border-[#2684FF]/70"
+                    : "border-transparent",
               ].join(" ")}
             >
               <span
@@ -170,6 +174,7 @@ export function StageCard({
                     style={{
                       borderColor: party.color,
                       color: party.color,
+                      backgroundColor: party.background,
                     }}
                   >
                     {party.short}

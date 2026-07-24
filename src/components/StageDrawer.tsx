@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { ArrowDown, Layers, X } from "lucide-react";
 import { HighlightedText } from "@/components/HighlightedText";
+import { JiraChip } from "@/components/JiraChip";
 import { WorkspaceChip } from "@/components/WorkspaceChip";
 import {
   getParty,
@@ -80,21 +81,34 @@ export function StageDrawer({ stage, onClose }: StageDrawerProps) {
                 <span
                   key={partyId}
                   className="border px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wider"
-                  style={{ borderColor: party.color, color: party.color }}
+                  style={{
+                    borderColor: party.color,
+                    color: party.color,
+                    backgroundColor: party.background,
+                  }}
                 >
                   {party.label}
                 </span>
               );
             })}
           </div>
-          {[...stage.inputs, ...stage.outputs].some((t) =>
-            t.includes(WORKSPACE_SYSTEM),
-          ) && (
-            <div className="mt-4 flex flex-wrap items-center gap-2 border border-border bg-white/[0.03] px-3 py-2">
-              <p className="text-xs leading-snug text-muted">System of record</p>
-              <WorkspaceChip />
-            </div>
-          )}
+          {(() => {
+            const text = [
+              ...stage.inputs,
+              ...stage.outputs,
+              ...(stage.layers?.flatMap((l) => l.items) ?? []),
+            ];
+            const hasWorkspace = text.some((t) => t.includes(WORKSPACE_SYSTEM));
+            const hasJira = text.some((t) => /\bJira\b|\bJIRA\b/.test(t));
+            if (!hasWorkspace && !hasJira) return null;
+            return (
+              <div className="mt-4 flex flex-wrap items-center gap-2 border border-border bg-white/[0.03] px-3 py-2">
+                <p className="text-xs leading-snug text-muted">Systems in play</p>
+                {hasWorkspace && <WorkspaceChip />}
+                {hasJira && <JiraChip />}
+              </div>
+            );
+          })()}
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-5">
@@ -181,8 +195,12 @@ export function StageDrawer({ stage, onClose }: StageDrawerProps) {
                       >
                         <span className="text-sm">{branch.label}</span>
                         <span
-                          className="font-display text-[10px] font-bold uppercase tracking-wider"
-                          style={{ color: party.color }}
+                          className="border px-1.5 py-0.5 font-display text-[10px] font-bold uppercase tracking-wider"
+                          style={{
+                            color: party.color,
+                            borderColor: party.color,
+                            backgroundColor: party.background ?? "transparent",
+                          }}
                         >
                           {party.short}
                         </span>
