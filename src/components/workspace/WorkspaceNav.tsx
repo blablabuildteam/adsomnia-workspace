@@ -10,6 +10,7 @@ import {
   Map,
   Ticket,
 } from "lucide-react";
+import { isPreviewLocked } from "@/data/preview-access";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -41,10 +42,27 @@ export function WorkspaceNav() {
 
         <div className="flex items-center gap-1 overflow-x-auto">
           {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+            const locked = isPreviewLocked(href);
             const active =
-              pathname === href ||
-              (href.startsWith("/initiatives") &&
-                pathname.startsWith("/initiatives"));
+              !locked &&
+              (pathname === href ||
+                (href.startsWith("/initiatives") &&
+                  pathname.startsWith("/initiatives")));
+
+            if (locked) {
+              return (
+                <span
+                  key={href}
+                  title="Coming soon"
+                  aria-disabled="true"
+                  className="flex shrink-0 cursor-not-allowed items-center gap-2 border border-transparent px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted/35"
+                >
+                  <Icon className="size-3.5 opacity-50" />
+                  <span className="hidden sm:inline">{label}</span>
+                </span>
+              );
+            }
+
             return (
               <Link
                 key={href}

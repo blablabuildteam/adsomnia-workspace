@@ -8,6 +8,7 @@ import {
   Ticket,
 } from "lucide-react";
 import { WorkspaceChip } from "@/components/WorkspaceChip";
+import { isPreviewLocked } from "@/data/preview-access";
 
 const CONCEPT_VIEWS = [
   {
@@ -79,35 +80,70 @@ export default function HomePage() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           {CONCEPT_VIEWS.map(
-            ({ href, title, subtitle, description, icon: Icon, stage }) => (
-              <Link
-                key={href}
-                href={href}
-                className="group flex flex-col border border-border bg-surface p-6 transition-colors hover:border-border-strong hover:bg-surface-elevated"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex size-10 items-center justify-center border border-border bg-surface-elevated">
-                    <Icon className="size-5 text-foreground" />
+            ({ href, title, subtitle, description, icon: Icon, stage }) => {
+              const locked = isPreviewLocked(href);
+
+              if (locked) {
+                return (
+                  <div
+                    key={href}
+                    aria-disabled="true"
+                    className="flex flex-col border border-border/50 bg-surface/40 p-6 opacity-40"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex size-10 items-center justify-center border border-border/60 bg-surface-elevated/50">
+                        <Icon className="size-5 text-muted" />
+                      </div>
+                      <span className="border border-border/60 px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wider text-muted">
+                        Coming soon
+                      </span>
+                    </div>
+                    <h2 className="font-display mt-4 text-xl font-extrabold uppercase tracking-tight text-muted">
+                      {title}
+                    </h2>
+                    <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
+                      {subtitle}
+                    </p>
+                    <p className="mt-3 flex-1 text-sm leading-relaxed text-muted">
+                      {description}
+                    </p>
+                    <span className="mt-4 inline-flex items-center gap-2 font-display text-xs font-bold uppercase tracking-wide text-muted">
+                      Not available yet
+                    </span>
                   </div>
-                  <span className="border border-border px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wider text-muted">
-                    {stage}
+                );
+              }
+
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className="group flex flex-col border border-border bg-surface p-6 transition-colors hover:border-border-strong hover:bg-surface-elevated"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex size-10 items-center justify-center border border-border bg-surface-elevated">
+                      <Icon className="size-5 text-foreground" />
+                    </div>
+                    <span className="border border-border px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wider text-muted">
+                      {stage}
+                    </span>
+                  </div>
+                  <h2 className="font-display mt-4 text-xl font-extrabold uppercase tracking-tight group-hover:text-foreground">
+                    {title}
+                  </h2>
+                  <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-[0.14em] text-bbb">
+                    {subtitle}
+                  </p>
+                  <p className="mt-3 flex-1 text-sm leading-relaxed text-muted">
+                    {description}
+                  </p>
+                  <span className="mt-4 inline-flex items-center gap-2 font-display text-xs font-bold uppercase tracking-wide text-foreground">
+                    Open view
+                    <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
                   </span>
-                </div>
-                <h2 className="font-display mt-4 text-xl font-extrabold uppercase tracking-tight group-hover:text-foreground">
-                  {title}
-                </h2>
-                <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-[0.14em] text-bbb">
-                  {subtitle}
-                </p>
-                <p className="mt-3 flex-1 text-sm leading-relaxed text-muted">
-                  {description}
-                </p>
-                <span className="mt-4 inline-flex items-center gap-2 font-display text-xs font-bold uppercase tracking-wide text-foreground">
-                  Open view
-                  <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
-                </span>
-              </Link>
-            ),
+                </Link>
+              );
+            },
           )}
         </div>
 
