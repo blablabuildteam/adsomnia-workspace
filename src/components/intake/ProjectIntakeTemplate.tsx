@@ -96,12 +96,16 @@ function persistIntake(
 function FieldShell({
   field,
   children,
+  fieldClassName = "border-border bg-surface",
 }: {
   field: IntakeField;
   children: React.ReactNode;
+  fieldClassName?: string;
 }) {
   return (
-    <div className="border border-border bg-surface p-4 print:break-inside-avoid">
+    <div
+      className={`border p-4 print:break-inside-avoid ${fieldClassName}`}
+    >
       <label className="font-display block text-xs font-bold uppercase tracking-wide text-foreground">
         {field.label}
         {field.required && <span className="ml-1 text-btr">*</span>}
@@ -117,6 +121,28 @@ function FieldShell({
 
 const inputClass =
   "w-full border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground placeholder:text-muted/50 focus:border-border-strong focus:outline-none print:border-border print:bg-transparent";
+
+/** Distinct stage container accents (brand palette). */
+const STAGE_STYLES = {
+  idea: {
+    accent: "#FFFFFF",
+    shell: "border-white/30 bg-white/[0.03]",
+    header: "border-white/20 bg-white/[0.07]",
+    field: "border-white/15 bg-black/40",
+  },
+  validation: {
+    accent: "#7E90A3",
+    shell: "border-[#7E90A3]/40 bg-[#7E90A3]/[0.07]",
+    header: "border-[#7E90A3]/30 bg-[#7E90A3]/[0.12]",
+    field: "border-[#7E90A3]/25 bg-black/35",
+  },
+  scoping: {
+    accent: "#CEFF00",
+    shell: "border-[#CEFF00]/35 bg-[#CEFF00]/[0.05]",
+    header: "border-[#CEFF00]/30 bg-[#CEFF00]/[0.09]",
+    field: "border-[#CEFF00]/20 bg-black/40",
+  },
+} as const;
 
 export function ProjectIntakeTemplate() {
   const [projects, setProjects] = useState<ProjectSlot[]>(defaultProjects);
@@ -265,10 +291,10 @@ export function ProjectIntakeTemplate() {
     return sum + (Number.isFinite(n) ? n : 0);
   }, 0);
 
-  const renderField = (field: IntakeField) => {
+  const renderField = (field: IntakeField, fieldClassName?: string) => {
     if (field.type === "epic-table") {
       return (
-        <FieldShell field={field}>
+        <FieldShell field={field} fieldClassName={fieldClassName}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] border-collapse text-left text-sm">
               <thead>
@@ -363,7 +389,7 @@ export function ProjectIntakeTemplate() {
 
     if (field.type === "role-hours") {
       return (
-        <FieldShell field={field}>
+        <FieldShell field={field} fieldClassName={fieldClassName}>
           <div className="space-y-3">
             {active.roleHours.map((row, index) => (
               <div
@@ -522,7 +548,7 @@ export function ProjectIntakeTemplate() {
     }
 
     return (
-      <FieldShell field={field}>
+      <FieldShell field={field} fieldClassName={fieldClassName}>
         {field.type === "textarea" ? (
           <textarea
             rows={3}
@@ -561,7 +587,7 @@ export function ProjectIntakeTemplate() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[960px] flex-1 px-4 py-6 sm:px-6 lg:py-8 print:max-w-none print:px-0 print:py-0">
+    <div className="mx-auto w-full max-w-[1320px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8 print:max-w-none print:px-0 print:py-0">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Link
           href="/"
@@ -721,35 +747,51 @@ export function ProjectIntakeTemplate() {
 
       {/* Stage sections */}
       <div className="space-y-10">
-        {INTAKE_SECTIONS.map((section) => (
-          <section
-            key={section.stageId}
-            className="print:break-before-page"
-          >
-            <div className="mb-4 border border-border bg-surface-elevated px-4 py-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-display text-[11px] font-bold uppercase tracking-[0.2em] text-muted">
-                    Stage {String(section.number).padStart(2, "0")}
-                  </p>
-                  <h2 className="font-display mt-1 text-2xl font-extrabold uppercase tracking-tight">
-                    {section.name}
-                  </h2>
-                  <p className="mt-1 text-xs text-muted">Owner: {section.owner}</p>
+        {INTAKE_SECTIONS.map((section) => {
+          const style = STAGE_STYLES[section.stageId];
+          return (
+            <section
+              key={section.stageId}
+              className={`border p-4 sm:p-5 print:break-before-page ${style.shell}`}
+              style={{ borderTopWidth: 3, borderTopColor: style.accent }}
+            >
+              <div
+                className={`mb-4 border px-4 py-4 ${style.header}`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p
+                      className="font-display text-[11px] font-bold uppercase tracking-[0.2em]"
+                      style={{ color: style.accent }}
+                    >
+                      Stage {String(section.number).padStart(2, "0")}
+                    </p>
+                    <h2 className="font-display mt-1 text-2xl font-extrabold uppercase tracking-tight">
+                      {section.name}
+                    </h2>
+                    <p className="mt-1 text-xs text-muted">
+                      Owner: {section.owner}
+                    </p>
+                  </div>
+                  <ClipboardList
+                    className="size-5"
+                    style={{ color: style.accent }}
+                  />
                 </div>
-                <ClipboardList className="size-5 text-muted" />
+                <p className="mt-3 text-sm leading-relaxed text-foreground/85">
+                  {section.purpose}
+                </p>
               </div>
-              <p className="mt-3 text-sm leading-relaxed text-foreground/85">
-                {section.purpose}
-              </p>
-            </div>
-            <div className="space-y-3">
-              {section.fields.map((field) => (
-                <div key={field.id}>{renderField(field)}</div>
-              ))}
-            </div>
-          </section>
-        ))}
+              <div className="space-y-3">
+                {section.fields.map((field) => (
+                  <div key={field.id}>
+                    {renderField(field, style.field)}
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
 
       <footer className="mt-10 border-t border-border pt-6 text-xs text-muted print:mt-6">
