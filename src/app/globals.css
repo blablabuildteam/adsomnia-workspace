@@ -147,3 +147,19 @@ body {
   stroke-dasharray: 6 6;
   animation: flow-dash 0.8s linear infinite;
 }
+
+/* Project Intake Template — print / PDF */
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .app-atmosphere {
+    background: #fff !important;
+  }
+
+  nav {
+    display: none !important;
+  }
+}

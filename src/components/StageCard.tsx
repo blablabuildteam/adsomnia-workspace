@@ -106,7 +106,7 @@ export function StageCard({
           {stage.inputs.map((item) => (
             <li key={item} className="flex gap-2">
               <span className="mt-1.5 size-1 shrink-0 bg-foreground/50" />
-              <HighlightedText text={item} />
+              <HighlightedText text={item} boldLabel />
             </li>
           ))}
         </ul>

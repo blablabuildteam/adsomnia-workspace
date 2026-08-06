@@ -43,32 +43,36 @@ The workflow consists of **7 Main Sequential Stages** plus a **Fast-Track Except
 
 #### Stage 1: Idee (Adsomnia)
 - **Role/Owner:** Adsomnia Leadership Team
-- **Input (Top Box):**
-  - *Titel & Korte Omschrijving:* What is the core idea in 1-2 sentences?
-  - *Probleemstelling of Kans:* What problem does this solve or opportunity does it capture?
-  - *Verwachte Impact / Waarde:* ROI hypothesis (revenue, efficiency, churn, data).
-  - *Doelgroep / Belanghebbende:* Target audience/business unit.
-  - *Indiener & Sponsor:* Who proposed it & who supports it (Sietse / Jasper / Oleg).
+- **Input (Top Box):** Each input must clearly state what is expected.
+  - *Title & Short Description:* Core idea in 1–2 plain sentences (what are we building/changing?).
+  - *Problem Statement or Opportunity:* Concrete problem solved, or opportunity left on the table if we do nothing.
+  - *Expected Impact / Value (Hypothesis):* Intended outcome and how success would be recognised.
+  - *Target Audience / Stakeholder:* Who it is for and who is affected.
+  - *Submitter & Sponsor:* Who proposes it; which decision maker (Sietse / Jasper / Oleg) sponsors it.
 - **Output (Bottom Box):**
   - Registered initiative ticket in the *Adsomnia Workspace System* with minimal intake.
 
 #### Stage 2: Validatie (Adsomnia)
 - **Role/Owner:** Adsomnia Leadership Team / Head of Production / Team Lead
-- **Input (Top Box):**
-  1. Quantifiable Business Value (ROI hypothesis)
-  2. Global Solution Direction & High-Level Architecture
-  3. Investment Estimate (T-Shirt Sizing: S/M/L/XL)
-  4. Strategic Fit & Priority
-  5. Dependencies & Blockers
-  6. Risks & 'Do Nothing' Scenario
+- **Input (Top Box):** Each input must clearly state what is expected.
+  1. Quantifiable Business Value — KPI, baseline, rough upside / assumptions
+  2. Global Solution Direction & High-Level Architecture — approach + building blocks (not detailed design)
+  3. Investment Estimate — T-Shirt Sizing S/M/L/XL + one-line rationale
+  4. Strategic Fit & Priority — why now; propose Now / Next / Later / Rollout
+  5. Dependencies & Blockers — teams, systems, vendors, blockers
+  6. Risks & 'Do Nothing' Scenario — proceed risks + cost of inaction
 - **Output (Bottom Box):**
-  - Ticket enriched to a Lean Business Case (with T-shirt size & KPIs).
+  - Ticket enriched to a Business Case (with T-shirt size & KPIs).
   - Formal Sign-off from leadership team (Sietse, Jasper, Oleg) logged in system.
 
 #### Stage 3: Scoping (Lead party choice)
 - **Role/Owner:** Head of Production (Coen)
-- **Input (Top Box):**
-  - Email with Goedgekeurde Lean Business Case & Formal Sign-off.
+- **Input (Top Box):** Prerequisites + scoping work that must be completed for Jira Project Setup.
+  - Approved Business Case & Formal Sign-off (may proceed to Scoping).
+  - Lead party decision (required — pick one): BTR / HN / BBB / Adsomnia Internal; others may collaborate under that lead.
+  - **Epic & Milestone Timeline** — Epics/Milestones with target start/end dates (or sprint windows) for Jira structure & capacity booking.
+  - **Role-based Production Hour Estimates** — free-format role description + person name; total hours, hours per day, and active period — for resource booking and Go/No-Go cost vs value.
+  - Delivery Dependencies & Assumptions; Scope Boundaries (in / out of scope).
 - **Lead choice (required — pick one):**
   - `Scoping (BTR)` - Bending The Rules
   - `Scoping (HN)` - Harlem Next
@@ -76,19 +80,19 @@ The workflow consists of **7 Main Sequential Stages** plus a **Fast-Track Except
   - `Scoping (AS)` - Adsomnia Internal
 - **Collaboration:** Multiple parties may work together under the chosen lead; one party remains accountable.
 - **Output (Bottom Box):**
-  - Ticket updated with Scoping Proposal: Epic milestones, capacity/hours estimation, identified dependencies.
+  - Ticket updated with complete Scoping Proposal: Epic & Milestone Timeline, role-based hour estimates, scope boundaries, identified dependencies — ready for Go/No-Go and Jira Project Setup.
 
 #### Stage 4: Go / No-Go
 - **Role/Owner:** Adsomnia Leadership Team (Sietse & Coen)
 - **Input (Top Box):**
-  - Scoping Proposal vs. Lean Business Case (Expected Value vs. Cost/Capacity).
+  - Scoping Proposal vs. Business Case (Expected Value vs. Cost/Capacity).
 - **Output (Bottom Box):**
   - Formal status change: `GO` (to Setup), `NO-GO` (Closed), or `ON-HOLD` (Backlog). Final sign-off logged on budget & capacity.
 
 #### Stage 5: Project Setup
 - **Role/Owner:** Head of Production (Coen)
 - **Input (Top Box):**
-  - Lean Business Case + Registered GO decision + Approved Scoping Proposal & assigned main executor (HN, BTR, BBB, or AS).
+  - Business Case + Registered GO decision + Approved Scoping Proposal & assigned main executor (HN, BTR, BBB, or AS).
 - **Output (Bottom Box):**
   - Fully configured project environment in Adsomnia Workspace System (or external Jira link for HN/BTR).
   - Created Epics, Milestones, dates, team permissions, linked docs, defined reporting route & cadence.

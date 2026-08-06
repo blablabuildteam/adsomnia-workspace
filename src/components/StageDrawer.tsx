@@ -126,7 +126,7 @@ export function StageDrawer({ stage, onClose }: StageDrawerProps) {
                   >
                     {String(i + 1).padStart(2, "0")}
                   </span>
-                  <HighlightedText text={item} />
+                  <HighlightedText text={item} boldLabel />
                 </li>
               ))}
             </ol>

@@ -26,7 +26,8 @@ Scope: interactive process map of the Production Framework. This repo will later
 1. Fast-Track: requests &lt; 4 hours → skips **all** standard stages and goes straight into Production & Reporting; ticket created in Adsomnia Workspace System Fast-Track View
 2. Idea → Validation → Scoping → Go/No-Go → Project Setup → Onboarding & Kickoff → Production & Reporting (governance + weekly leadership updates)
 3. **Lead party choice (Scoping & Production):** always choose **one** lead party (BTR / Harlem Next / blablabuild / Adsomnia Internal). Multiple parties may collaborate under that lead — collaboration does not replace the lead decision.
-4. **Tooling:** Adsomnia Workspace System is the governance/status system of record. From **Project Setup** through **Production**, **Jira** is also in play for delivery backlog / execution (especially HN/BTR). Show both as chips when mentioned.
+4. **Scoping must produce (for Jira Project Setup & resource booking):** (a) **Epic & Milestone Timeline** with target dates/windows; (b) **role-based production hour estimates** — free-format role description + person name, with total hours, hours per day, and active period, assigned to parties where known. Incomplete timeline or hours blocks Project Setup.
+5. **Tooling:** Adsomnia Workspace System is the governance/status system of record. From **Project Setup** through **Production**, **Jira** is also in play for delivery backlog / execution (especially HN/BTR). Show both as chips when mentioned.
 
 ## Visualizer UX
 
