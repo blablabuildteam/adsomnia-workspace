@@ -1,0 +1,195 @@
+import { db } from "@/db";
+import { initiatives, users, approvals, activityLog } from "@/db/schema";
+import { eq, desc, sql, count } from "drizzle-orm";
+
+export type InitiativeWithUsers = {
+  id: number;
+  ticketId: string;
+  title: string;
+  description: string | null;
+  problemStatement: string | null;
+  expectedImpact: string | null;
+  targetAudience: string | null;
+  currentStage: string;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+  submitter: { id: string; name: string };
+  sponsor: { id: string; name: string };
+};
+
+const submitterAlias = db
+  .select({ id: users.id, name: users.name })
+  .from(users)
+  .as("submitter_user");
+
+export async function getAllInitiatives(): Promise<InitiativeWithUsers[]> {
+  const rows = await db
+    .select({
+      id: initiatives.id,
+      ticketId: initiatives.ticketId,
+      title: initiatives.title,
+      description: initiatives.description,
+      problemStatement: initiatives.problemStatement,
+      expectedImpact: initiatives.expectedImpact,
+      targetAudience: initiatives.targetAudience,
+      currentStage: initiatives.currentStage,
+      status: initiatives.status,
+      createdAt: initiatives.createdAt,
+      updatedAt: initiatives.updatedAt,
+      submitterId: initiatives.submitterId,
+      sponsorId: initiatives.sponsorId,
+    })
+    .from(initiatives)
+    .orderBy(desc(initiatives.updatedAt));
+
+  if (rows.length === 0) return [];
+
+  const userIds = [
+    ...new Set(rows.flatMap((r) => [r.submitterId, r.sponsorId])),
+  ];
+  const userRows = await db
+    .select({ id: users.id, name: users.name })
+    .from(users)
+    .where(sql`${users.id} = ANY(${userIds})`);
+
+  const userMap = new Map(userRows.map((u) => [u.id, u]));
+
+  return rows.map((r) => ({
+    id: r.id,
+    ticketId: r.ticketId,
+    title: r.title,
+    description: r.description,
+    problemStatement: r.problemStatement,
+    expectedImpact: r.expectedImpact,
+    targetAudience: r.targetAudience,
+    currentStage: r.currentStage,
+    status: r.status,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+    submitter: userMap.get(r.submitterId) ?? { id: r.submitterId, name: "Unknown" },
+    sponsor: userMap.get(r.sponsorId) ?? { id: r.sponsorId, name: "Unknown" },
+  }));
+}
+
+export async function getInitiativeById(
+  id: number,
+): Promise<InitiativeWithUsers | null> {
+  const [row] = await db
+    .select({
+      id: initiatives.id,
+      ticketId: initiatives.ticketId,
+      title: initiatives.title,
+      description: initiatives.description,
+      problemStatement: initiatives.problemStatement,
+      expectedImpact: initiatives.expectedImpact,
+      targetAudience: initiatives.targetAudience,
+      currentStage: initiatives.currentStage,
+      status: initiatives.status,
+      createdAt: initiatives.createdAt,
+      updatedAt: initiatives.updatedAt,
+      submitterId: initiatives.submitterId,
+      sponsorId: initiatives.sponsorId,
+    })
+    .from(initiatives)
+    .where(eq(initiatives.id, id))
+    .limit(1);
+
+  if (!row) return null;
+
+  const userIds = [row.submitterId, row.sponsorId];
+  const userRows = await db
+    .select({ id: users.id, name: users.name })
+    .from(users)
+    .where(sql`${users.id} = ANY(${userIds})`);
+
+  const userMap = new Map(userRows.map((u) => [u.id, u]));
+
+  return {
+    ...row,
+    submitter: userMap.get(row.submitterId) ?? {
+      id: row.submitterId,
+      name: "Unknown",
+    },
+    sponsor: userMap.get(row.sponsorId) ?? {
+      id: row.sponsorId,
+      name: "Unknown",
+    },
+  };
+}
+
+export type ActivityEntry = {
+  id: number;
+  action: string;
+  details: unknown;
+  createdAt: Date;
+  userName: string;
+};
+
+export async function getActivityForInitiative(
+  initiativeId: number,
+): Promise<ActivityEntry[]> {
+  const rows = await db
+    .select({
+      id: activityLog.id,
+      action: activityLog.action,
+      details: activityLog.details,
+      createdAt: activityLog.createdAt,
+      userName: users.name,
+    })
+    .from(activityLog)
+    .innerJoin(users, eq(activityLog.userId, users.id))
+    .where(eq(activityLog.initiativeId, initiativeId))
+    .orderBy(desc(activityLog.createdAt));
+
+  return rows;
+}
+
+export async function getApprovalHistory(initiativeId: number) {
+  return db
+    .select({
+      id: approvals.id,
+      decision: approvals.decision,
+      fromStage: approvals.fromStage,
+      toStage: approvals.toStage,
+      comment: approvals.comment,
+      createdAt: approvals.createdAt,
+      approverName: users.name,
+    })
+    .from(approvals)
+    .innerJoin(users, eq(approvals.approverId, users.id))
+    .where(eq(approvals.initiativeId, initiativeId))
+    .orderBy(desc(approvals.createdAt));
+}
+
+export async function getStageCounts(): Promise<Record<string, number>> {
+  const rows = await db
+    .select({
+      stage: initiatives.currentStage,
+      count: count(),
+    })
+    .from(initiatives)
+    .groupBy(initiatives.currentStage);
+
+  const result: Record<string, number> = {};
+  for (const row of rows) {
+    result[row.stage] = row.count;
+  }
+  return result;
+}
+
+export async function getStatusCounts(): Promise<Record<string, number>> {
+  const rows = await db
+    .select({
+      status: initiatives.status,
+      count: count(),
+    })
+    .from(initiatives)
+    .groupBy(initiatives.status);
+
+  const result: Record<string, number> = {};
+  for (const row of rows) {
+    result[row.status] = row.count;
+  }
+  return result;
+}

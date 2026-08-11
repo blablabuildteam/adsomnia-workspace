@@ -2,19 +2,12 @@ import Link from "next/link";
 import {
   ArrowRight,
   Clock,
-  Layers,
   TrendingUp,
-  Zap,
+  Inbox,
 } from "lucide-react";
-import { STAGES, FAST_TRACK, getParty } from "@/data/workflow";
-import {
-  MOCK_INITIATIVES,
-  countByPriority,
-  countByStage,
-  type Initiative,
-  type InitiativePriority,
-} from "@/data/mock-initiatives";
+import { STAGES } from "@/data/workflow";
 import { WorkspaceChip } from "@/components/WorkspaceChip";
+import type { InitiativeWithUsers } from "@/lib/queries";
 
 function StatCard({
   label,
@@ -43,58 +36,52 @@ function StatCard({
   );
 }
 
-function PriorityColumn({
-  priority,
+const STATUS_COLORS: Record<string, string> = {
+  submitted: "#FFFFFF",
+  approved: "#22c55e",
+  rejected: "#FF3B1F",
+  "on-hold": "#7E90A3",
+  draft: "#666666",
+};
+
+function StatusColumn({
+  status,
   label,
-  initiatives,
+  items,
 }: {
-  priority: InitiativePriority;
+  status: string;
   label: string;
-  initiatives: Initiative[];
+  items: InitiativeWithUsers[];
 }) {
-  const accentMap: Record<InitiativePriority, string> = {
-    now: "#FFFFFF",
-    next: "#7E90A3",
-    later: "#CEFF00",
-    rollout: "#FF3B1F",
-  };
+  const accent = STATUS_COLORS[status] ?? "#FFFFFF";
 
   return (
     <div className="flex min-w-[220px] flex-1 flex-col border border-border bg-surface">
       <div
         className="border-b border-border px-4 py-3"
-        style={{ borderTopWidth: 3, borderTopColor: accentMap[priority] }}
+        style={{ borderTopWidth: 3, borderTopColor: accent }}
       >
         <div className="flex items-center justify-between">
           <p className="font-display text-xs font-bold uppercase tracking-wide">
             {label}
           </p>
           <span className="font-display text-lg font-extrabold tabular-nums text-muted">
-            {initiatives.length}
+            {items.length}
           </span>
         </div>
       </div>
       <div className="flex flex-1 flex-col gap-2 p-3">
-        {initiatives.map((init) => {
-          const stage = STAGES.find((s) => s.id === init.stageId);
-          const party = init.leadParty ? getParty(init.leadParty) : null;
+        {items.map((init) => {
+          const stage = STAGES.find((s) => s.id === init.currentStage);
           return (
             <Link
               key={init.id}
               href={`/initiatives/${init.id}`}
               className="group block border border-border bg-surface-elevated p-3 transition-colors hover:border-border-strong hover:bg-white/[0.04]"
             >
-              <div className="flex items-start justify-between gap-2">
-                <span className="font-display text-[10px] font-bold uppercase tracking-wider text-muted">
-                  {init.id}
-                </span>
-                {init.isFastTrack && (
-                  <span className="flex items-center gap-1 border border-foreground/30 px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-wider text-foreground">
-                    <Zap className="size-2.5" />
-                    FT
-                  </span>
-                )}
-              </div>
+              <span className="font-display text-[10px] font-bold uppercase tracking-wider text-muted">
+                {init.ticketId}
+              </span>
               <p className="mt-1.5 text-sm font-medium leading-snug group-hover:text-foreground">
                 {init.title}
               </p>
@@ -104,19 +91,11 @@ function PriorityColumn({
                     {stage.name}
                   </span>
                 )}
-                {party && (
-                  <span
-                    className="border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                    style={{ borderColor: party.color, color: party.color }}
-                  >
-                    {party.short}
-                  </span>
-                )}
               </div>
             </Link>
           );
         })}
-        {initiatives.length === 0 && (
+        {items.length === 0 && (
           <p className="py-6 text-center text-xs text-muted">No initiatives</p>
         )}
       </div>
@@ -125,12 +104,10 @@ function PriorityColumn({
 }
 
 function PipelineStageBar({
-  stageId,
   name,
   count,
   max,
 }: {
-  stageId: string;
   name: string;
   count: number;
   max: number;
@@ -154,17 +131,29 @@ function PipelineStageBar({
   );
 }
 
-export function DashboardView() {
-  const activeCount = MOCK_INITIATIVES.filter((i) => i.status === "active").length;
-  const fastTrackCount = MOCK_INITIATIVES.filter((i) => i.isFastTrack).length;
-  const maxStageCount = Math.max(...STAGES.map((s) => countByStage(s.id)), 1);
+type DashboardProps = {
+  initiatives: InitiativeWithUsers[];
+  stageCounts: Record<string, number>;
+  statusCounts: Record<string, number>;
+};
 
-  const byPriority = (p: InitiativePriority) =>
-    MOCK_INITIATIVES.filter((i) => i.priority === p && i.status === "active");
+export function DashboardView({
+  initiatives: items,
+  stageCounts,
+  statusCounts,
+}: DashboardProps) {
+  const total = items.length;
+  const submittedCount = statusCounts["submitted"] ?? 0;
+  const approvedCount = statusCounts["approved"] ?? 0;
 
-  const recent = [...MOCK_INITIATIVES]
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .slice(0, 5);
+  const byStatus = (s: string) => items.filter((i) => i.status === s);
+
+  const recent = items.slice(0, 5);
+
+  const maxStageCount = Math.max(
+    ...STAGES.map((s) => stageCounts[s.id] ?? 0),
+    1,
+  );
 
   return (
     <div className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -190,61 +179,58 @@ export function DashboardView() {
         </Link>
       </header>
 
-      {/* Stats row */}
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:gap-4">
-        <StatCard label="Active Initiatives" value={activeCount} />
+        <StatCard label="Total Initiatives" value={total} />
         <StatCard
-          label="In Production"
-          value={countByStage("production")}
-          sub="Stage 7 · delivery active"
+          label="Awaiting Approval"
+          value={submittedCount}
+          sub="Submitted — pending review"
         />
         <StatCard
-          label="Fast-Track"
-          value={fastTrackCount}
-          sub={FAST_TRACK.condition}
-          accent="#FFFFFF"
+          label="Approved"
+          value={approvedCount}
+          sub="Advanced to next stage"
+          accent="#22c55e"
         />
         <StatCard
-          label="Awaiting Go/No-Go"
-          value={countByStage("go-nogo")}
-          sub="Leadership decision pending"
+          label="Rejected / On Hold"
+          value={(statusCounts["rejected"] ?? 0) + (statusCounts["on-hold"] ?? 0)}
+          sub="Requires attention"
         />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-12">
-        {/* Now / Next / Later / Rollout */}
         <section className="lg:col-span-8">
           <div className="mb-4 flex items-center gap-2">
-            <Layers className="size-4 text-muted" />
+            <Inbox className="size-4 text-muted" />
             <h2 className="font-display text-sm font-bold uppercase tracking-wide">
-              Now / Next / Later / Rollout
+              By Status
             </h2>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-2">
-            <PriorityColumn
-              priority="now"
-              label="Now"
-              initiatives={byPriority("now")}
+            <StatusColumn
+              status="submitted"
+              label="Submitted"
+              items={byStatus("submitted")}
             />
-            <PriorityColumn
-              priority="next"
-              label="Next"
-              initiatives={byPriority("next")}
+            <StatusColumn
+              status="approved"
+              label="Approved"
+              items={byStatus("approved")}
             />
-            <PriorityColumn
-              priority="later"
-              label="Later"
-              initiatives={byPriority("later")}
+            <StatusColumn
+              status="on-hold"
+              label="On Hold"
+              items={byStatus("on-hold")}
             />
-            <PriorityColumn
-              priority="rollout"
-              label="Rollout"
-              initiatives={byPriority("rollout")}
+            <StatusColumn
+              status="rejected"
+              label="Rejected"
+              items={byStatus("rejected")}
             />
           </div>
         </section>
 
-        {/* Pipeline by stage */}
         <section className="lg:col-span-4">
           <div className="mb-4 flex items-center gap-2">
             <TrendingUp className="size-4 text-muted" />
@@ -256,28 +242,15 @@ export function DashboardView() {
             {STAGES.map((stage) => (
               <PipelineStageBar
                 key={stage.id}
-                stageId={stage.id}
                 name={stage.name}
-                count={countByStage(stage.id)}
+                count={stageCounts[stage.id] ?? 0}
                 max={maxStageCount}
               />
             ))}
           </div>
-          <div className="mt-3 border border-border bg-surface-elevated px-4 py-3 text-xs text-muted">
-            <span className="font-display font-bold uppercase tracking-wide text-foreground">
-              {countByPriority("now")} Now
-            </span>
-            {" · "}
-            <span>{countByPriority("next")} Next</span>
-            {" · "}
-            <span>{countByPriority("later")} Later</span>
-            {" · "}
-            <span>{countByPriority("rollout")} Rollout</span>
-          </div>
         </section>
       </div>
 
-      {/* Recent activity */}
       <section className="mt-8">
         <div className="mb-4 flex items-center gap-2">
           <Clock className="size-4 text-muted" />
@@ -286,8 +259,23 @@ export function DashboardView() {
           </h2>
         </div>
         <div className="border border-border">
+          {recent.length === 0 && (
+            <div className="px-4 py-8 text-center text-sm text-muted">
+              No initiatives yet. Submit your first idea to get started.
+            </div>
+          )}
           {recent.map((init, i) => {
-            const stage = STAGES.find((s) => s.id === init.stageId);
+            const stage = STAGES.find((s) => s.id === init.currentStage);
+            const statusBadge = init.status === "submitted"
+              ? "Submitted"
+              : init.status === "approved"
+                ? "Approved"
+                : init.status === "rejected"
+                  ? "Rejected"
+                  : init.status === "on-hold"
+                    ? "On Hold"
+                    : init.status;
+
             return (
               <Link
                 key={init.id}
@@ -300,14 +288,18 @@ export function DashboardView() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-display text-[10px] font-bold uppercase tracking-wider text-muted">
-                      {init.id}
+                      {init.ticketId}
                     </span>
                     <span className="truncate text-sm font-medium">
                       {init.title}
                     </span>
                   </div>
                   <p className="mt-0.5 truncate text-xs text-muted">
-                    {stage?.name ?? init.stageId} · Updated {init.updatedAt}
+                    {stage?.name ?? init.currentStage} · {statusBadge} ·
+                    Updated{" "}
+                    {init.updatedAt.toLocaleDateString("en-US", {
+                      dateStyle: "medium",
+                    })}
                   </p>
                 </div>
                 <ArrowRight className="size-4 shrink-0 text-muted" />

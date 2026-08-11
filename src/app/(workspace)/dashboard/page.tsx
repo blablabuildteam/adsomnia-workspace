@@ -1,11 +1,22 @@
-import { redirect } from "next/navigation";
 import { DashboardView } from "@/components/dashboard/DashboardView";
-import { isPreviewLocked } from "@/data/preview-access";
+import {
+  getAllInitiatives,
+  getStageCounts,
+  getStatusCounts,
+} from "@/lib/queries";
 
-export default function DashboardPage() {
-  if (isPreviewLocked("/dashboard")) {
-    redirect("/");
-  }
+export default async function DashboardPage() {
+  const [items, stageCounts, statusCounts] = await Promise.all([
+    getAllInitiatives(),
+    getStageCounts(),
+    getStatusCounts(),
+  ]);
 
-  return <DashboardView />;
+  return (
+    <DashboardView
+      initiatives={items}
+      stageCounts={stageCounts}
+      statusCounts={statusCounts}
+    />
+  );
 }

@@ -1,11 +1,8 @@
-import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/session";
 import { IdeaFormView } from "@/components/ideas/IdeaFormView";
-import { isPreviewLocked } from "@/data/preview-access";
 
-export default function NewIdeaPage() {
-  if (isPreviewLocked("/ideas/new")) {
-    redirect("/");
-  }
+export default async function NewIdeaPage() {
+  const user = await getCurrentUser();
 
-  return <IdeaFormView />;
+  return <IdeaFormView submitterName={user!.name} />;
 }
