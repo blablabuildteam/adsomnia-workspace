@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import { ArrowRight, GitBranch, AlertCircle } from "lucide-react";
+import Image from "next/image";
+import { ArrowRight, AlertCircle } from "lucide-react";
 import { login, type LoginResult } from "@/lib/auth";
 import { inputClass } from "@/lib/form-styles";
 import { BrandTexture } from "@/components/ui/BrandTexture";
@@ -17,9 +18,14 @@ export default function LoginPage() {
       <BrandTexture variant="page" />
       <div className="workspace-content relative z-10 w-full max-w-[400px]">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex size-12 items-center justify-center border border-border-strong bg-surface-elevated">
-            <GitBranch className="size-6 text-foreground" />
-          </div>
+          <Image
+            src="/logos/adsomnia.png"
+            alt="Adsomnia"
+            width={48}
+            height={48}
+            className="mx-auto mb-4 size-12"
+            priority
+          />
           <p className="font-display text-[10px] font-bold uppercase tracking-[0.22em] text-muted">
             Adsomnia
           </p>

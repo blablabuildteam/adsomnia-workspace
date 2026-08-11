@@ -8,6 +8,7 @@ import {
 } from "@/lib/queries";
 import { getCurrentUser, canApprove } from "@/lib/session";
 import type { ApprovalDecision } from "@/components/initiatives/ApprovalPanel";
+import type { ValidationDecision } from "@/components/initiatives/ValidationApprovalPanel";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -45,17 +46,30 @@ export default async function InitiativePage({ params }: Props) {
     getApprovalHistory(initiative.id),
   ]);
   const canUserApprove = user ? canApprove(user) : false;
+  const isCreator = user?.id === initiative.submitter.id;
 
-  const latest = approvals[0];
-  const latestDecision: ApprovalDecision | null = latest
-    ? {
-        decision: latest.decision,
-        comment: latest.comment,
-        approverName: latest.approverName,
-        createdAt: latest.createdAt,
-        toStage: latest.toStage,
-      }
-    : null;
+  const latestIdea = approvals.find((a) => a.fromStage === "idea");
+  const latestDecision: ApprovalDecision | null =
+    latestIdea && latestIdea.decision !== "feedback"
+      ? {
+          decision: latestIdea.decision,
+          comment: latestIdea.comment,
+          approverName: latestIdea.approverName,
+          createdAt: latestIdea.createdAt,
+          toStage: latestIdea.toStage,
+        }
+      : null;
+
+  const latestValidation = approvals.find((a) => a.fromStage === "validation");
+  const validationDecision: ValidationDecision | null =
+    latestValidation && latestValidation.decision !== "on-hold"
+      ? {
+          decision: latestValidation.decision,
+          comment: latestValidation.comment,
+          approverName: latestValidation.approverName,
+          createdAt: latestValidation.createdAt,
+        }
+      : null;
 
   return (
     <InitiativeDetailView
@@ -66,6 +80,8 @@ export default async function InitiativePage({ params }: Props) {
       canComment={!!user}
       currentUserName={user?.name ?? "Unknown"}
       latestDecision={latestDecision}
+      validationDecision={validationDecision}
+      isCreator={isCreator}
     />
   );
 }

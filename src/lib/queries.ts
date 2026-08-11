@@ -7,16 +7,19 @@ import {
   comments,
 } from "@/db/schema";
 import { eq, desc, count, inArray } from "drizzle-orm";
+import type { ValidationData } from "@/lib/validation-data";
 
-export type ValidationData = {
-  businessValue?: string;
-  solutionDirection?: string;
-  tShirtSize?: string;
-  priority?: string;
-  leadProductionParty?: string;
-  dependencies?: string;
-  risks?: string;
-};
+export type {
+  BusinessValueType,
+  BusinessValueData,
+  ValidationData,
+} from "@/lib/validation-data";
+export {
+  BUSINESS_VALUE_TYPES,
+  isBusinessValueData,
+  isBusinessValueComplete,
+  formatBusinessValueSummary,
+} from "@/lib/validation-data";
 
 export type InitiativeWithUsers = {
   id: number;

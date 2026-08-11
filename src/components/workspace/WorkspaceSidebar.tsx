@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -9,7 +10,6 @@ import {
   ChevronRight,
   ClipboardList,
   Columns3,
-  GitBranch,
   LayoutDashboard,
   Lightbulb,
   LogOut,
@@ -188,7 +188,7 @@ function isActive(pathname: string, href: string): boolean {
   if (href === "/ideas/new" && pathname.startsWith("/ideas")) return true;
   if (
     href === "/dashboard" &&
-    (pathname === "/dashboard" || pathname.startsWith("/initiatives"))
+    (pathname === "/dashboard" || pathname.startsWith("/workstreams"))
   ) {
     return true;
   }
@@ -220,9 +220,14 @@ export function WorkspaceSidebar({ userName, collapsed, onToggle }: Props) {
           ].join(" ")}
           title="Adsomnia Workspace"
         >
-          <div className="flex size-9 shrink-0 items-center justify-center border border-border-strong bg-surface-elevated">
-            <GitBranch className="size-4 text-foreground" />
-          </div>
+          <Image
+            src="/logos/adsomnia.png"
+            alt="Adsomnia"
+            width={36}
+            height={36}
+            className="size-9 shrink-0"
+            priority
+          />
           {!collapsed && (
             <div className="min-w-0">
               <p className="font-display text-[10px] font-bold uppercase tracking-[0.22em] text-muted">

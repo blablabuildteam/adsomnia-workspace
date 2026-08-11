@@ -1,11 +1,4 @@
-import {
-  Check,
-  ChevronDown,
-  Target,
-  Lightbulb,
-  TrendingUp,
-  Users,
-} from "lucide-react";
+import { Check } from "lucide-react";
 import { STAGES, getStageColor, type WorkflowStage } from "@/data/workflow";
 import type {
   InitiativeWithUsers,
@@ -13,9 +6,14 @@ import type {
   CommentEntry,
 } from "@/lib/queries";
 import { ApprovalPanel, type ApprovalDecision } from "./ApprovalPanel";
+import {
+  ValidationApprovalPanel,
+  type ValidationDecision,
+} from "./ValidationApprovalPanel";
 import { CommentSection } from "./CommentSection";
 import { ValidationPhaseSection } from "./ValidationPhaseSection";
-import { CornerTicks } from "@/components/ui/CornerTicks";
+import { PhaseCard } from "./PhaseCard";
+import { IdeaDetailsSection } from "./IdeaDetailsSection";
 import { DownloadPdfButton } from "./DownloadPdfButton";
 import { FloatingDetailBar } from "./FloatingDetailBar";
 
@@ -103,91 +101,6 @@ function StageStepper({ currentStageId }: { currentStageId: string }) {
   );
 }
 
-/**
- * Phase wrapper with two visual states:
- * - "complete": collapsed by default (native <details>), neutral chrome, dimmed body
- * - "current": always expanded, stage-color accent + filled badge — the one place to work
- */
-function PhaseCard({
-  stageId,
-  number,
-  name,
-  status,
-  children,
-}: {
-  stageId: string;
-  number: number;
-  name: string;
-  status: "complete" | "current";
-  children: React.ReactNode;
-}) {
-  const color = getStageColor(stageId);
-  const phaseLabel = `Phase ${String(number).padStart(2, "0")}`;
-
-  if (status === "complete") {
-    return (
-      <details className="group/phase relative border border-border">
-        <CornerTicks complete />
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 bg-surface px-4 py-4 transition-colors hover:bg-surface-elevated sm:px-5 [&::-webkit-details-marker]:hidden">
-          <div>
-            <p className="font-display text-[10px] font-bold uppercase tracking-[0.25em] text-muted/70">
-              {phaseLabel}
-            </p>
-            <h2 className="font-display mt-1 text-xl font-extrabold uppercase tracking-tight text-foreground/50 sm:text-2xl">
-              {name}
-            </h2>
-          </div>
-          <div className="flex shrink-0 items-center gap-3">
-            <span className="font-display flex items-center gap-1.5 border border-success/40 bg-success/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-success">
-              <Check className="size-3" />
-              Complete
-            </span>
-            <ChevronDown className="size-4 text-muted transition-transform duration-200 group-open/phase:rotate-180" />
-          </div>
-        </summary>
-        <div className="border-t border-border opacity-70 transition-opacity hover:opacity-100">
-          {children}
-        </div>
-      </details>
-    );
-  }
-
-  return (
-    <section
-      className="relative border border-border"
-      style={{ borderLeftWidth: 3, borderLeftColor: color }}
-    >
-      <CornerTicks />
-      <div
-        className="flex items-end justify-between gap-4 border-b border-border bg-surface-elevated px-4 py-4 sm:px-5"
-        style={{ borderTopWidth: 3, borderTopColor: color }}
-      >
-        <div>
-          <p
-            className="font-display text-[10px] font-bold uppercase tracking-[0.25em]"
-            style={{ color }}
-          >
-            {phaseLabel}
-          </p>
-          <h2 className="font-display mt-1 text-xl font-extrabold uppercase tracking-tight sm:text-2xl">
-            {name}
-          </h2>
-        </div>
-        <span
-          className="font-display shrink-0 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide"
-          style={{
-            backgroundColor: color,
-            color: stageLabelOnFill(color),
-          }}
-        >
-          In Progress
-        </span>
-      </div>
-      {children}
-    </section>
-  );
-}
-
 const STATUS_BADGE_STYLES: Record<string, string> = {
   submitted: "border-foreground bg-foreground text-background",
   approved: "border-success bg-success/10 text-success",
@@ -212,6 +125,8 @@ type Props = {
   canComment: boolean;
   currentUserName: string;
   latestDecision?: ApprovalDecision | null;
+  validationDecision?: ValidationDecision | null;
+  isCreator?: boolean;
 };
 
 export function InitiativeDetailView({
@@ -222,6 +137,8 @@ export function InitiativeDetailView({
   canComment,
   currentUserName,
   latestDecision = null,
+  validationDecision = null,
+  isCreator = false,
 }: Props) {
   const stage = STAGES.find(
     (s) => s.id === initiative.currentStage,
@@ -245,9 +162,44 @@ export function InitiativeDetailView({
 
   const showValidation = currentNum >= 2;
   const validationIsCurrent = initiative.currentStage === "validation";
+  // Business case has been submitted and is waiting on a leadership decision.
+  const validationAwaitingDecision =
+    validationIsCurrent && initiative.status === "submitted";
+
+  // Creators can keep editing while awaiting a decision (update & resubmit).
   const validationIsEditable =
     validationIsCurrent &&
-    (initiative.status === "approved" || initiative.status === "draft");
+    (initiative.status === "approved" ||
+      initiative.status === "draft" ||
+      (validationAwaitingDecision && isCreator));
+
+  // Initiative details stay editable pre-approval for the creator/leadership.
+  const canEditIdea =
+    (isCreator || canUserApprove) &&
+    initiative.currentStage === "idea" &&
+    initiative.status !== "rejected";
+
+  // Only surface the latest validation decision when it matches the current
+  // state (avoids showing stale decisions after a resubmission).
+  const displayedValidationDecision =
+    validationDecision && !validationAwaitingDecision
+      ? (validationIsCurrent &&
+          initiative.status === "rejected" &&
+          validationDecision.decision === "rejected") ||
+        (validationIsCurrent &&
+          initiative.status === "draft" &&
+          validationDecision.decision === "feedback") ||
+        (currentNum > 2 && validationDecision.decision === "approved")
+        ? validationDecision
+        : null
+      : null;
+
+  const validationStatus: "complete" | "current" | "review" =
+    currentNum > 2
+      ? "complete"
+      : validationAwaitingDecision
+        ? "review"
+        : "current";
 
   return (
     <div className="relative w-full flex-1">
@@ -333,57 +285,17 @@ export function InitiativeDetailView({
               name={ideaStage.name}
               status={initiative.currentStage === "idea" ? "current" : "complete"}
             >
-              <div className="bg-surface">
-                <h3 className="border-b border-border px-4 py-3 font-display text-xs font-bold uppercase tracking-wide">
-                  Initiative Details
-                </h3>
-                <div className="grid gap-px bg-border sm:grid-cols-2">
-                  <div className="bg-surface p-4">
-                    <div className="mb-2 flex items-center gap-2 text-muted">
-                      <Target className="size-3.5" />
-                      <span className="font-display text-[10px] font-bold uppercase tracking-wide">
-                        Problem Statement
-                      </span>
-                    </div>
-                    <p className="text-sm leading-relaxed text-foreground/90">
-                      {initiative.problemStatement ?? "—"}
-                    </p>
-                  </div>
-                  <div className="bg-surface p-4">
-                    <div className="mb-2 flex items-center gap-2 text-muted">
-                      <Lightbulb className="size-3.5" />
-                      <span className="font-display text-[10px] font-bold uppercase tracking-wide">
-                        Opportunity / Solution
-                      </span>
-                    </div>
-                    <p className="text-sm leading-relaxed text-foreground/90">
-                      {initiative.opportunitySolution ?? "—"}
-                    </p>
-                  </div>
-                  <div className="bg-surface p-4">
-                    <div className="mb-2 flex items-center gap-2 text-muted">
-                      <TrendingUp className="size-3.5" />
-                      <span className="font-display text-[10px] font-bold uppercase tracking-wide">
-                        Expected Impact
-                      </span>
-                    </div>
-                    <p className="text-sm leading-relaxed text-foreground/90">
-                      {initiative.expectedImpact ?? "—"}
-                    </p>
-                  </div>
-                  <div className="bg-surface p-4">
-                    <div className="mb-2 flex items-center gap-2 text-muted">
-                      <Users className="size-3.5" />
-                      <span className="font-display text-[10px] font-bold uppercase tracking-wide">
-                        Target Audience
-                      </span>
-                    </div>
-                    <p className="text-sm leading-relaxed text-foreground/90">
-                      {initiative.targetAudience ?? "—"}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <IdeaDetailsSection
+                initiativeId={initiative.id}
+                values={{
+                  title: initiative.title,
+                  problemStatement: initiative.problemStatement,
+                  opportunitySolution: initiative.opportunitySolution,
+                  expectedImpact: initiative.expectedImpact,
+                  targetAudience: initiative.targetAudience,
+                }}
+                canEdit={canEditIdea}
+              />
 
               {showApprovalPanel && (
                 <ApprovalPanel
@@ -399,7 +311,7 @@ export function InitiativeDetailView({
                 stageId="validation"
                 number={validationStage.number}
                 name={validationStage.name}
-                status={validationIsCurrent ? "current" : "complete"}
+                status={validationStatus}
               >
                 <div className="bg-surface">
                   {validationIsEditable ? (
@@ -407,6 +319,8 @@ export function InitiativeDetailView({
                       <ValidationPhaseSection
                         initiativeId={initiative.id}
                         data={initiative.validationData}
+                        feedback={displayedValidationDecision}
+                        resubmitting={validationAwaitingDecision}
                       />
                     </form>
                   ) : (
@@ -417,6 +331,16 @@ export function InitiativeDetailView({
                     />
                   )}
                 </div>
+
+                {(validationAwaitingDecision ||
+                  displayedValidationDecision) && (
+                  <ValidationApprovalPanel
+                    initiativeId={initiative.id}
+                    decision={displayedValidationDecision}
+                    canDecide={canUserApprove}
+                    awaitingDecision={validationAwaitingDecision}
+                  />
+                )}
               </PhaseCard>
             )}
         </div>

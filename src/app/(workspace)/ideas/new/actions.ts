@@ -79,5 +79,5 @@ export async function submitIdea(
     details: { title, sponsor: sponsorName },
   });
 
-  redirect(`/initiatives/${created.id}`);
+  redirect(`/workstreams/${created.id}`);
 }

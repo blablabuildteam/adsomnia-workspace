@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Download } from "lucide-react";
 
 type Props = {
@@ -11,21 +11,33 @@ type Props = {
 
 export function FloatingDetailBar({ title, stageName, stageColor }: Props) {
   const [visible, setVisible] = useState(false);
+  const rafId = useRef(0);
 
-  useEffect(() => {
+  const checkVisibility = useCallback(() => {
     const sentinel = document.getElementById("detail-header-sentinel");
     if (!sentinel) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setVisible(!entry.isIntersecting);
-      },
-      { threshold: 0 },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
+    const rect = sentinel.getBoundingClientRect();
+    // Trigger while the sentinel is still ~80px below the top edge
+    setVisible(rect.bottom < 80);
   }, []);
+
+  useEffect(() => {
+    const scroller =
+      document.querySelector("main.workspace-content") ?? window;
+
+    const onScroll = () => {
+      cancelAnimationFrame(rafId.current);
+      rafId.current = requestAnimationFrame(checkVisibility);
+    };
+
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    checkVisibility();
+
+    return () => {
+      scroller.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(rafId.current);
+    };
+  }, [checkVisibility]);
 
   return (
     <div
@@ -36,7 +48,7 @@ export function FloatingDetailBar({ title, stageName, stageColor }: Props) {
           : "-translate-y-full opacity-0 pointer-events-none",
       ].join(" ")}
     >
-      <div className="border-b border-white/[0.06] bg-black/50 px-4 backdrop-blur-2xl sm:px-6">
+      <div className="border-b border-border bg-surface/90 px-4 backdrop-blur-sm sm:px-6">
         <div className="mx-auto flex max-w-[1200px] items-center gap-3 py-3">
           <span
             className="font-display shrink-0 text-[10px] font-bold uppercase tracking-[0.2em]"

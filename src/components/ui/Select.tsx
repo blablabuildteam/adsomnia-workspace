@@ -130,8 +130,8 @@ export function Select({
           setOpen((current) => !current);
         }}
         className={`${triggerClass} flex items-center justify-between gap-2 text-left ${
-          disabled ? "cursor-not-allowed opacity-50" : ""
-        }`}
+          open ? "border-muted" : ""
+        } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
       >
         <span className={selectedOption ? "text-white" : "text-muted/50"}>
           {selectedOption?.label ?? placeholder}

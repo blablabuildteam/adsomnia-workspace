@@ -4,20 +4,31 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
-  ArrowUpRight,
+  BarChart3,
+  Building2,
   CheckCircle2,
   Clock,
+  Compass,
+  Eye,
   Filter,
   FileText,
+  Flag,
+  Loader2,
   PauseCircle,
+  Save,
+  Shirt,
   User,
   XCircle,
 } from "lucide-react";
-import { STAGES, getParty } from "@/data/workflow";
+import { STAGES, getParty, PARTIES } from "@/data/workflow";
 import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStrip } from "@/components/pipeline/PipelineStrip";
 import type { InitiativeWithUsers } from "@/lib/queries";
+import {
+  formatBusinessValueSummary,
+  isBusinessValueComplete,
+} from "@/lib/validation-data";
 
 const hoverTicks =
   "opacity-0 transition-opacity duration-300 group-hover:opacity-100";
@@ -34,6 +45,8 @@ const FILTERS: { key: FilterKey; label: string; color: string }[] = [
   { key: "rejected", label: "Rejected", color: "#FF3B1F" },
 ];
 
+const VALIDATION_FIELD_TOTAL = 7;
+
 const STATUS_META: Record<
   string,
   {
@@ -42,9 +55,9 @@ const STATUS_META: Record<
     icon: React.ComponentType<{ className?: string }>;
   }
 > = {
-  draft: { label: "Draft", color: "#666666", icon: Clock },
-  submitted: { label: "To be Reviewed", color: "#FFFFFF", icon: ArrowUpRight },
-  approved: { label: "Approved", color: "#22c55e", icon: CheckCircle2 },
+  draft: { label: "In Progress", color: "#EAB308", icon: Loader2 },
+  submitted: { label: "In Review", color: "#38BDF8", icon: Eye },
+  approved: { label: "Approved", color: "#22C55E", icon: CheckCircle2 },
   rejected: { label: "Rejected", color: "#FF3B1F", icon: XCircle },
   "on-hold": { label: "On Hold", color: "#7E90A3", icon: PauseCircle },
 };
@@ -54,13 +67,19 @@ function StatusBadge({ status }: { status: string }) {
   const Icon = meta.icon;
   return (
     <span
-      className="inline-flex items-center gap-1 border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+      className="inline-flex shrink-0 items-center gap-1 border px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide"
       style={{ borderColor: meta.color, color: meta.color }}
     >
       <Icon className="size-3" />
       {meta.label}
     </span>
   );
+}
+
+function resolvePartyLabel(stored: string | undefined): string | undefined {
+  if (!stored) return undefined;
+  if (stored === "as") return "Adsomnia";
+  return PARTIES.find((p) => p.id === stored)?.label ?? stored;
 }
 
 function ValidationCard({ item }: { item: InitiativeWithUsers }) {
@@ -71,7 +90,7 @@ function ValidationCard({ item }: { item: InitiativeWithUsers }) {
   const vd = item.validationData;
   const filledFields = vd
     ? [
-        vd.businessValue,
+        isBusinessValueComplete(vd.businessValue),
         vd.solutionDirection,
         vd.tShirtSize,
         vd.priority,
@@ -80,21 +99,57 @@ function ValidationCard({ item }: { item: InitiativeWithUsers }) {
         vd.risks,
       ].filter(Boolean).length
     : 0;
+  const businessValueSummary = formatBusinessValueSummary(vd?.businessValue);
+  const progressPct = Math.round(
+    (filledFields / VALIDATION_FIELD_TOTAL) * 100,
+  );
+  const hasSavedDraft =
+    filledFields > 0 &&
+    (item.status === "draft" || item.status === "approved");
 
   return (
     <Link
-      href={`/initiatives/${item.id}`}
+      href={`/workstreams/${item.id}`}
       className="group relative block border border-border bg-surface transition-colors hover:border-border-strong hover:bg-white/[0.02]"
     >
       <CornerTicks className={hoverTicks} />
-      <div className="flex items-center justify-between border-b border-border px-5 py-3">
-        <div className="flex items-center gap-3">
-          <span className="font-display text-[10px] font-bold uppercase tracking-wider text-muted">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <span className="font-display shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted">
             {item.ticketId}
           </span>
           <StatusBadge status={item.status} />
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <div
+              className="h-1.5 min-w-0 flex-1 bg-border"
+              role="progressbar"
+              aria-valuenow={filledFields}
+              aria-valuemin={0}
+              aria-valuemax={VALIDATION_FIELD_TOTAL}
+              aria-label={`Business case progress: ${filledFields} of ${VALIDATION_FIELD_TOTAL} fields`}
+            >
+              <div
+                className="h-full bg-hn transition-[width] duration-300"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+            <span className="shrink-0 font-display text-[10px] font-bold uppercase tracking-wide tabular-nums text-muted">
+              {filledFields}/{VALIDATION_FIELD_TOTAL}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-[10px] text-muted/70">
+        <div className="flex shrink-0 items-center gap-2 text-[10px] text-muted/70">
+          {hasSavedDraft && (
+            <span
+              className="inline-flex items-center gap-1 text-muted"
+              title="Draft saved"
+            >
+              <Save className="size-3" />
+              <span className="font-display text-[10px] font-bold uppercase tracking-wide">
+                Saved
+              </span>
+            </span>
+          )}
           <Clock className="size-3" />
           {daysSinceUpdate === 0
             ? "Today"
@@ -109,26 +164,64 @@ function ValidationCard({ item }: { item: InitiativeWithUsers }) {
           {item.title}
         </h3>
 
-        {vd?.businessValue && (
-          <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted">
-            {vd.businessValue}
-          </p>
-        )}
-
-        <div className="mt-3 flex items-center gap-4">
-          {vd?.tShirtSize && (
-            <span className="border border-border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted">
-              {vd.tShirtSize}
-            </span>
-          )}
-          {vd?.priority && (
-            <span className="text-[10px] font-bold uppercase tracking-wide text-muted">
-              {vd.priority}
-            </span>
-          )}
-          <span className="text-[10px] text-muted/60">
-            {filledFields}/8 fields
-          </span>
+        <div className="mt-3 grid grid-cols-2 gap-px bg-border">
+          <div className="min-h-[52px] bg-surface p-2.5">
+            <div className="mb-1 flex items-center gap-1.5 text-muted">
+              <BarChart3 className="size-3" />
+              <p className="font-display text-[9px] font-bold uppercase tracking-wide text-muted/60">
+                Business Value
+              </p>
+            </div>
+            <p className="line-clamp-2 text-xs leading-relaxed text-muted">
+              {businessValueSummary || "—"}
+            </p>
+          </div>
+          <div className="min-h-[52px] bg-surface p-2.5">
+            <div className="mb-1 flex items-center gap-1.5 text-muted">
+              <Compass className="size-3" />
+              <p className="font-display text-[9px] font-bold uppercase tracking-wide text-muted/60">
+                Solution Direction
+              </p>
+            </div>
+            <p className="line-clamp-2 text-xs leading-relaxed text-muted">
+              {vd?.solutionDirection || "—"}
+            </p>
+          </div>
+          <div className="min-h-[52px] bg-surface p-2.5">
+            <div className="mb-1 flex items-center gap-1.5 text-muted">
+              <Building2 className="size-3" />
+              <p className="font-display text-[9px] font-bold uppercase tracking-wide text-muted/60">
+                Lead Party
+              </p>
+            </div>
+            <p className="line-clamp-2 text-xs leading-relaxed text-muted">
+              {resolvePartyLabel(vd?.leadProductionParty) || "—"}
+            </p>
+          </div>
+          <div className="min-h-[52px] bg-surface p-2.5">
+            <div className="mb-1 flex items-center gap-1.5 text-muted">
+              <Shirt className="size-3" />
+              <p className="font-display text-[9px] font-bold uppercase tracking-wide text-muted/60">
+                Investment & Priority
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {vd?.tShirtSize ? (
+                <span className="border border-border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted">
+                  {vd.tShirtSize}
+                </span>
+              ) : null}
+              {vd?.priority ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-muted">
+                  <Flag className="size-3" />
+                  {vd.priority}
+                </span>
+              ) : null}
+              {!vd?.tShirtSize && !vd?.priority && (
+                <p className="text-xs leading-relaxed text-muted">—</p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

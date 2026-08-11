@@ -68,7 +68,7 @@ function InitiativeCard({ item }: { item: InitiativeWithUsers }) {
 
   return (
     <Link
-      href={`/initiatives/${item.id}`}
+      href={`/workstreams/${item.id}`}
       className="group relative flex h-full flex-col border border-border bg-surface transition-colors hover:border-border-strong hover:bg-white/[0.02]"
     >
       <CornerTicks className={hoverTicks} />

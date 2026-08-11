@@ -636,7 +636,7 @@ export function IdeaFormView({ submitterName }: { submitterName: string }) {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <Link
-                            href={`/initiatives/${match.id}`}
+                            href={`/workstreams/${match.id}`}
                             className="font-display text-xs font-bold uppercase tracking-wide text-foreground hover:underline"
                             target="_blank"
                           >

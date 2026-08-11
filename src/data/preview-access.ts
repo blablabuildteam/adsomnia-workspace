@@ -5,7 +5,7 @@
 export const LOCKED_PREVIEW_ROUTES = [
   "/dashboard",
   "/ideas/new",
-  "/initiatives",
+  "/workstreams",
 ] as const;
 
 export function isPreviewLocked(pathname: string): boolean {

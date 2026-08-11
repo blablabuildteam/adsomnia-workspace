@@ -348,6 +348,24 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
   animation: fade-in 200ms ease-out;
 }
 
+@keyframes check-pop {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-check-pop {
+  animation: check-pop 220ms ease-out;
+}
+
 .fast-track-pulse {
   animation: pulse-accent 1.8s ease-in-out infinite;
 }
@@ -361,6 +379,54 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
 .flow-arrow-animated {
   stroke-dasharray: 6 6;
   animation: flow-dash 0.8s linear infinite;
+}
+
+/* Business-value impact slider (1–10) */
+.impact-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 0;
+  background: linear-gradient(
+    to right,
+    var(--muted) 0%,
+    var(--muted) var(--impact-pct, 0%),
+    var(--border) var(--impact-pct, 0%),
+    var(--border) 100%
+  );
+  outline: none;
+  cursor: pointer;
+}
+
+.impact-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 0;
+  background: var(--surface-elevated);
+  border: 1px solid var(--muted);
+  cursor: pointer;
+}
+
+.impact-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 0;
+  background: var(--surface-elevated);
+  border: 1px solid var(--muted);
+  cursor: pointer;
+}
+
+.impact-slider::-moz-range-track {
+  height: 6px;
+  background: transparent;
+  border: none;
+}
+
+.impact-slider:focus-visible {
+  outline: 1px solid var(--muted);
+  outline-offset: 4px;
 }
 
 /* Project Intake Template — print / PDF */

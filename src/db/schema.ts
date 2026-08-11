@@ -37,6 +37,7 @@ export const decisionEnum = pgEnum("approval_decision", [
   "approved",
   "rejected",
   "on-hold",
+  "feedback",
 ]);
 
 export const users = pgTable("users", {

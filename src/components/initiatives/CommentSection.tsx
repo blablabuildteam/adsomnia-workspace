@@ -1,11 +1,12 @@
 "use client";
 
 import { useActionState, useRef, useEffect, useMemo } from "react";
-import { Send, MessageSquare, ArrowRight, GitBranch } from "lucide-react";
+import Image from "next/image";
+import { Send, MessageSquare, ArrowRight } from "lucide-react";
 import {
   addComment,
   type CommentResult,
-} from "@/app/(workspace)/initiatives/[id]/actions";
+} from "@/app/(workspace)/workstreams/[id]/actions";
 import { inputClass } from "@/lib/form-styles";
 import type { CommentEntry, ActivityEntry } from "@/lib/queries";
 
@@ -175,12 +176,14 @@ function PhaseEvent({
 
   return (
     <div className="flex gap-2.5 bg-surface-elevated/40 px-4 py-3">
-      <span
+      <Image
+        src="/logos/adsomnia.png"
+        alt=""
+        width={20}
+        height={20}
+        className="size-5 shrink-0"
         aria-hidden
-        className="flex size-5 shrink-0 items-center justify-center border border-border-strong bg-surface-elevated"
-      >
-        <GitBranch className="size-2.5 text-foreground/80" />
-      </span>
+      />
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
           <span className="font-display text-[9px] font-bold uppercase tracking-[0.12em] text-muted">

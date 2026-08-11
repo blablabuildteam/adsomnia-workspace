@@ -81,7 +81,7 @@ function StatusColumn({
           return (
             <Link
               key={init.id}
-              href={`/initiatives/${init.id}`}
+              href={`/workstreams/${init.id}`}
               className="group relative block border border-border bg-surface-elevated p-3 transition-colors hover:border-border-strong hover:bg-white/[0.04]"
             >
               <CornerTicks className={hoverTicks} />
@@ -306,7 +306,7 @@ export function DashboardView({
             return (
               <Link
                 key={init.id}
-                href={`/initiatives/${init.id}`}
+                href={`/workstreams/${init.id}`}
                 className={[
                   "group flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-white/[0.03]",
                   i > 0 ? "border-t border-border" : "",
