@@ -13,6 +13,7 @@
     "env:sync-vercel": "tsx scripts/sync-vercel-env.ts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@neondatabase/serverless": "^1.1.0",
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.2",

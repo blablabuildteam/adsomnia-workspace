@@ -69,13 +69,14 @@ export const STAGES: WorkflowStage[] = [
   {
     id: "idea",
     number: 1,
-    name: "Idea",
+    name: "Initiative",
     nameNl: "Idee",
     owner: "Adsomnia Leadership Team",
     parties: ["adsomnia"],
     inputs: [
-      "Title & Short Description — state the core idea in 1–2 plain sentences (what are we building or changing?)",
-      "Problem Statement or Opportunity — name the concrete problem this solves, or the opportunity Adsomnia is leaving on the table if we do nothing",
+      "Title & Short Description — state the core initiative in 1–2 plain sentences (what are we building or changing?)",
+      "Problem Statement — name the concrete problem this solves (pain, gap, or risk if we do nothing)",
+      "Opportunity / Solution — describe the opportunity or proposed solution direction in plain terms",
       "Expected Impact / Value (Hypothesis) — describe the intended outcome and how you would recognise success (e.g. revenue, efficiency, data/retargeting quality, churn reduction)",
       "Target Audience / Stakeholder — who is this for (internal team, end user, business unit) and who is affected by the change?",
       "Submitter & Sponsor — who proposes it, and which decision maker (Sietse / Jasper / Oleg) sponsors it into the pipeline?",
@@ -257,7 +258,7 @@ export const FAST_TRACK = {
   id: "fast-track",
   name: "Fast-Track",
   condition: "Request takes less than 4 hours",
-  action: `Skips all standard stages (Idea through Onboarding) and goes straight into Production & Reporting. A ticket is created in the ${WORKSPACE_SYSTEM} Fast-Track View`,
+  action: `Skips all standard stages (Initiative through Onboarding) and goes straight into Production & Reporting. A ticket is created in the ${WORKSPACE_SYSTEM} Fast-Track View`,
   landingStageId: "production" as const,
   bypassStageIds: [
     "idea",

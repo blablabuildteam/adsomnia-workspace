@@ -1,7 +1,7 @@
 # Cursor Prompt & Task Brief: Adsomnia Production Framework Interactive Process Visualizer
 
 ## Language
-**Visualizer UI and content must be in English.** Source PDF stage names may be Dutch (Idee, Validatie, Productie, etc.) — translate them for display (Idea, Validation, Production, etc.).
+**Visualizer UI and content must be in English.** Source PDF stage names may be Dutch (Idee, Validatie, Productie, etc.) — translate them for display (Initiative, Validation, Production, etc.). Use the term **Initiative** (not Idea) in all product UI.
 
 ## Source PDF
 Original workflow diagram: `docs/Adsomnia-Production-Framework.pdf`
@@ -41,11 +41,12 @@ The workflow consists of **7 Main Sequential Stages** plus a **Fast-Track Except
 
 ### 2. The 7 Core Workflow Stages
 
-#### Stage 1: Idee (Adsomnia)
+#### Stage 1: Initiative (Idee — Adsomnia)
 - **Role/Owner:** Adsomnia Leadership Team
 - **Input (Top Box):** Each input must clearly state what is expected.
-  - *Title & Short Description:* Core idea in 1–2 plain sentences (what are we building/changing?).
-  - *Problem Statement or Opportunity:* Concrete problem solved, or opportunity left on the table if we do nothing.
+  - *Title & Short Description:* Core initiative in 1–2 plain sentences (what are we building/changing?).
+  - *Problem Statement:* Concrete problem solved (pain, gap, or risk if we do nothing).
+  - *Opportunity / Solution:* Opportunity or proposed solution direction in plain terms.
   - *Expected Impact / Value (Hypothesis):* Intended outcome and how success would be recognised.
   - *Target Audience / Stakeholder:* Who it is for and who is affected.
   - *Submitter & Sponsor:* Who proposes it; which decision maker (Sietse / Jasper / Oleg) sponsors it.

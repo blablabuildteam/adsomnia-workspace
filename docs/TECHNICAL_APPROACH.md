@@ -16,6 +16,8 @@
 | Styling | Tailwind CSS | 4.x | Custom theme tokens in `globals.css` |
 | Icons | Lucide React | latest | Consistent icon library |
 | Fonts | Sen (display) + Libre Franklin (body) | Google Fonts | Loaded via `next/font/google` |
+| Email (planned) | Resend | — | Transactional email for auth & notifications |
+| AI (planned) | Google Gemini | — | Chat agent and workspace assistance |
 
 ---
 
@@ -42,17 +44,18 @@ Seeded team members. No self-registration in Phase 1.
 
 #### `initiatives`
 
-Core record — one per idea/project. Grows through stages.
+Core record — one per initiative/project. Grows through stages.
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | `serial` | Auto-increment PK |
 | `ticket_id` | `varchar(20)` | Display ID, e.g. `WS-1001` |
-| `title` | `varchar(500)` | From Idea stage |
+| `title` | `varchar(500)` | From Initiative stage |
 | `description` | `text` | Short description |
-| `problem_statement` | `text` | From Idea stage |
-| `expected_impact` | `text` | From Idea stage |
-| `target_audience` | `varchar(500)` | From Idea stage |
+| `problem_statement` | `text` | From Initiative stage |
+| `opportunity_solution` | `text` | From Initiative stage |
+| `expected_impact` | `text` | From Initiative stage |
+| `target_audience` | `varchar(500)` | From Initiative stage |
 | `submitter_id` | `uuid FK → users` | Who submitted |
 | `sponsor_id` | `uuid FK → users` | Leadership sponsor |
 | `current_stage` | `enum(...)` | `idea`, `validation`, `scoping`, `go-nogo`, `setup`, `onboarding`, `production` |
@@ -94,17 +97,37 @@ Audit trail for all significant actions.
 
 ## 3. Authentication Approach
 
-### Phase 1: Seeded Users
+### Phase 1: Seeded Users (current)
 
 - Pre-created user accounts with email + bcrypt-hashed passwords
-- Session managed via HTTP-only cookie (signed JWT or opaque token)
+- Session managed via HTTP-only cookie (signed JWT)
 - `getCurrentUser()` server-side helper reads the session cookie and returns the user
 - The `(workspace)` route group layout enforces authentication — unauthenticated users redirect to `/login`
 - No self-registration, no password reset, no OAuth
 
-### Future: Full Auth Provider
+### Future: Email-Based Authentication (Resend)
 
-The session layer is designed to be swapped out for Clerk, NextAuth, or similar. The `getCurrentUser()` contract stays the same — only the implementation changes.
+**Resend** is provisioned via `RESEND_API_KEY` in `.env.local` (server-only — never expose as `NEXT_PUBLIC_`). It will replace or augment password login in a later auth milestone.
+
+Planned capabilities:
+
+- **Magic link login** — user enters email → one-time token sent via Resend → `/login/verify?token=...` creates session
+- **Email verification** — confirm address on first sign-in or invite
+- **Password reset** — secure reset links for users who keep password auth
+- **Workflow notifications** — e.g. "New initiative submitted", "Approval required", stage handover alerts
+
+Implementation sketch (when built):
+
+1. Add `login_tokens` table (`token`, `user_id`, `expires_at`, `used_at`)
+2. Server Action: request login link → generate token → send via Resend API
+3. Verify route validates token → calls existing `createSession()` in `src/lib/session.ts`
+4. Optional: keep password login as fallback during transition
+
+The session layer (`getCurrentUser()`, HTTP-only cookie) stays the same — only the login entry point changes.
+
+### Future: Third-Party Auth Provider (optional)
+
+Clerk, NextAuth, or similar remain an option if requirements outgrow custom Resend flows. The `getCurrentUser()` contract should stay stable either way.
 
 ---
 
@@ -125,12 +148,33 @@ Data fetching happens directly in Server Components via Drizzle queries. No sepa
 
 ---
 
-## 5. Approval Model
+## 5. AI & Chat Agent (Gemini — planned)
 
-### Phase 1: Idea → Validation Gate
+**Google Gemini** is provisioned via `GEMINI_API_KEY` in `.env.local` (server-only). Not used in Phase 1; reserved for a later milestone.
 
-- Only users with IDs matching **Sietse** or **Oleg** can approve initiatives at the Idea stage
-- Approval advances `current_stage` from `idea` to `validation` and sets `status` to `approved`
+Planned use cases:
+
+- **Workspace chat agent** — contextual assistant inside the workspace (framework guidance, intake help, initiative status)
+- **Stage-aware prompts** — agent knows current initiative stage and can explain required inputs/outputs
+- **Draft assistance** — help users draft Initiative/Validation fields before submission (human remains accountable)
+
+Implementation sketch (when built):
+
+1. Server-side API route or Server Action calling Gemini (never expose key to client)
+2. Optional: Vercel AI SDK + tool calling for reading initiative data from Drizzle
+3. Chat UI as a panel or drawer in the workspace shell (alongside sidebar)
+4. Rate limiting and audit logging for AI interactions tied to `activity_log`
+
+This is independent of authentication — Resend handles identity flows; Gemini handles in-app assistance.
+
+---
+
+## 6. Approval Model
+
+### Phase 1: Initiative → Validation Gate
+
+- Only users with IDs matching **Sietse** or **Oleg** can approve initiatives at the Initiative stage
+- Approval advances `current_stage` from `idea` (internal enum) to `validation` and sets `status` to `approved`
 - Rejection sets `status` to `rejected`; On-hold sets `status` to `on-hold`
 - Every decision creates an `approvals` record and an `activity_log` entry
 
@@ -140,12 +184,12 @@ Each stage gate (Validation → Scoping, Scoping → Go/No-Go, etc.) will have i
 
 ---
 
-## 6. Phase-by-Phase Build Roadmap
+## 7. Phase-by-Phase Build Roadmap
 
-### Phase 1: Idea (current)
+### Phase 1: Initiative (current)
 - Database + ORM setup (Drizzle + Neon)
 - Seeded users + simple cookie auth
-- Idea submission form (DB-backed)
+- Initiative submission form (DB-backed)
 - Initiative dashboard (real data)
 - Initiative detail page with approval gate
 - Navigation cleanup (remove concept preview mode)
@@ -182,26 +226,43 @@ Each stage gate (Validation → Scoping, Scoping → Go/No-Go, etc.) will have i
 
 ### Cross-cutting (as needed)
 - Fast-Track flow
-- Full authentication provider
+- **Email auth & notifications (Resend)** — magic links, verification, approval alerts
+- **Workspace chat agent (Gemini)** — contextual assistant for framework and intake
 - Role-based permissions (RBAC)
-- Email/Slack notifications
 - File uploads & attachments
 
 ---
 
-## 7. Existing Assets Preserved
+## 8. Environment Variables
+
+| Variable | Scope | Phase | Purpose |
+|----------|-------|-------|---------|
+| `DATABASE_URL` | Server | 1 | Neon Postgres (pooled) |
+| `SESSION_SECRET` | Server | 1 | JWT session signing |
+| `SEED_USER_PASSWORD` | Server | 1 | Default password for seeded users |
+| `LOGIN_*_EMAIL` / `LOGIN_*_PASSWORD` | Server | 1 | Per-user seed credentials |
+| `RESEND_API_KEY` | Server | Future | Resend transactional email |
+| `GEMINI_API_KEY` | Server | Future | Google Gemini for chat agent |
+
+Local values live in `.env.local` (gitignored). Sync auth/session/login vars to Vercel via `npm run env:sync-vercel`. When Resend and Gemini go live, add those keys to the sync script and Vercel Production/Preview/Development.
+
+**Never** prefix secrets with `NEXT_PUBLIC_` — client bundle exposure.
+
+---
+
+## 9. Existing Assets Preserved
 
 The following concept-preview assets remain functional and accessible:
 
 - **Framework Visualizer** (`/framework`) — interactive Production Framework process map
 - **Intake Template** (`/intake`) — combined Stage 1–3 reference form (localStorage-based)
-- **Concept Hub** (`/`) — landing page with links to all views
+- **Concept Hub** (`/`) — redirects to dashboard or login
 
-These will be maintained alongside the new production features and may be updated or replaced in future phases.
+These reference assets sit in the sidebar under **Reference** and are not core production views.
 
 ---
 
-## 8. File Structure
+## 10. File Structure
 
 ```
 src/
@@ -211,7 +272,7 @@ src/
       layout.tsx                      # Session guard + nav
       dashboard/page.tsx              # Real data dashboard
       ideas/new/
-        page.tsx                      # Idea submission
+        page.tsx                      # Initiative submission
         actions.ts                    # submitIdea Server Action
       initiatives/[id]/
         page.tsx                      # Initiative detail
@@ -219,10 +280,12 @@ src/
       framework/page.tsx              # Visualizer (unchanged)
       intake/page.tsx                 # Template (unchanged)
   components/
-    ideas/IdeaFormView.tsx            # Refactored for DB
+    ideas/IdeaFormView.tsx            # Initiative form (DB-backed)
     dashboard/DashboardView.tsx       # Refactored for real data
     initiatives/InitiativeDetailView.tsx  # + approval UI
-    workspace/WorkspaceNav.tsx        # Updated nav
+    workspace/
+      WorkspaceShell.tsx            # Sidebar + main layout
+      WorkspaceSidebar.tsx          # Collapsible nav
   db/
     index.ts                          # Drizzle client
     schema.ts                         # All table schemas
@@ -230,6 +293,9 @@ src/
   lib/
     auth.ts                           # Login/verify functions
     session.ts                        # Cookie session management
+    queries.ts                        # Initiative/dashboard queries
+scripts/
+  sync-vercel-env.ts                  # Push credential env vars to Vercel
 docs/
   TECHNICAL_APPROACH.md               # This document
   Adsomnia-Production-Framework.pdf   # Source PDF

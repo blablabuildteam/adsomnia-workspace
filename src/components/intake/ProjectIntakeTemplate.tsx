@@ -22,6 +22,8 @@ import {
   type IntakeField,
   type RoleHourRow,
 } from "@/data/intake-template";
+import { Select } from "@/components/ui/Select";
+import { inputElevatedClass as inputClass } from "@/lib/form-styles";
 
 const STORAGE_KEY = "adsomnia-intake-v1";
 
@@ -56,12 +58,15 @@ function defaultProjects(): ProjectSlot[] {
   return [createProjectSlot(1), createProjectSlot(2), createProjectSlot(3)];
 }
 
-/** Tab label: project name, else Idea title, else "Project N". */
+/** Tab label: project name, else initiative title, else "Project N". */
 function projectTabLabel(project: ProjectSlot): string {
   const name = project.projectName.trim();
   if (name) return name;
-  const ideaTitle = (project.values.title ?? "").trim().split("\n")[0]?.trim();
-  if (ideaTitle) return ideaTitle;
+  const initiativeTitle = (project.values.title ?? "")
+    .trim()
+    .split("\n")[0]
+    ?.trim();
+  if (initiativeTitle) return initiativeTitle;
   return project.label;
 }
 
@@ -106,11 +111,11 @@ function FieldShell({
     <div
       className={`border p-4 print:break-inside-avoid ${fieldClassName}`}
     >
-      <label className="font-display block text-xs font-bold uppercase tracking-wide text-foreground">
+      <label className="font-display block text-sm font-bold uppercase tracking-wide text-foreground">
         {field.label}
         {field.required && <span className="ml-1 text-btr">*</span>}
       </label>
-      <p className="mt-1.5 text-xs leading-relaxed text-muted">
+      <p className="mt-1.5 text-sm leading-relaxed text-muted">
         <span className="font-medium text-foreground/70">Expected: </span>
         {field.expectation}
       </p>
@@ -118,9 +123,6 @@ function FieldShell({
     </div>
   );
 }
-
-const inputClass =
-  "w-full border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground placeholder:text-muted/50 focus:border-border-strong focus:outline-none print:border-border print:bg-transparent";
 
 /** Distinct stage container accents (brand palette). */
 const STAGE_STYLES = {
@@ -444,20 +446,15 @@ export function ProjectIntakeTemplate() {
                     <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
                       Party / Owner
                     </span>
-                    <select
-                      className={`${inputClass} mt-1`}
+                    <Select
+                      className="mt-1"
+                      variant="elevated"
                       value={row.party}
-                      onChange={(e) =>
-                        updateRoleHour(row.id, "party", e.target.value)
+                      onChange={(value) =>
+                        updateRoleHour(row.id, "party", value)
                       }
-                    >
-                      <option value="">Select…</option>
-                      {LEAD_PARTY_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
+                      options={LEAD_PARTY_OPTIONS}
+                    />
                   </label>
                   <label className="block">
                     <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
@@ -559,19 +556,13 @@ export function ProjectIntakeTemplate() {
             required={field.required}
           />
         ) : field.type === "select" ? (
-          <select
-            className={inputClass}
+          <Select
+            variant="elevated"
             value={active.values[field.id] ?? ""}
-            onChange={(e) => setValue(field.id, e.target.value)}
+            onChange={(value) => setValue(field.id, value)}
             required={field.required}
-          >
-            <option value="">Select…</option>
-            {field.options?.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
+            options={field.options ?? []}
+          />
         ) : (
           <input
             type={field.type === "date" ? "date" : "text"}
@@ -641,7 +632,7 @@ export function ProjectIntakeTemplate() {
           Template
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
-          Collect Stage 1–3 information (Idea → Validation → Scoping) for each
+          Collect Stage 1–3 information (Initiative → Validation → Scoping) for each
           kickoff project. Completed forms feed Go/No-Go and Jira Project Setup
           (Epics, Milestones, and resource booking).
         </p>
@@ -670,7 +661,7 @@ export function ProjectIntakeTemplate() {
             </li>
             <li>
               Tabs update to the <strong className="text-foreground">project name</strong>{" "}
-              (or Idea title) as you fill them in.
+              (or initiative title) as you fill them in.
             </li>
             <li>
               <strong className="text-foreground">Save</strong> stores everything in
@@ -717,7 +708,7 @@ export function ProjectIntakeTemplate() {
           </span>
           <p className="mt-1 text-xs text-muted">
             <span className="font-medium text-foreground/70">Expected: </span>
-            Working title used in Workspace and Jira (can match Idea title).
+            Working title used in Workspace and Jira (can match initiative title).
           </p>
           <input
             className={`${inputClass} mt-2`}

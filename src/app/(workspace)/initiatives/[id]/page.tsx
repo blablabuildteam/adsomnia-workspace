@@ -1,7 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { InitiativeDetailView } from "@/components/initiatives/InitiativeDetailView";
-import { getInitiativeById, getActivityForInitiative } from "@/lib/queries";
+import {
+  getInitiativeById,
+  getActivityForInitiative,
+  getCommentsForInitiative,
+} from "@/lib/queries";
 import { getCurrentUser, canApprove } from "@/lib/session";
 
 type Props = {
@@ -40,14 +44,20 @@ export default async function InitiativePage({ params }: Props) {
     );
   }
 
-  const activity = await getActivityForInitiative(initiative.id);
+  const [activity, comments] = await Promise.all([
+    getActivityForInitiative(initiative.id),
+    getCommentsForInitiative(initiative.id),
+  ]);
   const canUserApprove = user ? canApprove(user) : false;
 
   return (
     <InitiativeDetailView
       initiative={initiative}
       activity={activity}
+      comments={comments}
       canUserApprove={canUserApprove}
+      canComment={!!user}
+      currentUserName={user?.name ?? "Unknown"}
     />
   );
 }

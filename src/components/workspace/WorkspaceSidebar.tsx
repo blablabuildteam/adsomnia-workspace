@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  Columns3,
   GitBranch,
   LayoutDashboard,
   Lightbulb,
@@ -17,7 +18,8 @@ import { logout } from "@/lib/auth";
 
 const PRIMARY_NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/ideas/new", label: "Submit Idea", icon: Lightbulb },
+  { href: "/overview", label: "Pipeline", icon: Columns3 },
+  { href: "/ideas/new", label: "Submit Initiative", icon: Lightbulb },
 ] as const;
 
 const REFERENCE_NAV_ITEMS = [
@@ -72,6 +74,7 @@ type Props = {
 function isActive(pathname: string, href: string): boolean {
   if (pathname === href) return true;
   if (href === "/ideas/new" && pathname.startsWith("/ideas")) return true;
+  if (href === "/overview" && pathname === "/overview") return true;
   if (
     href === "/dashboard" &&
     (pathname === "/dashboard" || pathname.startsWith("/initiatives"))
@@ -87,7 +90,7 @@ export function WorkspaceSidebar({ userName, collapsed, onToggle }: Props) {
   return (
     <aside
       className={[
-        "sidebar-shell sticky top-0 flex h-screen shrink-0 flex-col border-r border-border bg-surface/90 backdrop-blur-sm transition-[width] duration-200 ease-out",
+        "sidebar-shell flex h-full shrink-0 flex-col border-r border-border bg-surface/90 backdrop-blur-sm transition-[width] duration-200 ease-out",
         collapsed ? "w-[68px]" : "w-[240px]",
       ].join(" ")}
     >

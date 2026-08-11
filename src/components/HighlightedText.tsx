@@ -7,7 +7,7 @@ type HighlightedTextProps = {
   className?: string;
   /**
    * When true, bold the label before " — " and keep the description regular weight.
-   * Example: **Title & Short Description** — state the core idea…
+   * Example: **Title & Short Description** — state the core initiative…
    */
   boldLabel?: boolean;
 };

@@ -37,13 +37,15 @@ export function WorkspaceShell({ userName, children }: Props) {
   };
 
   return (
-    <div className="flex min-h-full min-w-0 flex-1">
+    <div className="flex min-h-0 min-w-0 flex-1">
       <WorkspaceSidebar
         userName={userName}
         collapsed={hydrated ? collapsed : false}
         onToggle={toggle}
       />
-      <main className="min-w-0 flex-1 overflow-x-hidden">{children}</main>
+      <main className="workspace-content min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+        {children}
+      </main>
     </div>
   );
 }

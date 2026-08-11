@@ -17,7 +17,7 @@ const libreFranklin = Libre_Franklin({
 export const metadata: Metadata = {
   title: "Adsomnia Workspace — Production Framework",
   description:
-    "Concept previews for the Adsomnia Workspace System — dashboard, idea intake, initiative tracking, and the Production Framework process map.",
+    "Concept previews for the Adsomnia Workspace System — dashboard, initiative intake, initiative tracking, and the Production Framework process map.",
 };
 
 export default function RootLayout({

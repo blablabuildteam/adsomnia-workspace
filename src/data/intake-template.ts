@@ -1,6 +1,6 @@
 /**
  * Project Intake Template — Stages 1–3
- * Used to collect Idea / Validation / Scoping information before Jira Project Setup.
+ * Used to collect Initiative / Validation / Scoping information before Jira Project Setup.
  */
 
 export type FieldType =
@@ -49,7 +49,7 @@ export const INTAKE_SECTIONS: IntakeStageSection[] = [
   {
     stageId: "idea",
     number: 1,
-    name: "Idea",
+    name: "Initiative",
     owner: "Adsomnia Leadership Team",
     purpose:
       "Capture the minimal intake so the initiative can be registered. Keep answers short and concrete — this is not a business case yet.",
@@ -58,20 +58,30 @@ export const INTAKE_SECTIONS: IntakeStageSection[] = [
         id: "title",
         label: "Title & Short Description",
         expectation:
-          "State the core idea in 1–2 plain sentences. Name what you want to build or change — not the full solution design.",
+          "State the core initiative in 1–2 plain sentences. Name what you want to build or change — not the full solution design.",
         type: "textarea",
         required: true,
         placeholder: "e.g. Automate retargeting pixel deployment across affiliate landing pages.",
       },
       {
         id: "problem",
-        label: "Problem Statement or Opportunity",
+        label: "Problem Statement",
         expectation:
-          "Describe the concrete problem this solves, or the opportunity Adsomnia leaves on the table if we do nothing. Prefer one clear pain point over a list of wishes.",
+          "Describe the concrete problem this solves — the pain, gap, or risk if we do nothing. Prefer one clear pain point over a list of wishes.",
         type: "textarea",
         required: true,
         placeholder:
           "e.g. Manual pixel placement causes delays and inconsistent tracking across partner sites.",
+      },
+      {
+        id: "opportunity",
+        label: "Opportunity / Solution",
+        expectation:
+          "Describe the opportunity or proposed solution direction in plain terms — what should we build or change?",
+        type: "textarea",
+        required: true,
+        placeholder:
+          "e.g. A self-serve pixel deployment tool that partners can configure without Affil Ops support.",
       },
       {
         id: "impact",
@@ -105,7 +115,7 @@ export const INTAKE_SECTIONS: IntakeStageSection[] = [
         id: "sponsor",
         label: "Sponsor",
         expectation:
-          "Which decision maker sponsors this into the pipeline? Required for the idea to move to Validation.",
+          "Which decision maker sponsors this into the pipeline? Required for the initiative to move to Validation.",
         type: "select",
         required: true,
         options: [...SPONSOR_OPTIONS],
@@ -118,7 +128,7 @@ export const INTAKE_SECTIONS: IntakeStageSection[] = [
     name: "Validation",
     owner: "Adsomnia Leadership Team / Head of Production / Team Lead",
     purpose:
-      "Enrich the idea into a Business Case. Leadership uses this to decide whether the initiative may be scoped.",
+      "Enrich the initiative into a Business Case. Leadership uses this to decide whether the initiative may be scoped.",
     fields: [
       {
         id: "businessValue",

@@ -13,7 +13,7 @@ export default async function WorkspaceLayout({
   }
 
   return (
-    <div className="app-atmosphere flex min-h-full flex-1 flex-col">
+    <div className="app-atmosphere flex h-dvh min-h-0 flex-col overflow-hidden">
       <WorkspaceShell userName={user.name}>{children}</WorkspaceShell>
     </div>
   );

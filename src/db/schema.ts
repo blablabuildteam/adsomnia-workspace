@@ -56,6 +56,7 @@ export const initiatives = pgTable("initiatives", {
   title: varchar("title", { length: 500 }).notNull(),
   description: text("description"),
   problemStatement: text("problem_statement"),
+  opportunitySolution: text("opportunity_solution"),
   expectedImpact: text("expected_impact"),
   targetAudience: varchar("target_audience", { length: 500 }),
   submitterId: uuid("submitter_id")
@@ -87,6 +88,20 @@ export const approvals = pgTable("approvals", {
   toStage: varchar("to_stage", { length: 50 }),
   decision: decisionEnum("decision").notNull(),
   comment: text("comment"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const comments = pgTable("comments", {
+  id: serial("id").primaryKey(),
+  initiativeId: serial("initiative_id")
+    .notNull()
+    .references(() => initiatives.id),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id),
+  body: text("body").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

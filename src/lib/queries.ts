@@ -1,6 +1,12 @@
 import { db } from "@/db";
-import { initiatives, users, approvals, activityLog } from "@/db/schema";
-import { eq, desc, sql, count } from "drizzle-orm";
+import {
+  initiatives,
+  users,
+  approvals,
+  activityLog,
+  comments,
+} from "@/db/schema";
+import { eq, desc, count, inArray } from "drizzle-orm";
 
 export type InitiativeWithUsers = {
   id: number;
@@ -8,6 +14,7 @@ export type InitiativeWithUsers = {
   title: string;
   description: string | null;
   problemStatement: string | null;
+  opportunitySolution: string | null;
   expectedImpact: string | null;
   targetAudience: string | null;
   currentStage: string;
@@ -18,11 +25,6 @@ export type InitiativeWithUsers = {
   sponsor: { id: string; name: string };
 };
 
-const submitterAlias = db
-  .select({ id: users.id, name: users.name })
-  .from(users)
-  .as("submitter_user");
-
 export async function getAllInitiatives(): Promise<InitiativeWithUsers[]> {
   const rows = await db
     .select({
@@ -31,6 +33,7 @@ export async function getAllInitiatives(): Promise<InitiativeWithUsers[]> {
       title: initiatives.title,
       description: initiatives.description,
       problemStatement: initiatives.problemStatement,
+      opportunitySolution: initiatives.opportunitySolution,
       expectedImpact: initiatives.expectedImpact,
       targetAudience: initiatives.targetAudience,
       currentStage: initiatives.currentStage,
@@ -51,7 +54,7 @@ export async function getAllInitiatives(): Promise<InitiativeWithUsers[]> {
   const userRows = await db
     .select({ id: users.id, name: users.name })
     .from(users)
-    .where(sql`${users.id} = ANY(${userIds})`);
+    .where(inArray(users.id, userIds));
 
   const userMap = new Map(userRows.map((u) => [u.id, u]));
 
@@ -61,6 +64,7 @@ export async function getAllInitiatives(): Promise<InitiativeWithUsers[]> {
     title: r.title,
     description: r.description,
     problemStatement: r.problemStatement,
+    opportunitySolution: r.opportunitySolution,
     expectedImpact: r.expectedImpact,
     targetAudience: r.targetAudience,
     currentStage: r.currentStage,
@@ -82,6 +86,7 @@ export async function getInitiativeById(
       title: initiatives.title,
       description: initiatives.description,
       problemStatement: initiatives.problemStatement,
+      opportunitySolution: initiatives.opportunitySolution,
       expectedImpact: initiatives.expectedImpact,
       targetAudience: initiatives.targetAudience,
       currentStage: initiatives.currentStage,
@@ -97,11 +102,11 @@ export async function getInitiativeById(
 
   if (!row) return null;
 
-  const userIds = [row.submitterId, row.sponsorId];
+  const userIds = [...new Set([row.submitterId, row.sponsorId])];
   const userRows = await db
     .select({ id: users.id, name: users.name })
     .from(users)
-    .where(sql`${users.id} = ANY(${userIds})`);
+    .where(inArray(users.id, userIds));
 
   const userMap = new Map(userRows.map((u) => [u.id, u]));
 
@@ -160,6 +165,29 @@ export async function getApprovalHistory(initiativeId: number) {
     .innerJoin(users, eq(approvals.approverId, users.id))
     .where(eq(approvals.initiativeId, initiativeId))
     .orderBy(desc(approvals.createdAt));
+}
+
+export type CommentEntry = {
+  id: number;
+  body: string;
+  createdAt: Date;
+  userName: string;
+};
+
+export async function getCommentsForInitiative(
+  initiativeId: number,
+): Promise<CommentEntry[]> {
+  return db
+    .select({
+      id: comments.id,
+      body: comments.body,
+      createdAt: comments.createdAt,
+      userName: users.name,
+    })
+    .from(comments)
+    .innerJoin(users, eq(comments.userId, users.id))
+    .where(eq(comments.initiativeId, initiativeId))
+    .orderBy(desc(comments.createdAt));
 }
 
 export async function getStageCounts(): Promise<Record<string, number>> {

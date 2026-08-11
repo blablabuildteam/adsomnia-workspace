@@ -8,6 +8,7 @@ import {
   putOnHold,
   type ApprovalResult,
 } from "@/app/(workspace)/initiatives/[id]/actions";
+import { inputClass } from "@/lib/form-styles";
 
 const initial: ApprovalResult = {};
 
@@ -46,13 +47,14 @@ export function ApprovalPanel({ initiativeId }: { initiativeId: number }) {
   }
 
   return (
-    <div className="border border-foreground/30 bg-foreground/5 p-5">
+    <div className="approval-action-frame border border-border bg-foreground/5 p-5">
+      <span aria-hidden className="approval-action-border" />
       <h3 className="font-display text-sm font-bold uppercase tracking-wide">
         Approval Decision
       </h3>
       <p className="mt-1 text-xs text-muted">
-        As an approver, you can advance this initiative to Validation, reject it,
-        or put it on hold.
+        Admin-only: review the initiative details and advance to Validation,
+        reject, or put on hold.
       </p>
 
       {error && (
@@ -104,13 +106,14 @@ export function ApprovalPanel({ initiativeId }: { initiativeId: number }) {
         >
           <label className="block">
             <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-              Comment (optional)
+              Remark<span className="ml-1 text-btr">*</span>
             </span>
             <textarea
               name="comment"
+              required
               rows={2}
-              className="mt-1 w-full border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted/50 focus:border-border-strong focus:outline-none"
-              placeholder="Add a reason or note…"
+              className={`${inputClass} mt-1`}
+              placeholder="Explain the reasoning behind this decision…"
             />
           </label>
           <div className="flex items-center gap-2">

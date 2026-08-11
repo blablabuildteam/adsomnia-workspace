@@ -8,6 +8,7 @@ alwaysApply: true
 All user-facing content in this project is **English**.
 
 - Stage names, inputs, outputs, toolbar labels, legends, drawers, and metadata descriptions: English
+- Use **Initiative** (not Idea) for Stage 1 and all product copy about submissions
 - Dutch terms from source materials (Idee, Validatie, Productie, Goedgekeurde, etc.) must be translated before display
 - Do not ship mixed NL/EN labels in the visualizer
 - Keep `lang="en"` on the document root

@@ -67,6 +67,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   }
 }
 
+/** Leadership admins who can approve, reject, or hold initiatives. */
 export function canApprove(user: SessionUser): boolean {
-  return user.name === "Sietse" || user.name === "Oleg";
+  return user.name === "Sietse" || user.name === "Coen";
 }

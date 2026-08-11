@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { initiatives, approvals, activityLog } from "@/db/schema";
+import { initiatives, approvals, activityLog, comments } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getCurrentUser, canApprove } from "@/lib/session";
 
@@ -11,6 +11,43 @@ export type ApprovalResult = {
   success?: boolean;
 };
 
+export type CommentResult = {
+  error?: string;
+  success?: boolean;
+};
+
+export async function addComment(
+  initiativeId: number,
+  _prev: CommentResult,
+  formData: FormData,
+): Promise<CommentResult> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "You must be logged in to comment." };
+  }
+
+  const body = (formData.get("body") as string)?.trim();
+  if (!body) {
+    return { error: "Comment cannot be empty." };
+  }
+
+  await db.insert(comments).values({
+    initiativeId,
+    userId: user.id,
+    body,
+  });
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: "comment_added",
+    details: { preview: body.slice(0, 120) },
+  });
+
+  revalidatePath(`/initiatives/${initiativeId}`);
+  return { success: true };
+}
+
 export async function approveToValidation(
   initiativeId: number,
   _prev: ApprovalResult,
@@ -18,10 +55,13 @@ export async function approveToValidation(
 ): Promise<ApprovalResult> {
   const user = await getCurrentUser();
   if (!user || !canApprove(user)) {
-    return { error: "Only Sietse or Oleg can approve initiatives." };
+    return { error: "Only leadership admins can approve initiatives." };
   }
 
   const comment = (formData.get("comment") as string)?.trim() || null;
+  if (!comment) {
+    return { error: "A remark is required when making an approval decision." };
+  }
 
   await db
     .update(initiatives)
@@ -45,7 +85,12 @@ export async function approveToValidation(
     initiativeId,
     userId: user.id,
     action: "approved_to_validation",
-    details: { comment, approver: user.name },
+    details: {
+      comment,
+      approver: user.name,
+      fromStage: "Initiative",
+      toStage: "Validation",
+    },
   });
 
   revalidatePath(`/initiatives/${initiativeId}`);
@@ -60,10 +105,13 @@ export async function rejectInitiative(
 ): Promise<ApprovalResult> {
   const user = await getCurrentUser();
   if (!user || !canApprove(user)) {
-    return { error: "Only Sietse or Oleg can reject initiatives." };
+    return { error: "Only leadership admins can reject initiatives." };
   }
 
   const comment = (formData.get("comment") as string)?.trim() || null;
+  if (!comment) {
+    return { error: "A remark is required when making an approval decision." };
+  }
 
   await db
     .update(initiatives)
@@ -101,10 +149,13 @@ export async function putOnHold(
 ): Promise<ApprovalResult> {
   const user = await getCurrentUser();
   if (!user || !canApprove(user)) {
-    return { error: "Only Sietse or Oleg can put initiatives on hold." };
+    return { error: "Only leadership admins can put initiatives on hold." };
   }
 
   const comment = (formData.get("comment") as string)?.trim() || null;
+  if (!comment) {
+    return { error: "A remark is required when making an approval decision." };
+  }
 
   await db
     .update(initiatives)

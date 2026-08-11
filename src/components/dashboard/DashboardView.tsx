@@ -174,7 +174,7 @@ export function DashboardView({
           href="/ideas/new"
           className="inline-flex items-center gap-2 border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90"
         >
-          Submit New Idea
+          Submit New Initiative
           <ArrowRight className="size-3.5" />
         </Link>
       </header>
@@ -261,7 +261,7 @@ export function DashboardView({
         <div className="border border-border">
           {recent.length === 0 && (
             <div className="px-4 py-8 text-center text-sm text-muted">
-              No initiatives yet. Submit your first idea to get started.
+              No initiatives yet. Submit your first initiative to get started.
             </div>
           )}
           {recent.map((init, i) => {

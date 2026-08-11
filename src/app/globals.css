@@ -4,10 +4,12 @@
   --background: #000000;
   --surface: #0b0b0b;
   --surface-elevated: #111111;
+  --surface-input: #181818;
   --foreground: #ffffff;
   --muted: #a1a1a1;
   --border: #222222;
   --border-strong: #3a3a3a;
+  --border-input: #333333;
   /* Party accents */
   --adsomnia: #ffffff;
   --btr: #ff3b1f;
@@ -22,15 +24,18 @@
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-surface-elevated: var(--surface-elevated);
+  --color-surface-input: var(--surface-input);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
+  --color-border-input: var(--border-input);
   --color-adsomnia: var(--adsomnia);
   --color-btr: var(--btr);
   --color-hn: var(--hn);
   --color-bbb: var(--bbb);
   --color-as: var(--as);
+  --color-success: var(--success);
   --font-display: var(--font-sen);
   --font-body: var(--font-libre);
 }
@@ -50,6 +55,45 @@ body {
   min-height: 100%;
 }
 
+/*
+ * Main workspace content — one step up from default Tailwind scale.
+ * Scoped to .workspace-content so the sidebar keeps its current sizing.
+ */
+.workspace-content {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.workspace-content .text-xs {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.workspace-content .text-sm {
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
+.workspace-content .text-\[9px\] {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+}
+
+.workspace-content .text-\[10px\] {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.workspace-content .text-\[11px\] {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.workspace-content .text-\[12px\] {
+  font-size: 0.875rem;
+  line-height: 1.375rem;
+}
+
 ::selection {
   background: color-mix(in srgb, var(--foreground) 35%, transparent);
   color: #000;
@@ -59,10 +103,10 @@ body {
 .app-atmosphere {
   background-color: #000;
   background-image:
-    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(255, 255, 255, 0.06), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 90% 10%, rgba(126, 144, 163, 0.08), transparent 50%),
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(255, 255, 255, 0.1), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 10%, rgba(126, 144, 163, 0.14), transparent 50%),
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
   background-size:
     auto,
     auto,
@@ -74,6 +118,66 @@ body {
 .font-display {
   font-family: var(--font-sen), Sen, sans-serif;
   letter-spacing: 0.02em;
+}
+
+/* Form controls — replace native OS chrome with workspace styling */
+.form-control {
+  appearance: none;
+  border-radius: 0;
+  color: #ffffff;
+  caret-color: #ffffff;
+}
+
+.form-control::placeholder {
+  color: color-mix(in srgb, var(--muted) 50%, transparent);
+  opacity: 1;
+}
+
+.form-control:-webkit-autofill,
+.form-control:-webkit-autofill:hover,
+.form-control:-webkit-autofill:focus {
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
+  box-shadow: 0 0 0 1000px var(--surface-input) inset;
+  transition: background-color 9999s ease-out 0s;
+}
+
+select.form-control {
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a1a1a1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  cursor: pointer;
+}
+
+select.form-control option {
+  background: var(--surface-input);
+  color: var(--foreground);
+}
+
+input[type="number"].form-control {
+  -moz-appearance: textfield;
+}
+
+input[type="number"].form-control::-webkit-inner-spin-button,
+input[type="number"].form-control::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="date"].form-control,
+input[type="datetime-local"].form-control,
+input[type="time"].form-control {
+  color-scheme: dark;
+}
+
+input[type="date"].form-control::-webkit-calendar-picker-indicator,
+input[type="datetime-local"].form-control::-webkit-calendar-picker-indicator,
+input[type="time"].form-control::-webkit-calendar-picker-indicator {
+  filter: invert(0.72);
+  opacity: 0.85;
+  cursor: pointer;
 }
 
 /* Horizontal timeline scrollbar */
@@ -123,6 +227,50 @@ body {
   50% {
     box-shadow: 0 0 0 6px rgba(255, 255, 255, 0);
   }
+}
+
+/* Form completion border — breathing glow that follows the line (incl. faded tip) */
+@keyframes progress-segment-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 3px rgba(34, 197, 94, 0.55))
+      drop-shadow(0 0 8px rgba(34, 197, 94, 0.3));
+    opacity: 0.9;
+  }
+  50% {
+    filter: drop-shadow(0 0 5px rgba(34, 197, 94, 0.9))
+      drop-shadow(0 0 14px rgba(34, 197, 94, 0.55));
+    opacity: 1;
+  }
+}
+
+.progress-segment {
+  animation: progress-segment-glow 2.6s ease-in-out infinite;
+}
+
+/* Approval panel — subtle pulsing border to signal action required */
+@keyframes approval-border-glow {
+  0%,
+  100% {
+    opacity: 0.25;
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.15));
+  }
+  50% {
+    opacity: 0.85;
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.35));
+  }
+}
+
+.approval-action-frame {
+  position: relative;
+}
+
+.approval-action-border {
+  pointer-events: none;
+  position: absolute;
+  inset: -1px;
+  border: 1px solid var(--foreground);
+  animation: approval-border-glow 2.2s ease-in-out infinite;
 }
 
 .animate-drawer-in {

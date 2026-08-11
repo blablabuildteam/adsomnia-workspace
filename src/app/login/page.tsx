@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { ArrowRight, GitBranch, AlertCircle } from "lucide-react";
 import { login, type LoginResult } from "@/lib/auth";
+import { inputClass } from "@/lib/form-styles";
 
 const initial: LoginResult = {};
 
@@ -11,7 +12,7 @@ export default function LoginPage() {
 
   return (
     <div className="app-atmosphere flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-[400px]">
+      <div className="workspace-content w-full max-w-[400px]">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex size-12 items-center justify-center border border-border-strong bg-surface-elevated">
             <GitBranch className="size-6 text-foreground" />
@@ -36,7 +37,7 @@ export default function LoginPage() {
           )}
 
           <label className="block">
-            <span className="font-display text-xs font-bold uppercase tracking-wide">
+            <span className="font-display text-sm font-bold uppercase tracking-wide">
               Email
             </span>
             <input
@@ -44,13 +45,13 @@ export default function LoginPage() {
               type="email"
               autoComplete="email"
               required
-              className="mt-2 w-full border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground placeholder:text-muted/50 focus:border-border-strong focus:outline-none"
+              className={`${inputClass} mt-2`}
               placeholder="name@adsomnia.com"
             />
           </label>
 
           <label className="mt-4 block">
-            <span className="font-display text-xs font-bold uppercase tracking-wide">
+            <span className="font-display text-sm font-bold uppercase tracking-wide">
               Password
             </span>
             <input
@@ -58,7 +59,7 @@ export default function LoginPage() {
               type="password"
               autoComplete="current-password"
               required
-              className="mt-2 w-full border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground placeholder:text-muted/50 focus:border-border-strong focus:outline-none"
+              className={`${inputClass} mt-2`}
               placeholder="••••••••"
             />
           </label>
