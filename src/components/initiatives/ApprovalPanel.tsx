@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { CheckCircle2, XCircle, Pause, AlertCircle } from "lucide-react";
+import { CheckCircle2, XCircle, Pause, AlertCircle, User, Calendar } from "lucide-react";
 import {
   approveToValidation,
   rejectInitiative,
@@ -56,50 +56,40 @@ function DecisionSummary({ decision }: { decision: ApprovalDecision }) {
   const Icon = meta.icon;
 
   return (
-    <div className="border border-border bg-surface">
-      <h3 className="border-b border-border px-4 py-3 font-display text-xs font-bold uppercase tracking-wide">
-        Approval Decision
-      </h3>
-      <div className="divide-y divide-border">
-        <div className="flex items-center justify-between gap-4 px-4 py-3">
-          <span className="shrink-0 text-xs text-muted">Decision</span>
-          <span
-            className={`inline-flex items-center gap-2 border px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-wide ${meta.badge}`}
-          >
-            <Icon className="size-3.5" />
-            {meta.label}
-          </span>
-        </div>
-        <div className="flex items-center justify-between gap-4 px-4 py-3">
-          <span className="shrink-0 text-xs text-muted">Outcome</span>
-          <span className="text-right text-xs text-foreground">
-            {meta.description}
-          </span>
-        </div>
+    <div className="border border-border bg-foreground/5 p-5">
+      <div className="flex items-center justify-between gap-4 text-xs text-muted">
+        <span className="inline-flex items-center gap-1.5">
+          <User className="size-3.5" />
+          {decision.approverName}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <Calendar className="size-3.5" />
+          {decision.createdAt.toLocaleString("en-US", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })}
+        </span>
+      </div>
+      <div className="mt-4 flex flex-col items-center gap-3 text-center">
+        <h3 className="font-display text-sm font-bold uppercase tracking-wide">
+          Approval Decision
+        </h3>
+        <span
+          className={`inline-flex items-center gap-2 border px-3 py-1.5 font-display text-xs font-bold uppercase tracking-wide ${meta.badge}`}
+        >
+          <Icon className="size-3.5" />
+          {meta.label}
+        </span>
         {decision.comment && (
-          <div className="px-4 py-3">
-            <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+          <blockquote className="mx-auto max-w-md border border-border bg-surface px-4 py-3 text-left">
+            <p className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
               Remark
-            </span>
+            </p>
             <p className="mt-1.5 text-sm leading-relaxed text-foreground/90">
               {decision.comment}
             </p>
-          </div>
+          </blockquote>
         )}
-        <div className="flex items-center justify-between gap-4 px-4 py-3">
-          <span className="shrink-0 text-xs text-muted">Reviewed by</span>
-          <span className="text-right text-xs text-foreground">
-            {decision.approverName}
-          </span>
-        </div>
-        <div className="flex items-center justify-between gap-4 px-4 py-3">
-          <span className="shrink-0 text-xs text-muted">Date</span>
-          <span className="text-right text-xs text-foreground">
-            {decision.createdAt.toLocaleDateString("en-US", {
-              dateStyle: "medium",
-            })}
-          </span>
-        </div>
       </div>
     </div>
   );
