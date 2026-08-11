@@ -1,6 +1,4 @@
-import Link from "next/link";
 import {
-  ArrowLeft,
   Calendar,
   Check,
   User,
@@ -163,17 +161,7 @@ export function InitiativeDetailView({
 
   return (
     <div className="relative w-full flex-1">
-      <div className="sticky top-0 z-20 bg-background/90 px-4 py-4 backdrop-blur-sm sm:px-6 lg:px-8">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-2 text-xs text-muted transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="size-3.5" />
-          Dashboard
-        </Link>
-      </div>
-
-      <div className="mx-auto w-full max-w-[1200px] px-4 pb-40 sm:px-6 lg:pb-48">
+      <div className="mx-auto w-full max-w-[1200px] px-4 pb-40 pt-4 sm:px-6 sm:pt-6 lg:pb-48">
         {/* Header */}
         <header className="mb-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
