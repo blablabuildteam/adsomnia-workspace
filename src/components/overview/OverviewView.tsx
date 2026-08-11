@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Columns3, ChevronRight } from "lucide-react";
-import { STAGES, getParty } from "@/data/workflow";
+import { Columns3, ChevronRight } from "lucide-react";
+import { STAGES, getStageColor } from "@/data/workflow";
 import { WorkspaceChip } from "@/components/WorkspaceChip";
 import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
+import { PipelineStrip } from "@/components/pipeline/PipelineStrip";
 import type { InitiativeWithUsers } from "@/lib/queries";
 
 const hoverTicks = "opacity-0 transition-opacity duration-300 group-hover:opacity-100";
@@ -148,7 +149,8 @@ export function OverviewView({ initiatives }: OverviewProps) {
             stages — powered by the <WorkspaceChip />.
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex shrink-0 flex-col gap-5 sm:items-end">
+          <PipelineStrip className="sm:w-[440px] lg:w-[560px]" />
           <div className="relative border border-border bg-surface px-4 py-2">
             <CornerTicks />
             <p className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
@@ -158,13 +160,6 @@ export function OverviewView({ initiatives }: OverviewProps) {
               {totalActive}
             </p>
           </div>
-          <Link
-            href="/ideas/new"
-            className="group inline-flex items-center gap-2 border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90"
-          >
-            Submit New Initiative
-            <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
-          </Link>
         </div>
       </header>
 
@@ -177,29 +172,25 @@ export function OverviewView({ initiatives }: OverviewProps) {
           </span>
         </div>
         <div className="h-4 w-px bg-border" />
-        {STAGES.slice(0, 3).map((stage) => {
-          const party = stage.parties[0] ? getParty(stage.parties[0]) : null;
+        {STAGES.map((stage) => {
+          const color = getStageColor(stage.id);
           return (
             <div key={stage.id} className="flex items-center gap-1.5">
               <span
-                className="size-2 border"
-                style={{
-                  borderColor: party?.color ?? "#FFFFFF",
-                  backgroundColor: party?.background ?? "transparent",
-                }}
+                className="size-2"
+                style={{ backgroundColor: color }}
+                aria-hidden
               />
               <span className="text-muted">{stage.name}</span>
             </div>
           );
         })}
-        <span className="text-muted">+ more →</span>
       </div>
 
       {/* Kanban Board */}
       <div className="flex flex-1 gap-1 overflow-x-auto pb-4">
         {STAGES.map((stage, idx) => {
-          const party = stage.parties[0] ? getParty(stage.parties[0]) : null;
-          const accentColor = party?.color ?? "#FFFFFF";
+          const accentColor = getStageColor(stage.id);
 
           return (
             <div key={stage.id} className="flex items-stretch">

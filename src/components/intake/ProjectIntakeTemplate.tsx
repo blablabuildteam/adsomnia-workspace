@@ -22,6 +22,7 @@ import {
   type IntakeField,
   type RoleHourRow,
 } from "@/data/intake-template";
+import { STAGE_COLORS } from "@/data/workflow";
 import { Select } from "@/components/ui/Select";
 import { inputElevatedClass as inputClass } from "@/lib/form-styles";
 
@@ -124,25 +125,25 @@ function FieldShell({
   );
 }
 
-/** Distinct stage container accents (brand palette). */
+/** Distinct stage container accents — hex from shared STAGE_COLORS. */
 const STAGE_STYLES = {
   idea: {
-    accent: "#FFFFFF",
-    shell: "border-white/30 bg-white/[0.03]",
-    header: "border-white/20 bg-white/[0.07]",
-    field: "border-white/15 bg-black/40",
+    accent: STAGE_COLORS.idea,
+    shell: "border-stage-idea/30 bg-stage-idea/[0.03]",
+    header: "border-stage-idea/20 bg-stage-idea/[0.07]",
+    field: "border-stage-idea/15 bg-black/40",
   },
   validation: {
-    accent: "#7E90A3",
-    shell: "border-[#7E90A3]/40 bg-[#7E90A3]/[0.07]",
-    header: "border-[#7E90A3]/30 bg-[#7E90A3]/[0.12]",
-    field: "border-[#7E90A3]/25 bg-black/35",
+    accent: STAGE_COLORS.validation,
+    shell: "border-stage-validation/40 bg-stage-validation/[0.07]",
+    header: "border-stage-validation/30 bg-stage-validation/[0.12]",
+    field: "border-stage-validation/25 bg-black/35",
   },
   scoping: {
-    accent: "#CEFF00",
-    shell: "border-[#CEFF00]/35 bg-[#CEFF00]/[0.05]",
-    header: "border-[#CEFF00]/30 bg-[#CEFF00]/[0.09]",
-    field: "border-[#CEFF00]/20 bg-black/40",
+    accent: STAGE_COLORS.scoping,
+    shell: "border-stage-scoping/35 bg-stage-scoping/[0.05]",
+    header: "border-stage-scoping/30 bg-stage-scoping/[0.09]",
+    field: "border-stage-scoping/20 bg-black/40",
   },
 } as const;
 

@@ -274,9 +274,54 @@ export function getParty(id: PartyId): Party {
   return PARTIES.find((p) => p.id === id)!;
 }
 
+/**
+ * Lead-party accent for a stage (process visualizer / ownership cue).
+ * Prefer {@link getStageColor} when indicating *which phase* something is in.
+ */
 export function stageAccent(stage: WorkflowStage): string {
   if (stage.parties.length === 1) {
     return getParty(stage.parties[0]).color;
   }
   return "#FFFFFF";
+}
+
+/** Canonical stage IDs — matches DB `initiative_stage` enum. */
+export type StageId =
+  | "idea"
+  | "validation"
+  | "scoping"
+  | "go-nogo"
+  | "setup"
+  | "onboarding"
+  | "production";
+
+/**
+ * Distinct phase colors for kanban columns, badges, steppers, and charts.
+ * Brand-aligned accents on black; early stages match intake section accents.
+ */
+export const STAGE_COLORS: Record<StageId, string> = {
+  idea: "#FFFFFF",
+  validation: "#7E90A3",
+  scoping: "#CEFF00",
+  "go-nogo": "#FF3B1F",
+  setup: "#38BDF8",
+  onboarding: "#2DD4BF",
+  production: "#22C55E",
+};
+
+/** Fast-Track is not a pipeline stage; lands on Production. */
+export const FAST_TRACK_COLOR = "#FF3B1F";
+
+export function getStageColor(stageId: string): string {
+  if (stageId in STAGE_COLORS) {
+    return STAGE_COLORS[stageId as StageId];
+  }
+  if (stageId === FAST_TRACK.id) {
+    return FAST_TRACK_COLOR;
+  }
+  return "#FFFFFF";
+}
+
+export function isStageId(value: string): value is StageId {
+  return value in STAGE_COLORS;
 }

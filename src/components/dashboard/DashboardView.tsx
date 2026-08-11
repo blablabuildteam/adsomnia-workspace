@@ -5,7 +5,7 @@ import {
   TrendingUp,
   Inbox,
 } from "lucide-react";
-import { STAGES } from "@/data/workflow";
+import { STAGES, getStageColor } from "@/data/workflow";
 import { WorkspaceChip } from "@/components/WorkspaceChip";
 import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
@@ -93,7 +93,13 @@ function StatusColumn({
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 {stage && (
-                  <span className="border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted">
+                  <span
+                    className="border px-1.5 py-0.5 text-[10px] uppercase tracking-wide"
+                    style={{
+                      borderColor: getStageColor(stage.id),
+                      color: getStageColor(stage.id),
+                    }}
+                  >
                     {stage.name}
                   </span>
                 )}
@@ -110,24 +116,34 @@ function StatusColumn({
 }
 
 function PipelineStageBar({
+  stageId,
   name,
   count,
   max,
 }: {
+  stageId: string;
   name: string;
   count: number;
   max: number;
 }) {
   const pct = max > 0 ? (count / max) * 100 : 0;
+  const color = getStageColor(stageId);
   return (
     <div className="flex items-center gap-3">
-      <span className="w-28 shrink-0 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+      <span
+        className="w-28 shrink-0 font-display text-[10px] font-bold uppercase tracking-wide"
+        style={{ color }}
+      >
         {name}
       </span>
       <div className="relative h-6 flex-1 border border-border bg-surface-elevated">
         <div
-          className="absolute inset-y-0 left-0 bg-white/15 transition-all"
-          style={{ width: `${pct}%` }}
+          className="absolute inset-y-0 left-0 transition-all"
+          style={{
+            width: `${pct}%`,
+            backgroundColor: color,
+            opacity: 0.28,
+          }}
         />
         <span className="absolute inset-0 flex items-center px-2 font-display text-xs font-bold tabular-nums">
           {count}
@@ -251,6 +267,7 @@ export function DashboardView({
               {STAGES.map((stage) => (
                 <PipelineStageBar
                   key={stage.id}
+                  stageId={stage.id}
                   name={stage.name}
                   count={stageCounts[stage.id] ?? 0}
                   max={maxStageCount}

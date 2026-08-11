@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { InitiativeDetailView } from "@/components/initiatives/InitiativeDetailView";
 import {
   getInitiativeById,
   getActivityForInitiative,
   getCommentsForInitiative,
+  getApprovalHistory,
 } from "@/lib/queries";
 import { getCurrentUser, canApprove } from "@/lib/session";
+import type { ApprovalDecision } from "@/components/initiatives/ApprovalPanel";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -34,21 +35,27 @@ export default async function InitiativePage({ params }: Props) {
         <p className="mt-2 text-sm text-muted">
           No initiative with ID <span className="font-mono">{id}</span>.
         </p>
-        <Link
-          href="/dashboard"
-          className="mt-6 border border-foreground px-4 py-2 font-display text-xs font-bold uppercase tracking-wide"
-        >
-          Back to Dashboard
-        </Link>
       </div>
     );
   }
 
-  const [activity, comments] = await Promise.all([
+  const [activity, comments, approvals] = await Promise.all([
     getActivityForInitiative(initiative.id),
     getCommentsForInitiative(initiative.id),
+    getApprovalHistory(initiative.id),
   ]);
   const canUserApprove = user ? canApprove(user) : false;
+
+  const latest = approvals[0];
+  const latestDecision: ApprovalDecision | null = latest
+    ? {
+        decision: latest.decision,
+        comment: latest.comment,
+        approverName: latest.approverName,
+        createdAt: latest.createdAt,
+        toStage: latest.toStage,
+      }
+    : null;
 
   return (
     <InitiativeDetailView
@@ -58,6 +65,7 @@ export default async function InitiativePage({ params }: Props) {
       canUserApprove={canUserApprove}
       canComment={!!user}
       currentUserName={user?.name ?? "Unknown"}
+      latestDecision={latestDecision}
     />
   );
 }

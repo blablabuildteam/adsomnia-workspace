@@ -11,20 +11,29 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
-import { STAGES, type WorkflowStage } from "@/data/workflow";
-import { WorkspaceChip } from "@/components/WorkspaceChip";
+import { STAGES, getStageColor, type WorkflowStage } from "@/data/workflow";
 import type {
   InitiativeWithUsers,
   ActivityEntry,
   CommentEntry,
 } from "@/lib/queries";
-import { ApprovalPanel } from "./ApprovalPanel";
+import { ApprovalPanel, type ApprovalDecision } from "./ApprovalPanel";
 import { CommentSection } from "./CommentSection";
-import { BrandTexture } from "@/components/ui/BrandTexture";
+import { ValidationPhaseSection } from "./ValidationPhaseSection";
 import { CornerTicks } from "@/components/ui/CornerTicks";
+
+const STAGE_INDEX: Record<string, number> = {};
+for (const s of STAGES) STAGE_INDEX[s.id] = s.number;
+
+/** Dark fill → light label; light fill (white / volt / teal) → black label. */
+function stageLabelOnFill(hex: string): string {
+  const light = hex === "#FFFFFF" || hex === "#CEFF00" || hex === "#2DD4BF";
+  return light ? "#000000" : "#FFFFFF";
+}
 
 function StageStepper({ currentStageId }: { currentStageId: string }) {
   const currentIndex = STAGES.findIndex((s) => s.id === currentStageId);
+  const currentColor = getStageColor(currentStageId);
 
   return (
     <ol className="flex items-start">
@@ -32,6 +41,7 @@ function StageStepper({ currentStageId }: { currentStageId: string }) {
         const isPast = i < currentIndex;
         const isCurrent = i === currentIndex;
         const last = i === STAGES.length - 1;
+        const stageColor = getStageColor(stage.id);
 
         return (
           <li key={stage.id} className={last ? "flex-none" : "flex-1"}>
@@ -39,12 +49,23 @@ function StageStepper({ currentStageId }: { currentStageId: string }) {
               <span
                 className={[
                   "font-display flex size-8 shrink-0 items-center justify-center border text-[10px] font-bold",
-                  isCurrent
-                    ? "border-foreground bg-foreground text-background"
-                    : isPast
-                      ? "border-success/60 bg-success/10 text-success"
-                      : "border-border text-muted/50",
+                  !isCurrent && !isPast ? "border-border text-muted/50" : "",
                 ].join(" ")}
+                style={
+                  isCurrent
+                    ? {
+                        borderColor: currentColor,
+                        backgroundColor: currentColor,
+                        color: stageLabelOnFill(currentColor),
+                      }
+                    : isPast
+                      ? {
+                          borderColor: `${stageColor}99`,
+                          backgroundColor: `${stageColor}1A`,
+                          color: stageColor,
+                        }
+                      : undefined
+                }
               >
                 {isPast ? (
                   <Check className="size-3.5" />
@@ -54,19 +75,21 @@ function StageStepper({ currentStageId }: { currentStageId: string }) {
               </span>
               {!last && (
                 <span
-                  className={`h-px flex-1 ${isPast ? "bg-success/40" : "bg-border"}`}
+                  className={`h-px flex-1 ${isPast ? "" : "bg-border"}`}
+                  style={
+                    isPast
+                      ? { backgroundColor: `${stageColor}66` }
+                      : undefined
+                  }
                 />
               )}
             </div>
             <p
               className={[
                 "font-display mt-1.5 hidden pr-2 text-[9px] font-bold uppercase tracking-wide md:block",
-                isCurrent
-                  ? "text-foreground"
-                  : isPast
-                    ? "text-muted"
-                    : "text-muted/40",
+                isCurrent ? "" : isPast ? "text-muted" : "text-muted/40",
               ].join(" ")}
+              style={isCurrent ? { color: currentColor } : undefined}
             >
               {stage.name}
             </p>
@@ -100,6 +123,7 @@ type Props = {
   canUserApprove: boolean;
   canComment: boolean;
   currentUserName: string;
+  latestDecision?: ApprovalDecision | null;
 };
 
 export function InitiativeDetailView({
@@ -109,6 +133,7 @@ export function InitiativeDetailView({
   canUserApprove,
   canComment,
   currentUserName,
+  latestDecision = null,
 }: Props) {
   const stage = STAGES.find(
     (s) => s.id === initiative.currentStage,
@@ -119,10 +144,22 @@ export function InitiativeDetailView({
   const statusLabel =
     STATUS_LABELS[initiative.status] ?? initiative.status;
 
-  const showApproval =
+  const currentNum = STAGE_INDEX[initiative.currentStage] ?? 1;
+  const ideaStage = STAGES.find((s) => s.id === "idea")!;
+  const validationStage = STAGES.find((s) => s.id === "validation")!;
+
+  const canTakeDecision =
     canUserApprove &&
     initiative.currentStage === "idea" &&
     initiative.status === "submitted";
+
+  const showApprovalPanel = canTakeDecision || !!latestDecision;
+
+  const showValidation = currentNum >= 2;
+  const validationIsCurrent = initiative.currentStage === "validation";
+  const validationIsEditable =
+    validationIsCurrent &&
+    (initiative.status === "approved" || initiative.status === "draft");
 
   return (
     <div className="relative w-full flex-1">
@@ -138,8 +175,7 @@ export function InitiativeDetailView({
 
       <div className="mx-auto w-full max-w-[1200px] px-4 pb-40 sm:px-6 lg:pb-48">
         {/* Header */}
-        <header className="relative mb-6">
-          <BrandTexture variant="hero" />
+        <header className="mb-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-3">
@@ -173,7 +209,10 @@ export function InitiativeDetailView({
                 dateStyle: "medium",
               })}
             </span>
-            <span className="inline-flex items-center gap-1.5">
+            <span
+              className="inline-flex items-center gap-1.5"
+              style={{ color: getStageColor(initiative.currentStage) }}
+            >
               <Clock className="size-3.5" />
               Stage: {stage?.name ?? initiative.currentStage}
             </span>
@@ -183,32 +222,99 @@ export function InitiativeDetailView({
         {/* Pipeline stepper */}
         <div className="mb-8 border border-border bg-surface-elevated p-5">
           <StageStepper currentStageId={initiative.currentStage} />
-          {initiative.currentStage === "validation" &&
-            initiative.status === "approved" && (
-              <p className="mt-4 border border-success/30 bg-success/5 px-4 py-3 text-xs text-success">
-                Approved and advanced to Validation. The Validation form will be
-                available in a future build phase.
-              </p>
-            )}
         </div>
 
         <div className="grid gap-6 lg:grid-cols-12">
-          {/* Main content */}
+          {/* Main content — newest phase first */}
           <div className="space-y-6 lg:col-span-8">
+            {showValidation && (
+              <section className="relative border border-border">
+                <CornerTicks complete={currentNum > 2} />
+                <div
+                  className="flex items-end justify-between gap-4 border-b border-border bg-surface-elevated px-4 py-4 sm:px-5"
+                  style={{
+                    borderTopWidth: 3,
+                    borderTopColor: getStageColor("validation"),
+                  }}
+                >
+                  <div>
+                    <p
+                      className="font-display text-[10px] font-bold uppercase tracking-[0.25em]"
+                      style={{ color: getStageColor("validation") }}
+                    >
+                      Phase {String(validationStage.number).padStart(2, "0")}
+                    </p>
+                    <h2 className="font-display mt-1 text-xl font-extrabold uppercase tracking-tight sm:text-2xl">
+                      {validationStage.name}
+                    </h2>
+                  </div>
+                  {validationIsCurrent ? (
+                    <span className="font-display shrink-0 border border-foreground/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-foreground/70">
+                      Current
+                    </span>
+                  ) : currentNum > 2 ? (
+                    <span className="font-display shrink-0 border border-success/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-success">
+                      Complete
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="bg-surface">
+                  <h3 className="border-b border-border px-4 py-3 font-display text-xs font-bold uppercase tracking-wide">
+                    Business Case
+                  </h3>
+                  {validationIsEditable ? (
+                    <form className="p-4">
+                      <ValidationPhaseSection
+                        initiativeId={initiative.id}
+                        data={initiative.validationData}
+                      />
+                    </form>
+                  ) : (
+                    <ValidationPhaseSection
+                      initiativeId={initiative.id}
+                      data={initiative.validationData}
+                      readOnly
+                    />
+                  )}
+                </div>
+              </section>
+            )}
+
+            {showApprovalPanel && (
+              <ApprovalPanel
+                initiativeId={initiative.id}
+                decision={latestDecision}
+              />
+            )}
+
             <section className="relative border border-border">
-              <CornerTicks />
-              <div className="flex items-end justify-between gap-4 border-b border-border bg-surface-elevated px-4 py-4 sm:px-5">
+              <CornerTicks complete={currentNum > 1} />
+              <div
+                className="flex items-end justify-between gap-4 border-b border-border bg-surface-elevated px-4 py-4 sm:px-5"
+                style={{
+                  borderTopWidth: 3,
+                  borderTopColor: getStageColor("idea"),
+                }}
+              >
                 <div>
-                  <p className="font-display text-[10px] font-bold uppercase tracking-[0.25em] text-muted">
-                    Phase {String(stage?.number ?? 1).padStart(2, "0")}
+                  <p
+                    className="font-display text-[10px] font-bold uppercase tracking-[0.25em]"
+                    style={{ color: getStageColor("idea") }}
+                  >
+                    Phase {String(ideaStage.number).padStart(2, "0")}
                   </p>
                   <h2 className="font-display mt-1 text-xl font-extrabold uppercase tracking-tight sm:text-2xl">
-                    {stage?.name ?? "Initiative"}
+                    {ideaStage.name}
                   </h2>
                 </div>
-                {initiative.currentStage === "idea" && (
+                {initiative.currentStage === "idea" ? (
                   <span className="font-display shrink-0 border border-foreground/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-foreground/70">
                     Current
+                  </span>
+                ) : (
+                  <span className="font-display shrink-0 border border-success/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-success">
+                    Complete
                   </span>
                 )}
               </div>
@@ -218,57 +324,53 @@ export function InitiativeDetailView({
                   Initiative Details
                 </h3>
                 <div className="grid gap-px bg-border sm:grid-cols-2">
-                <div className="bg-surface p-4">
-                  <div className="mb-2 flex items-center gap-2 text-muted">
-                    <Target className="size-3.5" />
-                    <span className="font-display text-[10px] font-bold uppercase tracking-wide">
-                      Problem Statement
-                    </span>
+                  <div className="bg-surface p-4">
+                    <div className="mb-2 flex items-center gap-2 text-muted">
+                      <Target className="size-3.5" />
+                      <span className="font-display text-[10px] font-bold uppercase tracking-wide">
+                        Problem Statement
+                      </span>
+                    </div>
+                    <p className="text-sm leading-relaxed text-foreground/90">
+                      {initiative.problemStatement ?? "—"}
+                    </p>
                   </div>
-                  <p className="text-sm leading-relaxed text-foreground/90">
-                    {initiative.problemStatement ?? "—"}
-                  </p>
-                </div>
-                <div className="bg-surface p-4">
-                  <div className="mb-2 flex items-center gap-2 text-muted">
-                    <Lightbulb className="size-3.5" />
-                    <span className="font-display text-[10px] font-bold uppercase tracking-wide">
-                      Opportunity / Solution
-                    </span>
+                  <div className="bg-surface p-4">
+                    <div className="mb-2 flex items-center gap-2 text-muted">
+                      <Lightbulb className="size-3.5" />
+                      <span className="font-display text-[10px] font-bold uppercase tracking-wide">
+                        Opportunity / Solution
+                      </span>
+                    </div>
+                    <p className="text-sm leading-relaxed text-foreground/90">
+                      {initiative.opportunitySolution ?? "—"}
+                    </p>
                   </div>
-                  <p className="text-sm leading-relaxed text-foreground/90">
-                    {initiative.opportunitySolution ?? "—"}
-                  </p>
-                </div>
-                <div className="bg-surface p-4">
-                  <div className="mb-2 flex items-center gap-2 text-muted">
-                    <TrendingUp className="size-3.5" />
-                    <span className="font-display text-[10px] font-bold uppercase tracking-wide">
-                      Expected Impact
-                    </span>
+                  <div className="bg-surface p-4">
+                    <div className="mb-2 flex items-center gap-2 text-muted">
+                      <TrendingUp className="size-3.5" />
+                      <span className="font-display text-[10px] font-bold uppercase tracking-wide">
+                        Expected Impact
+                      </span>
+                    </div>
+                    <p className="text-sm leading-relaxed text-foreground/90">
+                      {initiative.expectedImpact ?? "—"}
+                    </p>
                   </div>
-                  <p className="text-sm leading-relaxed text-foreground/90">
-                    {initiative.expectedImpact ?? "—"}
-                  </p>
-                </div>
-                <div className="bg-surface p-4">
-                  <div className="mb-2 flex items-center gap-2 text-muted">
-                    <Users className="size-3.5" />
-                    <span className="font-display text-[10px] font-bold uppercase tracking-wide">
-                      Target Audience
-                    </span>
+                  <div className="bg-surface p-4">
+                    <div className="mb-2 flex items-center gap-2 text-muted">
+                      <Users className="size-3.5" />
+                      <span className="font-display text-[10px] font-bold uppercase tracking-wide">
+                        Target Audience
+                      </span>
+                    </div>
+                    <p className="text-sm leading-relaxed text-foreground/90">
+                      {initiative.targetAudience ?? "—"}
+                    </p>
                   </div>
-                  <p className="text-sm leading-relaxed text-foreground/90">
-                    {initiative.targetAudience ?? "—"}
-                  </p>
                 </div>
-              </div>
               </div>
             </section>
-
-            {showApproval && (
-              <ApprovalPanel initiativeId={initiative.id} />
-            )}
           </div>
 
           {/* Sidebar — persistent as initiative progresses */}
@@ -305,8 +407,13 @@ export function InitiativeDetailView({
                   </span>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-xs text-muted">System</span>
-                  <WorkspaceChip />
+                  <span className="text-xs text-muted">Last updated</span>
+                  <span className="text-xs text-foreground">
+                    {initiative.updatedAt.toLocaleString("en-US", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                  </span>
                 </div>
               </div>
             </div>

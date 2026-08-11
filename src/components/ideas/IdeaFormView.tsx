@@ -3,7 +3,6 @@
 import { useActionState, useState, useRef } from "react";
 import Link from "next/link";
 import {
-  ArrowLeft,
   ArrowRight,
   AlertCircle,
   Zap,
@@ -13,6 +12,7 @@ import {
   FlaskConical,
 } from "lucide-react";
 import { STAGES } from "@/data/workflow";
+import { PipelineStrip } from "@/components/pipeline/PipelineStrip";
 import { WorkspaceChip } from "@/components/WorkspaceChip";
 import {
   submitIdea,
@@ -95,43 +95,6 @@ const initial: SubmitIdeaResult = {};
 
 function fieldNumber(index: number): string {
   return String(index + 1).padStart(2, "0");
-}
-
-/** Horizontal 7-stage pipeline strip with the current stage highlighted. */
-function PipelineStrip() {
-  return (
-    <ol className="flex items-start">
-      {STAGES.map((stage, i) => {
-        const active = stage.id === "idea";
-        const last = i === STAGES.length - 1;
-        return (
-          <li key={stage.id} className={last ? "flex-none" : "flex-1"}>
-            <div className="flex items-center">
-              <span
-                className={[
-                  "font-display flex size-7 shrink-0 items-center justify-center border text-[10px] font-bold",
-                  active
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border text-muted/50",
-                ].join(" ")}
-              >
-                {String(stage.number).padStart(2, "0")}
-              </span>
-              {!last && <span className="h-px flex-1 bg-border" />}
-            </div>
-            <p
-              className={[
-                "font-display mt-1.5 hidden pr-2 text-[9px] font-bold uppercase tracking-wide md:block",
-                active ? "text-foreground" : "text-muted/40",
-              ].join(" ")}
-            >
-              {stage.name}
-            </p>
-          </li>
-        );
-      })}
-    </ol>
-  );
 }
 
 /** Form frame with a 1px border that traces green clockwise from the top-left as fields are completed. */
@@ -391,17 +354,7 @@ export function IdeaFormView({ submitterName }: { submitterName: string }) {
 
   return (
     <div className="relative w-full flex-1">
-      <div className="sticky top-0 z-20 bg-background/90 px-4 py-4 backdrop-blur-sm sm:px-6 lg:px-8">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-2 text-xs text-muted transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="size-3.5" />
-          Dashboard
-        </Link>
-      </div>
-
-      <div className="relative mx-auto w-full max-w-[800px] px-4 pb-40 sm:px-6 lg:pb-48">
+      <div className="relative mx-auto w-full max-w-[800px] px-4 pb-40 pt-4 sm:px-6 sm:pt-6 lg:pb-48">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 -z-10 opacity-70"
@@ -413,7 +366,7 @@ export function IdeaFormView({ submitterName }: { submitterName: string }) {
         />
 
         <div className="mb-10">
-          <PipelineStrip />
+          <PipelineStrip currentStageId="idea" />
         </div>
 
       <header className="relative mb-8">

@@ -34,6 +34,8 @@ const PHASE_ACTIONS = new Set([
   "stage_advanced",
   "idea_rejected",
   "idea_on_hold",
+  "validation_saved",
+  "validation_submitted",
 ]);
 
 function formatDate(date: Date): string {
@@ -127,6 +129,24 @@ function getPhaseEventMeta(action: string, details: Record<string, unknown> | nu
         fromStage: fromStage ?? "Initiative",
         toStage: null,
         comment,
+      };
+    case "validation_saved":
+      return {
+        label: "Validation draft saved",
+        sublabel: "Business case updated",
+        tone: "text-muted",
+        fromStage: null,
+        toStage: null,
+        comment: null,
+      };
+    case "validation_submitted":
+      return {
+        label: "Validation submitted for approval",
+        sublabel: "Business case ready for leadership review",
+        tone: "text-foreground/80",
+        fromStage: null,
+        toStage: "Validation",
+        comment: null,
       };
     default:
       return {

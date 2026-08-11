@@ -14,7 +14,103 @@ const initial: ApprovalResult = {};
 
 type Action = "approve" | "reject" | "hold";
 
-export function ApprovalPanel({ initiativeId }: { initiativeId: number }) {
+export type ApprovalDecision = {
+  decision: "approved" | "rejected" | "on-hold";
+  comment: string | null;
+  approverName: string;
+  createdAt: Date;
+  toStage: string | null;
+};
+
+const DECISION_META: Record<
+  ApprovalDecision["decision"],
+  {
+    label: string;
+    description: string;
+    badge: string;
+    icon: typeof CheckCircle2;
+  }
+> = {
+  approved: {
+    label: "Approved",
+    description: "Advanced to Validation",
+    badge: "border-success bg-success/10 text-success",
+    icon: CheckCircle2,
+  },
+  rejected: {
+    label: "Rejected",
+    description: "Not advanced",
+    badge: "border-btr bg-btr/10 text-btr",
+    icon: XCircle,
+  },
+  "on-hold": {
+    label: "On Hold",
+    description: "Paused pending review",
+    badge: "border-hn bg-hn/10 text-hn",
+    icon: Pause,
+  },
+};
+
+function DecisionSummary({ decision }: { decision: ApprovalDecision }) {
+  const meta = DECISION_META[decision.decision];
+  const Icon = meta.icon;
+
+  return (
+    <div className="border border-border bg-surface">
+      <h3 className="border-b border-border px-4 py-3 font-display text-xs font-bold uppercase tracking-wide">
+        Approval Decision
+      </h3>
+      <div className="divide-y divide-border">
+        <div className="flex items-center justify-between gap-4 px-4 py-3">
+          <span className="shrink-0 text-xs text-muted">Decision</span>
+          <span
+            className={`inline-flex items-center gap-2 border px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-wide ${meta.badge}`}
+          >
+            <Icon className="size-3.5" />
+            {meta.label}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-4 px-4 py-3">
+          <span className="shrink-0 text-xs text-muted">Outcome</span>
+          <span className="text-right text-xs text-foreground">
+            {meta.description}
+          </span>
+        </div>
+        {decision.comment && (
+          <div className="px-4 py-3">
+            <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+              Remark
+            </span>
+            <p className="mt-1.5 text-sm leading-relaxed text-foreground/90">
+              {decision.comment}
+            </p>
+          </div>
+        )}
+        <div className="flex items-center justify-between gap-4 px-4 py-3">
+          <span className="shrink-0 text-xs text-muted">Reviewed by</span>
+          <span className="text-right text-xs text-foreground">
+            {decision.approverName}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-4 px-4 py-3">
+          <span className="shrink-0 text-xs text-muted">Date</span>
+          <span className="text-right text-xs text-foreground">
+            {decision.createdAt.toLocaleDateString("en-US", {
+              dateStyle: "medium",
+            })}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type Props = {
+  initiativeId: number;
+  decision?: ApprovalDecision | null;
+};
+
+export function ApprovalPanel({ initiativeId, decision = null }: Props) {
   const [selectedAction, setSelectedAction] = useState<Action | null>(null);
 
   const boundApprove = approveToValidation.bind(null, initiativeId);
@@ -38,34 +134,46 @@ export function ApprovalPanel({ initiativeId }: { initiativeId: number }) {
   const error =
     approveState.error || rejectState.error || holdState.error;
 
-  if (
-    approveState.success ||
-    rejectState.success ||
-    holdState.success
-  ) {
-    return null;
+  const successState = approveState.success
+    ? approveState
+    : rejectState.success
+      ? rejectState
+      : holdState.success
+        ? holdState
+        : null;
+
+  if (decision || successState) {
+    const resolved: ApprovalDecision = decision ?? {
+      decision: successState!.decision ?? "approved",
+      comment: successState!.comment ?? null,
+      approverName: successState!.approverName ?? "You",
+      createdAt: new Date(),
+      toStage:
+        successState!.decision === "approved" ? "validation" : null,
+    };
+    return <DecisionSummary decision={resolved} />;
   }
 
   return (
-    <div className="approval-action-frame border border-border bg-foreground/5 p-5">
+    <div className="approval-action-frame border border-border bg-foreground/5 p-5 text-center">
       <span aria-hidden className="approval-action-border" />
       <h3 className="font-display text-sm font-bold uppercase tracking-wide">
         Approval Decision
       </h3>
-      <p className="mt-1 text-xs text-muted">
+      <p className="mx-auto mt-1 max-w-md text-xs text-muted">
         Admin-only: review the initiative details and advance to Validation,
         reject, or put on hold.
       </p>
 
       {error && (
-        <div className="mt-3 flex items-center gap-2 border border-btr/40 bg-btr/10 px-3 py-2 text-sm text-btr">
+        <div className="mx-auto mt-3 flex max-w-md items-center justify-center gap-2 border border-btr/40 bg-btr/10 px-3 py-2 text-sm text-btr">
           <AlertCircle className="size-4 shrink-0" />
           {error}
         </div>
       )}
 
       {!selectedAction && (
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           <button
             type="button"
             onClick={() => setSelectedAction("approve")}
@@ -102,7 +210,7 @@ export function ApprovalPanel({ initiativeId }: { initiativeId: number }) {
                 ? rejectAction
                 : holdAction
           }
-          className="mt-4 space-y-3"
+          className="mx-auto mt-4 max-w-md space-y-3 text-left"
         >
           <label className="block">
             <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
@@ -116,7 +224,7 @@ export function ApprovalPanel({ initiativeId }: { initiativeId: number }) {
               placeholder="Explain the reasoning behind this decision…"
             />
           </label>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-2">
             <button
               type="submit"
               disabled={pending}

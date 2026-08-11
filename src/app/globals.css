@@ -18,6 +18,14 @@
   --as: #ffffff;
   --danger: #ff3b3b;
   --success: #22c55e;
+  /* Phase / stage accents (shared with STAGE_COLORS in workflow.ts) */
+  --stage-idea: #ffffff;
+  --stage-validation: #7e90a3;
+  --stage-scoping: #ceff00;
+  --stage-go-nogo: #ff3b1f;
+  --stage-setup: #38bdf8;
+  --stage-onboarding: #2dd4bf;
+  --stage-production: #22c55e;
 }
 
 @theme inline {
@@ -36,6 +44,13 @@
   --color-bbb: var(--bbb);
   --color-as: var(--as);
   --color-success: var(--success);
+  --color-stage-idea: var(--stage-idea);
+  --color-stage-validation: var(--stage-validation);
+  --color-stage-scoping: var(--stage-scoping);
+  --color-stage-go-nogo: var(--stage-go-nogo);
+  --color-stage-setup: var(--stage-setup);
+  --color-stage-onboarding: var(--stage-onboarding);
+  --color-stage-production: var(--stage-production);
   --font-display: var(--font-sen);
   --font-body: var(--font-libre);
 }

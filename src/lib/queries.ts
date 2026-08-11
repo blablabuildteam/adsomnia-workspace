@@ -8,6 +8,17 @@ import {
 } from "@/db/schema";
 import { eq, desc, count, inArray } from "drizzle-orm";
 
+export type ValidationData = {
+  businessValue?: string;
+  solutionDirection?: string;
+  tShirtSize?: string;
+  tShirtRationale?: string;
+  priority?: string;
+  priorityRationale?: string;
+  dependencies?: string;
+  risks?: string;
+};
+
 export type InitiativeWithUsers = {
   id: number;
   ticketId: string;
@@ -17,6 +28,7 @@ export type InitiativeWithUsers = {
   opportunitySolution: string | null;
   expectedImpact: string | null;
   targetAudience: string | null;
+  validationData: ValidationData | null;
   currentStage: string;
   status: string;
   createdAt: Date;
@@ -36,6 +48,7 @@ export async function getAllInitiatives(): Promise<InitiativeWithUsers[]> {
       opportunitySolution: initiatives.opportunitySolution,
       expectedImpact: initiatives.expectedImpact,
       targetAudience: initiatives.targetAudience,
+      validationData: initiatives.validationData,
       currentStage: initiatives.currentStage,
       status: initiatives.status,
       createdAt: initiatives.createdAt,
@@ -67,6 +80,7 @@ export async function getAllInitiatives(): Promise<InitiativeWithUsers[]> {
     opportunitySolution: r.opportunitySolution,
     expectedImpact: r.expectedImpact,
     targetAudience: r.targetAudience,
+    validationData: (r.validationData as ValidationData) ?? null,
     currentStage: r.currentStage,
     status: r.status,
     createdAt: r.createdAt,
@@ -89,6 +103,7 @@ export async function getInitiativeById(
       opportunitySolution: initiatives.opportunitySolution,
       expectedImpact: initiatives.expectedImpact,
       targetAudience: initiatives.targetAudience,
+      validationData: initiatives.validationData,
       currentStage: initiatives.currentStage,
       status: initiatives.status,
       createdAt: initiatives.createdAt,
@@ -112,6 +127,7 @@ export async function getInitiativeById(
 
   return {
     ...row,
+    validationData: (row.validationData as ValidationData) ?? null,
     submitter: userMap.get(row.submitterId) ?? {
       id: row.submitterId,
       name: "Unknown",

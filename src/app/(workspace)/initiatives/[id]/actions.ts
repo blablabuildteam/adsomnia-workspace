@@ -5,10 +5,14 @@ import { db } from "@/db";
 import { initiatives, approvals, activityLog, comments } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getCurrentUser, canApprove } from "@/lib/session";
+import type { ValidationData } from "@/lib/queries";
 
 export type ApprovalResult = {
   error?: string;
   success?: boolean;
+  decision?: "approved" | "rejected" | "on-hold";
+  comment?: string;
+  approverName?: string;
 };
 
 export type CommentResult = {
@@ -95,7 +99,12 @@ export async function approveToValidation(
 
   revalidatePath(`/initiatives/${initiativeId}`);
   revalidatePath("/dashboard");
-  return { success: true };
+  return {
+    success: true,
+    decision: "approved",
+    comment,
+    approverName: user.name,
+  };
 }
 
 export async function rejectInitiative(
@@ -139,7 +148,12 @@ export async function rejectInitiative(
 
   revalidatePath(`/initiatives/${initiativeId}`);
   revalidatePath("/dashboard");
-  return { success: true };
+  return {
+    success: true,
+    decision: "rejected",
+    comment,
+    approverName: user.name,
+  };
 }
 
 export async function putOnHold(
@@ -179,6 +193,113 @@ export async function putOnHold(
     userId: user.id,
     action: "idea_on_hold",
     details: { comment, approver: user.name },
+  });
+
+  revalidatePath(`/initiatives/${initiativeId}`);
+  revalidatePath("/dashboard");
+  return {
+    success: true,
+    decision: "on-hold",
+    comment,
+    approverName: user.name,
+  };
+}
+
+export type ValidationResult = {
+  error?: string;
+  success?: boolean;
+};
+
+export async function saveValidationData(
+  initiativeId: number,
+  _prev: ValidationResult,
+  formData: FormData,
+): Promise<ValidationResult> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "You must be logged in." };
+  }
+
+  const data: ValidationData = {
+    businessValue: (formData.get("businessValue") as string)?.trim() || undefined,
+    solutionDirection: (formData.get("solutionDirection") as string)?.trim() || undefined,
+    tShirtSize: (formData.get("tShirtSize") as string)?.trim() || undefined,
+    tShirtRationale: (formData.get("tShirtRationale") as string)?.trim() || undefined,
+    priority: (formData.get("priority") as string)?.trim() || undefined,
+    priorityRationale: (formData.get("priorityRationale") as string)?.trim() || undefined,
+    dependencies: (formData.get("dependencies") as string)?.trim() || undefined,
+    risks: (formData.get("risks") as string)?.trim() || undefined,
+  };
+
+  await db
+    .update(initiatives)
+    .set({ validationData: data, updatedAt: new Date() })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: "validation_saved",
+    details: { updatedBy: user.name },
+  });
+
+  revalidatePath(`/initiatives/${initiativeId}`);
+  return { success: true };
+}
+
+export async function submitValidationForApproval(
+  initiativeId: number,
+  _prev: ValidationResult,
+  formData: FormData,
+): Promise<ValidationResult> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "You must be logged in." };
+  }
+
+  const data: ValidationData = {
+    businessValue: (formData.get("businessValue") as string)?.trim() || undefined,
+    solutionDirection: (formData.get("solutionDirection") as string)?.trim() || undefined,
+    tShirtSize: (formData.get("tShirtSize") as string)?.trim() || undefined,
+    tShirtRationale: (formData.get("tShirtRationale") as string)?.trim() || undefined,
+    priority: (formData.get("priority") as string)?.trim() || undefined,
+    priorityRationale: (formData.get("priorityRationale") as string)?.trim() || undefined,
+    dependencies: (formData.get("dependencies") as string)?.trim() || undefined,
+    risks: (formData.get("risks") as string)?.trim() || undefined,
+  };
+
+  const required: (keyof ValidationData)[] = [
+    "businessValue",
+    "solutionDirection",
+    "tShirtSize",
+    "tShirtRationale",
+    "priority",
+    "priorityRationale",
+    "dependencies",
+    "risks",
+  ];
+  const missing = required.filter((k) => !data[k]);
+  if (missing.length > 0) {
+    return { error: "All validation fields must be completed before submitting." };
+  }
+
+  await db
+    .update(initiatives)
+    .set({
+      validationData: data,
+      status: "submitted",
+      updatedAt: new Date(),
+    })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: "validation_submitted",
+    details: {
+      submittedBy: user.name,
+      fromStage: "Validation",
+    },
   });
 
   revalidatePath(`/initiatives/${initiativeId}`);
