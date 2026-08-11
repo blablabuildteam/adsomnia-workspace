@@ -160,15 +160,6 @@ export const INTAKE_SECTIONS: IntakeStageSection[] = [
         options: [...TSHIRT_OPTIONS],
       },
       {
-        id: "tShirtRationale",
-        label: "T-Shirt Size Rationale",
-        expectation:
-          "One or two sentences explaining why this size fits (complexity, unknowns, number of systems touched).",
-        type: "textarea",
-        required: true,
-        placeholder: "e.g. L — touches multiple partner templates and needs QA across markets; limited unknowns.",
-      },
-      {
         id: "priority",
         label: "Strategic Fit & Priority",
         expectation:
@@ -178,13 +169,19 @@ export const INTAKE_SECTIONS: IntakeStageSection[] = [
         options: [...PRIORITY_OPTIONS],
       },
       {
-        id: "priorityRationale",
-        label: "Priority Rationale",
+        id: "leadProductionParty",
+        label: "Lead Production Party",
         expectation:
-          "Short justification for the proposed priority (strategic fit, urgency, dependency on other work).",
-        type: "textarea",
+          "Choose which party will most likely lead Production for this initiative, assisting the Head of Production from Validation onward.",
+        type: "select",
         required: true,
-        placeholder: "e.g. Now — blocks reliable retargeting for DE/NL campaigns starting Q3.",
+        options: [
+          { value: "adsomnia", label: "Adsomnia" },
+          { value: "btr", label: "Bending The Rules" },
+          { value: "hn", label: "Harlem Next" },
+          { value: "bbb", label: "blablabuild" },
+          { value: "as", label: "Adsomnia Internal" },
+        ],
       },
       {
         id: "dependencies",

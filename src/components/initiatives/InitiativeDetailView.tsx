@@ -1,9 +1,6 @@
 import {
-  Calendar,
   Check,
-  User,
-  Clock,
-  Tag,
+  ChevronDown,
   Target,
   Lightbulb,
   TrendingUp,
@@ -19,9 +16,17 @@ import { ApprovalPanel, type ApprovalDecision } from "./ApprovalPanel";
 import { CommentSection } from "./CommentSection";
 import { ValidationPhaseSection } from "./ValidationPhaseSection";
 import { CornerTicks } from "@/components/ui/CornerTicks";
+import { DownloadPdfButton } from "./DownloadPdfButton";
+import { FloatingDetailBar } from "./FloatingDetailBar";
 
 const STAGE_INDEX: Record<string, number> = {};
 for (const s of STAGES) STAGE_INDEX[s.id] = s.number;
+
+/** Re-enable when comment UI is ready for the detail view. */
+const SHOW_COMMENT_SECTION = false;
+
+/** Re-enable when the pipeline stepper returns to the detail view. */
+const SHOW_PIPELINE_STEPPER = false;
 
 /** Dark fill → light label; light fill (white / volt / teal) → black label. */
 function stageLabelOnFill(hex: string): string {
@@ -98,6 +103,91 @@ function StageStepper({ currentStageId }: { currentStageId: string }) {
   );
 }
 
+/**
+ * Phase wrapper with two visual states:
+ * - "complete": collapsed by default (native <details>), neutral chrome, dimmed body
+ * - "current": always expanded, stage-color accent + filled badge — the one place to work
+ */
+function PhaseCard({
+  stageId,
+  number,
+  name,
+  status,
+  children,
+}: {
+  stageId: string;
+  number: number;
+  name: string;
+  status: "complete" | "current";
+  children: React.ReactNode;
+}) {
+  const color = getStageColor(stageId);
+  const phaseLabel = `Phase ${String(number).padStart(2, "0")}`;
+
+  if (status === "complete") {
+    return (
+      <details className="group/phase relative border border-border">
+        <CornerTicks complete />
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 bg-surface px-4 py-4 transition-colors hover:bg-surface-elevated sm:px-5 [&::-webkit-details-marker]:hidden">
+          <div>
+            <p className="font-display text-[10px] font-bold uppercase tracking-[0.25em] text-muted/70">
+              {phaseLabel}
+            </p>
+            <h2 className="font-display mt-1 text-xl font-extrabold uppercase tracking-tight text-foreground/50 sm:text-2xl">
+              {name}
+            </h2>
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            <span className="font-display flex items-center gap-1.5 border border-success/40 bg-success/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-success">
+              <Check className="size-3" />
+              Complete
+            </span>
+            <ChevronDown className="size-4 text-muted transition-transform duration-200 group-open/phase:rotate-180" />
+          </div>
+        </summary>
+        <div className="border-t border-border opacity-70 transition-opacity hover:opacity-100">
+          {children}
+        </div>
+      </details>
+    );
+  }
+
+  return (
+    <section
+      className="relative border border-border"
+      style={{ borderLeftWidth: 3, borderLeftColor: color }}
+    >
+      <CornerTicks />
+      <div
+        className="flex items-end justify-between gap-4 border-b border-border bg-surface-elevated px-4 py-4 sm:px-5"
+        style={{ borderTopWidth: 3, borderTopColor: color }}
+      >
+        <div>
+          <p
+            className="font-display text-[10px] font-bold uppercase tracking-[0.25em]"
+            style={{ color }}
+          >
+            {phaseLabel}
+          </p>
+          <h2 className="font-display mt-1 text-xl font-extrabold uppercase tracking-tight sm:text-2xl">
+            {name}
+          </h2>
+        </div>
+        <span
+          className="font-display shrink-0 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide"
+          style={{
+            backgroundColor: color,
+            color: stageLabelOnFill(color),
+          }}
+        >
+          In Progress
+        </span>
+      </div>
+      {children}
+    </section>
+  );
+}
+
 const STATUS_BADGE_STYLES: Record<string, string> = {
   submitted: "border-foreground bg-foreground text-background",
   approved: "border-success bg-success/10 text-success",
@@ -161,6 +251,11 @@ export function InitiativeDetailView({
 
   return (
     <div className="relative w-full flex-1">
+      <FloatingDetailBar
+        title={initiative.title}
+        stageName={stage?.name ?? initiative.currentStage}
+        stageColor={getStageColor(initiative.currentStage)}
+      />
       <div className="mx-auto w-full max-w-[1200px] px-4 pb-40 pt-4 sm:px-6 sm:pt-6 lg:pb-48">
         {/* Header */}
         <header className="mb-6">
@@ -180,133 +275,64 @@ export function InitiativeDetailView({
                 {initiative.title}
               </h1>
             </div>
-          </div>
-
-          <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted">
-            <span className="inline-flex items-center gap-1.5">
-              <User className="size-3.5" />
-              {initiative.submitter.name}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Tag className="size-3.5" />
-              Sponsor: {initiative.sponsor.name}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Calendar className="size-3.5" />
-              {initiative.createdAt.toLocaleDateString("en-US", {
-                dateStyle: "medium",
-              })}
-            </span>
-            <span
-              className="inline-flex items-center gap-1.5"
-              style={{ color: getStageColor(initiative.currentStage) }}
-            >
-              <Clock className="size-3.5" />
-              Stage: {stage?.name ?? initiative.currentStage}
-            </span>
+            <DownloadPdfButton />
           </div>
         </header>
 
-        {/* Pipeline stepper */}
-        <div className="mb-8 border border-border bg-surface-elevated p-5">
-          <StageStepper currentStageId={initiative.currentStage} />
+        {/* Details — horizontal metadata bar (replaces pipeline stepper) */}
+        <div className="mb-8 border border-border bg-surface">
+          <h3 className="border-b border-border px-4 py-3 font-display text-xs font-bold uppercase tracking-wide">
+            Details
+          </h3>
+          <div className="grid divide-border sm:grid-cols-2 lg:grid-cols-4 lg:divide-x">
+            <div className="border-b border-border px-4 py-3 lg:border-b-0">
+              <span className="text-xs text-muted">Stage</span>
+              <p
+                className="font-display mt-1 text-xs font-bold uppercase tracking-wide"
+                style={{ color: getStageColor(initiative.currentStage) }}
+              >
+                {stage?.name ?? initiative.currentStage}
+              </p>
+            </div>
+            <div className="border-b border-border px-4 py-3 sm:border-b-0 lg:border-b-0">
+              <span className="text-xs text-muted">Submitter</span>
+              <p className="mt-1 text-xs text-foreground">
+                {initiative.submitter.name}
+              </p>
+            </div>
+            <div className="border-b border-border px-4 py-3 lg:border-b-0">
+              <span className="text-xs text-muted">Sponsor</span>
+              <p className="mt-1 text-xs text-foreground">
+                {initiative.sponsor.name}
+              </p>
+            </div>
+            <div className="px-4 py-3">
+              <span className="text-xs text-muted">Last updated</span>
+              <p className="mt-1 text-xs text-foreground">
+                {initiative.updatedAt.toLocaleString("en-US", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-12">
-          {/* Main content — newest phase first */}
-          <div className="space-y-6 lg:col-span-8">
-            {showValidation && (
-              <section className="relative border border-border">
-                <CornerTicks complete={currentNum > 2} />
-                <div
-                  className="flex items-end justify-between gap-4 border-b border-border bg-surface-elevated px-4 py-4 sm:px-5"
-                  style={{
-                    borderTopWidth: 3,
-                    borderTopColor: getStageColor("validation"),
-                  }}
-                >
-                  <div>
-                    <p
-                      className="font-display text-[10px] font-bold uppercase tracking-[0.25em]"
-                      style={{ color: getStageColor("validation") }}
-                    >
-                      Phase {String(validationStage.number).padStart(2, "0")}
-                    </p>
-                    <h2 className="font-display mt-1 text-xl font-extrabold uppercase tracking-tight sm:text-2xl">
-                      {validationStage.name}
-                    </h2>
-                  </div>
-                  {validationIsCurrent ? (
-                    <span className="font-display shrink-0 border border-foreground/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-foreground/70">
-                      Current
-                    </span>
-                  ) : currentNum > 2 ? (
-                    <span className="font-display shrink-0 border border-success/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-success">
-                      Complete
-                    </span>
-                  ) : null}
-                </div>
+        <div id="detail-header-sentinel" aria-hidden="true" />
 
-                <div className="bg-surface">
-                  <h3 className="border-b border-border px-4 py-3 font-display text-xs font-bold uppercase tracking-wide">
-                    Business Case
-                  </h3>
-                  {validationIsEditable ? (
-                    <form className="p-4">
-                      <ValidationPhaseSection
-                        initiativeId={initiative.id}
-                        data={initiative.validationData}
-                      />
-                    </form>
-                  ) : (
-                    <ValidationPhaseSection
-                      initiativeId={initiative.id}
-                      data={initiative.validationData}
-                      readOnly
-                    />
-                  )}
-                </div>
-              </section>
-            )}
+        {SHOW_PIPELINE_STEPPER && (
+          <div className="mb-8 border border-border bg-surface-elevated p-5">
+            <StageStepper currentStageId={initiative.currentStage} />
+          </div>
+        )}
 
-            {showApprovalPanel && (
-              <ApprovalPanel
-                initiativeId={initiative.id}
-                decision={latestDecision}
-              />
-            )}
-
-            <section className="relative border border-border">
-              <CornerTicks complete={currentNum > 1} />
-              <div
-                className="flex items-end justify-between gap-4 border-b border-border bg-surface-elevated px-4 py-4 sm:px-5"
-                style={{
-                  borderTopWidth: 3,
-                  borderTopColor: getStageColor("idea"),
-                }}
-              >
-                <div>
-                  <p
-                    className="font-display text-[10px] font-bold uppercase tracking-[0.25em]"
-                    style={{ color: getStageColor("idea") }}
-                  >
-                    Phase {String(ideaStage.number).padStart(2, "0")}
-                  </p>
-                  <h2 className="font-display mt-1 text-xl font-extrabold uppercase tracking-tight sm:text-2xl">
-                    {ideaStage.name}
-                  </h2>
-                </div>
-                {initiative.currentStage === "idea" ? (
-                  <span className="font-display shrink-0 border border-foreground/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-foreground/70">
-                    Current
-                  </span>
-                ) : (
-                  <span className="font-display shrink-0 border border-success/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-success">
-                    Complete
-                  </span>
-                )}
-              </div>
-
+        <div className="space-y-6">
+            <PhaseCard
+              stageId="idea"
+              number={ideaStage.number}
+              name={ideaStage.name}
+              status={initiative.currentStage === "idea" ? "current" : "complete"}
+            >
               <div className="bg-surface">
                 <h3 className="border-b border-border px-4 py-3 font-display text-xs font-bold uppercase tracking-wide">
                   Initiative Details
@@ -358,63 +384,52 @@ export function InitiativeDetailView({
                   </div>
                 </div>
               </div>
-            </section>
-          </div>
 
-          {/* Sidebar — persistent as initiative progresses */}
-          <div className="space-y-6 lg:col-span-4">
-            <div className="border border-border bg-surface">
-              <h3 className="border-b border-border px-4 py-3 font-display text-xs font-bold uppercase tracking-wide">
-                Details
-              </h3>
-              <div className="divide-y divide-border">
-                <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-xs text-muted">Status</span>
-                  <span
-                    className={`border px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide ${statusStyle}`}
-                  >
-                    {statusLabel}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-xs text-muted">Stage</span>
-                  <span className="font-display text-xs font-bold uppercase tracking-wide text-foreground">
-                    {stage?.name ?? initiative.currentStage}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-xs text-muted">Submitter</span>
-                  <span className="text-xs text-foreground">
-                    {initiative.submitter.name}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-xs text-muted">Sponsor</span>
-                  <span className="text-xs text-foreground">
-                    {initiative.sponsor.name}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-xs text-muted">Last updated</span>
-                  <span className="text-xs text-foreground">
-                    {initiative.updatedAt.toLocaleString("en-US", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
-                  </span>
-                </div>
-              </div>
-            </div>
+              {showApprovalPanel && (
+                <ApprovalPanel
+                  initiativeId={initiative.id}
+                  decision={latestDecision}
+                  embedded
+                />
+              )}
+            </PhaseCard>
 
-            <CommentSection
-              initiativeId={initiative.id}
-              comments={comments}
-              activity={activity}
-              currentUserName={currentUserName}
-              canComment={canComment}
-            />
-          </div>
+            {showValidation && (
+              <PhaseCard
+                stageId="validation"
+                number={validationStage.number}
+                name={validationStage.name}
+                status={validationIsCurrent ? "current" : "complete"}
+              >
+                <div className="bg-surface">
+                  {validationIsEditable ? (
+                    <form>
+                      <ValidationPhaseSection
+                        initiativeId={initiative.id}
+                        data={initiative.validationData}
+                      />
+                    </form>
+                  ) : (
+                    <ValidationPhaseSection
+                      initiativeId={initiative.id}
+                      data={initiative.validationData}
+                      readOnly
+                    />
+                  )}
+                </div>
+              </PhaseCard>
+            )}
         </div>
+
+        {SHOW_COMMENT_SECTION && (
+          <CommentSection
+            initiativeId={initiative.id}
+            comments={comments}
+            activity={activity}
+            currentUserName={currentUserName}
+            canComment={canComment}
+          />
+        )}
       </div>
     </div>
   );

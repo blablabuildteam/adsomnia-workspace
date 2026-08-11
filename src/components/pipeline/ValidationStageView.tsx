@@ -74,9 +74,8 @@ function ValidationCard({ item }: { item: InitiativeWithUsers }) {
         vd.businessValue,
         vd.solutionDirection,
         vd.tShirtSize,
-        vd.tShirtRationale,
         vd.priority,
-        vd.priorityRationale,
+        vd.leadProductionParty,
         vd.dependencies,
         vd.risks,
       ].filter(Boolean).length

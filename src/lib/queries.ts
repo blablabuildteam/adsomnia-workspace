@@ -12,9 +12,8 @@ export type ValidationData = {
   businessValue?: string;
   solutionDirection?: string;
   tShirtSize?: string;
-  tShirtRationale?: string;
   priority?: string;
-  priorityRationale?: string;
+  leadProductionParty?: string;
   dependencies?: string;
   risks?: string;
 };

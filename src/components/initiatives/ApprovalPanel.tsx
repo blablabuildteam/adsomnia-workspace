@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { CheckCircle2, XCircle, Pause, AlertCircle, User, Calendar } from "lucide-react";
+import { CheckCircle2, XCircle, Pause, AlertCircle, User, Calendar, MessageSquare } from "lucide-react";
 import {
   approveToValidation,
   rejectInitiative,
@@ -51,13 +51,35 @@ const DECISION_META: Record<
   },
 };
 
-function DecisionSummary({ decision }: { decision: ApprovalDecision }) {
+function DecisionSummary({ decision, embedded = false }: { decision: ApprovalDecision; embedded?: boolean }) {
   const meta = DECISION_META[decision.decision];
   const Icon = meta.icon;
 
   return (
-    <div className="border border-border bg-foreground/5 p-5">
-      <div className="flex items-center justify-between gap-4 text-xs text-muted">
+    <div
+      className={`flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-5 ${
+        embedded ? "border-t border-border bg-foreground/5" : "border border-border bg-foreground/5"
+      }`}
+    >
+      <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+        Approval Decision
+      </span>
+      <span
+        className={`inline-flex items-center gap-1.5 border px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-wide ${meta.badge}`}
+      >
+        <Icon className="size-3.5" />
+        {meta.label}
+      </span>
+      {decision.comment && (
+        <span className="group relative inline-flex cursor-help items-center gap-1.5 text-xs text-muted transition-colors hover:text-foreground">
+          <MessageSquare className="size-3.5" />
+          <span className="max-w-[240px] truncate">{decision.comment}</span>
+          <span className="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 border border-border bg-surface-elevated px-3 py-2 text-[11px] leading-relaxed text-foreground opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+            {decision.comment}
+          </span>
+        </span>
+      )}
+      <span className="ml-auto flex items-center gap-4 text-xs text-muted">
         <span className="inline-flex items-center gap-1.5">
           <User className="size-3.5" />
           {decision.approverName}
@@ -69,28 +91,7 @@ function DecisionSummary({ decision }: { decision: ApprovalDecision }) {
             timeStyle: "short",
           })}
         </span>
-      </div>
-      <div className="mt-4 flex flex-col items-center gap-3 text-center">
-        <h3 className="font-display text-sm font-bold uppercase tracking-wide">
-          Approval Decision
-        </h3>
-        <span
-          className={`inline-flex items-center gap-2 border px-3 py-1.5 font-display text-xs font-bold uppercase tracking-wide ${meta.badge}`}
-        >
-          <Icon className="size-3.5" />
-          {meta.label}
-        </span>
-        {decision.comment && (
-          <blockquote className="mx-auto max-w-md border border-border bg-surface px-4 py-3 text-left">
-            <p className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-              Remark
-            </p>
-            <p className="mt-1.5 text-sm leading-relaxed text-foreground/90">
-              {decision.comment}
-            </p>
-          </blockquote>
-        )}
-      </div>
+      </span>
     </div>
   );
 }
@@ -98,9 +99,11 @@ function DecisionSummary({ decision }: { decision: ApprovalDecision }) {
 type Props = {
   initiativeId: number;
   decision?: ApprovalDecision | null;
+  /** When true, renders without outer border (for embedding inside a parent container). */
+  embedded?: boolean;
 };
 
-export function ApprovalPanel({ initiativeId, decision = null }: Props) {
+export function ApprovalPanel({ initiativeId, decision = null, embedded = false }: Props) {
   const [selectedAction, setSelectedAction] = useState<Action | null>(null);
 
   const boundApprove = approveToValidation.bind(null, initiativeId);
@@ -141,11 +144,11 @@ export function ApprovalPanel({ initiativeId, decision = null }: Props) {
       toStage:
         successState!.decision === "approved" ? "validation" : null,
     };
-    return <DecisionSummary decision={resolved} />;
+    return <DecisionSummary decision={resolved} embedded={embedded} />;
   }
 
   return (
-    <div className="approval-action-frame border border-border bg-foreground/5 p-5 text-center">
+    <div className={`approval-action-frame bg-foreground/5 p-5 text-center ${embedded ? "border-t border-border" : "border border-border"}`}>
       <span aria-hidden className="approval-action-border" />
       <h3 className="font-display text-sm font-bold uppercase tracking-wide">
         Approval Decision
@@ -214,12 +217,12 @@ export function ApprovalPanel({ initiativeId, decision = null }: Props) {
               placeholder="Explain the reasoning behind this decision…"
             />
           </label>
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex items-center justify-end gap-2">
             <button
               type="submit"
               disabled={pending}
               className={[
-                "inline-flex items-center gap-2 border px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide transition-opacity disabled:opacity-50",
+                "group relative inline-flex items-center gap-2 overflow-hidden border px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-50",
                 selectedAction === "approve"
                   ? "border-success bg-success text-background"
                   : selectedAction === "reject"
@@ -227,13 +230,16 @@ export function ApprovalPanel({ initiativeId, decision = null }: Props) {
                     : "border-hn bg-hn text-background",
               ].join(" ")}
             >
-              {pending
-                ? "Processing…"
-                : selectedAction === "approve"
-                  ? "Confirm Approval"
-                  : selectedAction === "reject"
-                    ? "Confirm Rejection"
-                    : "Confirm On Hold"}
+              <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />
+              <span className="relative">
+                {pending
+                  ? "Processing…"
+                  : selectedAction === "approve"
+                    ? "Confirm Approval"
+                    : selectedAction === "reject"
+                      ? "Confirm Rejection"
+                      : "Confirm On Hold"}
+              </span>
             </button>
             <button
               type="button"

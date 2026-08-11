@@ -96,7 +96,7 @@ export function PipelineStrip({ currentStageId, className }: Props) {
                 </span>
                 <span
                   className={[
-                    "font-display pointer-events-none absolute left-0 top-[calc(100%+2px)] hidden origin-top-left -rotate-[38deg] whitespace-nowrap text-[9px] font-bold uppercase tracking-wide transition-colors duration-150 md:block",
+                    "font-display pointer-events-none absolute left-1/2 top-[calc(100%+4px)] z-10 hidden -translate-x-1/2 whitespace-nowrap text-[9px] font-bold uppercase tracking-wide transition-colors duration-150 md:block",
                     active
                       ? ""
                       : "text-muted/40 group-hover/stage:text-[var(--stage-color)] group-focus-visible/stage:text-[var(--stage-color)]",

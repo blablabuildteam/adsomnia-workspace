@@ -224,9 +224,8 @@ export async function saveValidationData(
     businessValue: (formData.get("businessValue") as string)?.trim() || undefined,
     solutionDirection: (formData.get("solutionDirection") as string)?.trim() || undefined,
     tShirtSize: (formData.get("tShirtSize") as string)?.trim() || undefined,
-    tShirtRationale: (formData.get("tShirtRationale") as string)?.trim() || undefined,
     priority: (formData.get("priority") as string)?.trim() || undefined,
-    priorityRationale: (formData.get("priorityRationale") as string)?.trim() || undefined,
+    leadProductionParty: (formData.get("leadProductionParty") as string)?.trim() || undefined,
     dependencies: (formData.get("dependencies") as string)?.trim() || undefined,
     risks: (formData.get("risks") as string)?.trim() || undefined,
   };
@@ -261,9 +260,8 @@ export async function submitValidationForApproval(
     businessValue: (formData.get("businessValue") as string)?.trim() || undefined,
     solutionDirection: (formData.get("solutionDirection") as string)?.trim() || undefined,
     tShirtSize: (formData.get("tShirtSize") as string)?.trim() || undefined,
-    tShirtRationale: (formData.get("tShirtRationale") as string)?.trim() || undefined,
     priority: (formData.get("priority") as string)?.trim() || undefined,
-    priorityRationale: (formData.get("priorityRationale") as string)?.trim() || undefined,
+    leadProductionParty: (formData.get("leadProductionParty") as string)?.trim() || undefined,
     dependencies: (formData.get("dependencies") as string)?.trim() || undefined,
     risks: (formData.get("risks") as string)?.trim() || undefined,
   };
@@ -272,9 +270,8 @@ export async function submitValidationForApproval(
     "businessValue",
     "solutionDirection",
     "tShirtSize",
-    "tShirtRationale",
     "priority",
-    "priorityRationale",
+    "leadProductionParty",
     "dependencies",
     "risks",
   ];
