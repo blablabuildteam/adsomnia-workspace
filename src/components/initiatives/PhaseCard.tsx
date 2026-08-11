@@ -5,17 +5,16 @@ import { Check, ChevronDown } from "lucide-react";
 import { getStageColor } from "@/data/workflow";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 
-/** Dark fill → light label; light fill (white / volt / teal) → black label. */
-function stageLabelOnFill(hex: string): string {
-  const light = hex === "#FFFFFF" || hex === "#CEFF00" || hex === "#2DD4BF";
-  return light ? "#000000" : "#FFFFFF";
-}
+const STATUS_COLORS = {
+  progress: "#EAB308",
+  review: "#38BDF8",
+} as const;
 
 /**
  * Phase wrapper with three visual states:
  * - "complete": collapsed by default, neutral chrome, dimmed body
- * - "current": open by default, stage-color accent + filled badge — the one place to work
- * - "review": like current, but badged "Awaiting Approval" (submitted for a decision)
+ * - "current": open by default, stage-color accent + yellow "In Progress" badge
+ * - "review": like current, but badged "Awaiting Approval" in blue
  * All use the same summary layout (status badge + chevron) so labels align.
  */
 export function PhaseCard({
@@ -85,29 +84,30 @@ export function PhaseCard({
             <span
               className="font-display flex items-center gap-1.5 border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
               style={{
-                borderColor: color,
-                color,
-                backgroundColor: `${color}1A`,
+                borderColor: STATUS_COLORS.review,
+                color: STATUS_COLORS.review,
+                backgroundColor: `${STATUS_COLORS.review}1A`,
               }}
             >
               <span
                 className="size-1.5 shrink-0 animate-pulse rounded-full"
-                style={{ backgroundColor: color }}
+                style={{ backgroundColor: STATUS_COLORS.review }}
                 aria-hidden
               />
               Awaiting Approval
             </span>
           ) : isCurrent ? (
             <span
-              className="font-display flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+              className="font-display flex items-center gap-1.5 border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
               style={{
-                backgroundColor: color,
-                color: stageLabelOnFill(color),
+                borderColor: STATUS_COLORS.progress,
+                color: STATUS_COLORS.progress,
+                backgroundColor: `${STATUS_COLORS.progress}1A`,
               }}
             >
               <span
                 className="size-1.5 shrink-0 animate-pulse rounded-full"
-                style={{ backgroundColor: stageLabelOnFill(color) }}
+                style={{ backgroundColor: STATUS_COLORS.progress }}
                 aria-hidden
               />
               In Progress

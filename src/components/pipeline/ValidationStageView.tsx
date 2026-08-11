@@ -6,7 +6,6 @@ import {
   ArrowRight,
   BarChart3,
   Building2,
-  CheckCircle2,
   Clock,
   Compass,
   Eye,
@@ -26,8 +25,13 @@ import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStrip } from "@/components/pipeline/PipelineStrip";
 import type { InitiativeWithUsers } from "@/lib/queries";
 import {
-  formatBusinessValueSummary,
+  BUSINESS_VALUE_TYPES,
+  IMPACT_MAX,
+  IMPACT_MIN,
   isBusinessValueComplete,
+  isBusinessValueData,
+  parseImpactScore,
+  type ValidationData,
 } from "@/lib/validation-data";
 
 const hoverTicks =
@@ -36,17 +40,41 @@ const hoverTicks =
 const stage = STAGES.find((s) => s.id === "validation")!;
 const party = getParty(stage.parties[0]);
 
-type FilterKey = "all" | "submitted" | "on-hold" | "rejected";
+type FilterKey = "all" | "in-progress" | "in-review" | "rejected";
 
 const FILTERS: { key: FilterKey; label: string; color: string }[] = [
   { key: "all", label: "All", color: "#FFFFFF" },
-  { key: "submitted", label: "To be Reviewed", color: "#FFFFFF" },
-  { key: "on-hold", label: "On Hold", color: "#7E90A3" },
+  { key: "in-progress", label: "In Progress", color: "#EAB308" },
+  { key: "in-review", label: "In Review", color: "#38BDF8" },
   { key: "rejected", label: "Rejected", color: "#FF3B1F" },
 ];
 
+function matchesValidationFilter(
+  status: InitiativeWithUsers["status"],
+  filter: Exclude<FilterKey, "all">,
+): boolean {
+  if (filter === "in-progress") {
+    return status === "draft" || status === "approved";
+  }
+  if (filter === "in-review") {
+    return status === "submitted";
+  }
+  return status === "rejected";
+}
+
+const TSHIRT_FILTERS = ["S", "M", "L", "XL"] as const;
+const PRIORITY_FILTERS = ["Now", "Near", "Later", "Backlog"] as const;
+
+type TShirtFilter = (typeof TSHIRT_FILTERS)[number];
+type PriorityFilter = (typeof PRIORITY_FILTERS)[number];
+
 const VALIDATION_FIELD_TOTAL = 7;
 
+/**
+ * Card status for items still in the Validation stage.
+ * `approved` here means "approved into Validation" (business case not done yet) —
+ * same as draft → In Progress. True validation approval advances the stage to Scoping.
+ */
 const STATUS_META: Record<
   string,
   {
@@ -56,8 +84,8 @@ const STATUS_META: Record<
   }
 > = {
   draft: { label: "In Progress", color: "#EAB308", icon: Loader2 },
+  approved: { label: "In Progress", color: "#EAB308", icon: Loader2 },
   submitted: { label: "In Review", color: "#38BDF8", icon: Eye },
-  approved: { label: "Approved", color: "#22C55E", icon: CheckCircle2 },
   rejected: { label: "Rejected", color: "#FF3B1F", icon: XCircle },
   "on-hold": { label: "On Hold", color: "#7E90A3", icon: PauseCircle },
 };
@@ -82,6 +110,62 @@ function resolvePartyLabel(stored: string | undefined): string | undefined {
   return PARTIES.find((p) => p.id === stored)?.label ?? stored;
 }
 
+function BusinessValueBars({
+  value,
+}: {
+  value: ValidationData["businessValue"];
+}) {
+  if (!value || typeof value === "string" || !isBusinessValueData(value)) {
+    return (
+      <p className="text-xs leading-relaxed text-muted">
+        {typeof value === "string" && value.trim() ? value : "—"}
+      </p>
+    );
+  }
+  if (value.types.length === 0) {
+    return <p className="text-xs leading-relaxed text-muted">—</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {value.types.map((type) => {
+        const label =
+          BUSINESS_VALUE_TYPES.find((t) => t.id === type)?.label ?? type;
+        const score = parseImpactScore(value.expectations[type]);
+        const pct =
+          score !== null
+            ? ((score - IMPACT_MIN) / (IMPACT_MAX - IMPACT_MIN)) * 100
+            : 0;
+        return (
+          <div key={type}>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <span className="font-display text-[9px] font-bold uppercase tracking-wide text-muted">
+                {label}
+              </span>
+              <span className="font-display text-[9px] font-bold tabular-nums text-foreground/80">
+                {score !== null ? (
+                  <>
+                    {score}
+                    <span className="text-muted">/10</span>
+                  </>
+                ) : (
+                  "—"
+                )}
+              </span>
+            </div>
+            <div className="h-1 w-full bg-border">
+              <div
+                className="h-full bg-muted transition-[width]"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ValidationCard({ item }: { item: InitiativeWithUsers }) {
   const daysSinceUpdate = Math.floor(
     (Date.now() - item.updatedAt.getTime()) / (1000 * 60 * 60 * 24),
@@ -99,7 +183,6 @@ function ValidationCard({ item }: { item: InitiativeWithUsers }) {
         vd.risks,
       ].filter(Boolean).length
     : 0;
-  const businessValueSummary = formatBusinessValueSummary(vd?.businessValue);
   const progressPct = Math.round(
     (filledFields / VALIDATION_FIELD_TOTAL) * 100,
   );
@@ -166,15 +249,13 @@ function ValidationCard({ item }: { item: InitiativeWithUsers }) {
 
         <div className="mt-3 grid grid-cols-2 gap-px bg-border">
           <div className="min-h-[52px] bg-surface p-2.5">
-            <div className="mb-1 flex items-center gap-1.5 text-muted">
+            <div className="mb-1.5 flex items-center gap-1.5 text-muted">
               <BarChart3 className="size-3" />
               <p className="font-display text-[9px] font-bold uppercase tracking-wide text-muted/60">
                 Business Value
               </p>
             </div>
-            <p className="line-clamp-2 text-xs leading-relaxed text-muted">
-              {businessValueSummary || "—"}
-            </p>
+            <BusinessValueBars value={vd?.businessValue} />
           </div>
           <div className="min-h-[52px] bg-surface p-2.5">
             <div className="mb-1 flex items-center gap-1.5 text-muted">
@@ -247,20 +328,64 @@ type Props = {
 
 export function ValidationStageView({ initiatives }: Props) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
+  const [tShirtFilter, setTShirtFilter] = useState<TShirtFilter | null>(null);
+  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter | null>(
+    null,
+  );
 
   const inStage = initiatives.filter((i) => i.currentStage === "validation");
 
-  const counts: Record<FilterKey, number> = {
-    all: inStage.length,
-    submitted: inStage.filter((i) => i.status === "submitted").length,
-    "on-hold": inStage.filter((i) => i.status === "on-hold").length,
-    rejected: inStage.filter((i) => i.status === "rejected").length,
-  };
-
-  const filtered =
+  const statusFiltered =
     activeFilter === "all"
       ? inStage
-      : inStage.filter((i) => i.status === activeFilter);
+      : inStage.filter((i) => matchesValidationFilter(i.status, activeFilter));
+
+  const counts: Record<FilterKey, number> = {
+    all: inStage.length,
+    "in-progress": inStage.filter((i) =>
+      matchesValidationFilter(i.status, "in-progress"),
+    ).length,
+    "in-review": inStage.filter((i) =>
+      matchesValidationFilter(i.status, "in-review"),
+    ).length,
+    rejected: inStage.filter((i) =>
+      matchesValidationFilter(i.status, "rejected"),
+    ).length,
+  };
+
+  const tShirtCounts = Object.fromEntries(
+    TSHIRT_FILTERS.map((size) => [
+      size,
+      statusFiltered.filter((i) => i.validationData?.tShirtSize === size)
+        .length,
+    ]),
+  ) as Record<TShirtFilter, number>;
+
+  const priorityCounts = Object.fromEntries(
+    PRIORITY_FILTERS.map((priority) => [
+      priority,
+      statusFiltered.filter((i) => i.validationData?.priority === priority)
+        .length,
+    ]),
+  ) as Record<PriorityFilter, number>;
+
+  const filtered = statusFiltered.filter((item) => {
+    if (
+      tShirtFilter &&
+      item.validationData?.tShirtSize !== tShirtFilter
+    ) {
+      return false;
+    }
+    if (
+      priorityFilter &&
+      item.validationData?.priority !== priorityFilter
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  const hasDimensionFilters = tShirtFilter !== null || priorityFilter !== null;
 
   return (
     <div className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -285,7 +410,7 @@ export function ValidationStageView({ initiatives }: Props) {
         />
       </header>
 
-      <div className="mb-6 flex items-center gap-2 overflow-x-auto border-b border-border pb-px">
+      <div className="mb-4 flex items-center gap-2 overflow-x-auto border-b border-border pb-px">
         <Filter className="mr-1 size-3.5 shrink-0 text-muted/60" />
         {FILTERS.map((filter) => {
           const isActive = activeFilter === filter.key;
@@ -321,15 +446,108 @@ export function ValidationStageView({ initiatives }: Props) {
         })}
       </div>
 
+      <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-3">
+        <div className="flex items-center gap-2">
+          <Shirt className="size-3.5 shrink-0 text-muted/60" />
+          <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+            Size
+          </span>
+          <div className="flex items-center gap-1.5">
+            {TSHIRT_FILTERS.map((size) => {
+              const isActive = tShirtFilter === size;
+              return (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() =>
+                    setTShirtFilter((current) =>
+                      current === size ? null : size,
+                    )
+                  }
+                  className={[
+                    "border px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-wide transition-colors",
+                    isActive
+                      ? "border-foreground bg-foreground/[0.06] text-foreground"
+                      : "border-border text-muted hover:border-foreground hover:text-foreground",
+                  ].join(" ")}
+                >
+                  {size}
+                  <span
+                    className={[
+                      "ml-1.5 tabular-nums",
+                      isActive ? "text-foreground" : "text-muted/60",
+                    ].join(" ")}
+                  >
+                    {tShirtCounts[size]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Flag className="size-3.5 shrink-0 text-muted/60" />
+          <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+            Priority
+          </span>
+          <div className="flex items-center gap-1.5">
+            {PRIORITY_FILTERS.map((priority) => {
+              const isActive = priorityFilter === priority;
+              return (
+                <button
+                  key={priority}
+                  type="button"
+                  onClick={() =>
+                    setPriorityFilter((current) =>
+                      current === priority ? null : priority,
+                    )
+                  }
+                  className={[
+                    "border px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-wide transition-colors",
+                    isActive
+                      ? "border-foreground bg-foreground/[0.06] text-foreground"
+                      : "border-border text-muted hover:border-foreground hover:text-foreground",
+                  ].join(" ")}
+                >
+                  {priority}
+                  <span
+                    className={[
+                      "ml-1.5 tabular-nums",
+                      isActive ? "text-foreground" : "text-muted/60",
+                    ].join(" ")}
+                  >
+                    {priorityCounts[priority]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {hasDimensionFilters && (
+          <button
+            type="button"
+            onClick={() => {
+              setTShirtFilter(null);
+              setPriorityFilter(null);
+            }}
+            className="font-display text-[10px] font-bold uppercase tracking-wide text-muted transition-colors hover:text-foreground"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
       <section>
         {filtered.length === 0 && (
           <div className="relative border border-border bg-surface px-5 py-16 text-center">
             <CornerTicks />
             <FileText className="mx-auto size-8 text-muted/40" />
             <p className="mt-3 text-sm text-muted">
-              {activeFilter === "all"
+              {activeFilter === "all" && !hasDimensionFilters
                 ? "No initiatives in Validation yet. Approve an initiative to advance it here."
-                : `No initiatives with status "${FILTERS.find((f) => f.key === activeFilter)?.label}".`}
+                : "No initiatives match the current filters."}
             </p>
           </div>
         )}
