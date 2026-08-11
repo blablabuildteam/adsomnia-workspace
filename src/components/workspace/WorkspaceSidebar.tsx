@@ -17,22 +17,27 @@ import {
   User,
 } from "lucide-react";
 import { logout } from "@/lib/auth";
+import { STAGE_COLORS, type StageId } from "@/data/workflow";
 
 const PRIMARY_NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/ideas/new", label: "Submit Initiative", icon: Lightbulb },
 ] as const;
 
-const PIPELINE_SUB_ITEMS = [
+const PIPELINE_SUB_ITEMS: {
+  href: string;
+  label: string;
+  stageId?: StageId;
+}[] = [
   { href: "/overview", label: "Kanban Overview" },
-  { href: "/pipeline/initiatives", label: "01 Initiatives" },
-  { href: "/pipeline/validation", label: "02 Validation" },
-  { href: "/pipeline/scoping", label: "03 Scoping" },
-  { href: "/pipeline/go-nogo", label: "04 Go / No-Go" },
-  { href: "/pipeline/setup", label: "05 Project Setup" },
-  { href: "/pipeline/onboarding", label: "06 Onboarding" },
-  { href: "/pipeline/production", label: "07 Production" },
-] as const;
+  { href: "/pipeline/initiatives", label: "01 Initiatives", stageId: "idea" },
+  { href: "/pipeline/validation", label: "02 Validation", stageId: "validation" },
+  { href: "/pipeline/scoping", label: "03 Scoping", stageId: "scoping" },
+  { href: "/pipeline/go-nogo", label: "04 Go / No-Go", stageId: "go-nogo" },
+  { href: "/pipeline/setup", label: "05 Project Setup", stageId: "setup" },
+  { href: "/pipeline/onboarding", label: "06 Onboarding", stageId: "onboarding" },
+  { href: "/pipeline/production", label: "07 Production", stageId: "production" },
+];
 
 const REFERENCE_NAV_ITEMS = [
   { href: "/intake", label: "Intake Template", icon: ClipboardList },
@@ -132,18 +137,36 @@ function PipelineNav({
         <ul className="mt-0.5 space-y-0.5 pl-5">
           {PIPELINE_SUB_ITEMS.map((item) => {
             const active = pathname === item.href;
+            const phaseColor = item.stageId
+              ? STAGE_COLORS[item.stageId]
+              : undefined;
+            const lineColor = phaseColor ?? "#FFFFFF";
             return (
               <li key={item.href}>
                 <Link
                   href={item.href}
                   className={[
-                    "flex items-center border-l-2 px-3 py-1.5 text-[11px] font-medium tracking-wide transition-colors",
+                    "group relative flex items-center border-l-2 px-3 py-1.5 text-[11px] font-medium tracking-wide transition-colors",
                     active
-                      ? "border-foreground text-foreground"
-                      : "border-border text-muted hover:border-muted hover:text-foreground",
-                  ].join(" ")}
+                      ? "text-foreground"
+                      : "text-muted hover:text-foreground",
+                    !phaseColor &&
+                      (active
+                        ? "border-foreground"
+                        : "border-border hover:border-muted"),
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  style={
+                    phaseColor ? { borderColor: phaseColor } : undefined
+                  }
                 >
                   {item.label}
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute bottom-0 left-[-2px] h-0.5 w-[calc(100%+2px)] origin-left scale-x-0 transition-transform duration-300 ease-out group-hover:scale-x-100"
+                    style={{ backgroundColor: lineColor }}
+                  />
                 </Link>
               </li>
             );
