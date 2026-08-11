@@ -103,10 +103,10 @@ body {
 .app-atmosphere {
   background-color: #000;
   background-image:
-    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(255, 255, 255, 0.1), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 90% 10%, rgba(126, 144, 163, 0.14), transparent 50%),
-    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(255, 255, 255, 0.025), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 10%, rgba(126, 144, 163, 0.035), transparent 50%),
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
   background-size:
     auto,
     auto,
@@ -118,6 +118,58 @@ body {
 .font-display {
   font-family: var(--font-sen), Sen, sans-serif;
   letter-spacing: 0.02em;
+}
+
+/*
+ * Brand texture — B&W glitch/scanline photograph blended into the black chrome.
+ * `screen` blending drops the image's blacks out entirely, so only the light
+ * streaks survive; masks keep it away from content areas.
+ */
+.brand-texture {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: url("/brand/texture.jpg");
+  background-size: cover;
+  mix-blend-mode: screen;
+  filter: grayscale(1) contrast(1.05);
+}
+
+/* Hero variant — a streak anchored top-right of page headers, fading toward the content. */
+.brand-texture--hero {
+  opacity: 0.15;
+  background-position: right 35%;
+  -webkit-mask-image: radial-gradient(
+    ellipse 105% 160% at 100% 0%,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(0, 0, 0, 0.4) 45%,
+    transparent 74%
+  );
+  mask-image: radial-gradient(
+    ellipse 105% 160% at 100% 0%,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(0, 0, 0, 0.4) 45%,
+    transparent 74%
+  );
+}
+
+/* Page variant — full-bleed atmosphere for standalone screens (login). */
+.brand-texture--page {
+  opacity: 0.22;
+  background-position: center 30%;
+  -webkit-mask-image: radial-gradient(
+    ellipse 85% 90% at 60% 35%,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(0, 0, 0, 0.35) 55%,
+    transparent 80%
+  );
+  mask-image: radial-gradient(
+    ellipse 85% 90% at 60% 35%,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(0, 0, 0, 0.35) 55%,
+    transparent 80%
+  );
 }
 
 /* Form controls — replace native OS chrome with workspace styling */
@@ -305,6 +357,10 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
 
   .app-atmosphere {
     background: #fff !important;
+  }
+
+  .brand-texture {
+    display: none !important;
   }
 
   nav {

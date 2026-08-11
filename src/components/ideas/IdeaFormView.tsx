@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useActionState, useState, useRef } from "react";
+import { useActionState, useState, useRef } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -24,6 +24,8 @@ import {
 } from "@/app/(workspace)/ideas/new/analyze";
 import { Select } from "@/components/ui/Select";
 import { Modal, ModalButton } from "@/components/ui/Modal";
+import { CornerTicks } from "@/components/ui/CornerTicks";
+import { BrandTexture } from "@/components/ui/BrandTexture";
 import { inputClass, readOnlyFieldClass } from "@/lib/form-styles";
 
 const IDEA_STAGE = STAGES.find((s) => s.id === "idea")!;
@@ -129,32 +131,6 @@ function PipelineStrip() {
         );
       })}
     </ol>
-  );
-}
-
-/** Blueprint-style corner tick marks for the form frame. */
-function CornerTicks({ complete = false }: { complete?: boolean }) {
-  const tickColor = complete ? "border-success" : "border-foreground/60";
-
-  return (
-    <Fragment>
-      <span
-        aria-hidden
-        className={`pointer-events-none absolute -left-px -top-px size-3 border-l-2 border-t-2 transition-colors duration-500 ${tickColor}`}
-      />
-      <span
-        aria-hidden
-        className={`pointer-events-none absolute -right-px -top-px size-3 border-r-2 border-t-2 transition-colors duration-500 ${tickColor}`}
-      />
-      <span
-        aria-hidden
-        className={`pointer-events-none absolute -bottom-px -left-px size-3 border-b-2 border-l-2 transition-colors duration-500 ${tickColor}`}
-      />
-      <span
-        aria-hidden
-        className={`pointer-events-none absolute -bottom-px -right-px size-3 border-b-2 border-r-2 transition-colors duration-500 ${tickColor}`}
-      />
-    </Fragment>
   );
 }
 
@@ -440,7 +416,8 @@ export function IdeaFormView({ submitterName }: { submitterName: string }) {
           <PipelineStrip />
         </div>
 
-      <header className="mb-8">
+      <header className="relative mb-8">
+        <BrandTexture variant="hero" />
         <p className="font-display text-[11px] font-bold uppercase tracking-[0.28em] text-muted">
           Stage 1 · {IDEA_STAGE.name}
         </p>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useEffect, useMemo } from "react";
-import { Send, MessageSquare, ArrowRight } from "lucide-react";
+import { Send, MessageSquare, ArrowRight, GitBranch } from "lucide-react";
 import {
   addComment,
   type CommentResult,
@@ -94,9 +94,8 @@ function getPhaseEventMeta(action: string, details: Record<string, unknown> | nu
     case "idea_submitted":
       return {
         label: "Initiative submitted",
-        sublabel: "Entered Production Framework at Initiative stage",
-        accent: "border-foreground/40 bg-foreground/5 text-foreground",
-        isPhase: true,
+        sublabel: "Entered Production Framework",
+        tone: "text-foreground/80",
         fromStage: null,
         toStage: "Initiative",
         comment: null,
@@ -104,10 +103,9 @@ function getPhaseEventMeta(action: string, details: Record<string, unknown> | nu
     case "approved_to_validation":
     case "stage_advanced":
       return {
-        label: "Phase change",
+        label: "Advanced to next phase",
         sublabel: null,
-        accent: "border-success/40 bg-success/5 text-success",
-        isPhase: true,
+        tone: "text-success",
         fromStage: fromStage ?? "Initiative",
         toStage: toStage ?? "Validation",
         comment,
@@ -115,9 +113,8 @@ function getPhaseEventMeta(action: string, details: Record<string, unknown> | nu
     case "idea_rejected":
       return {
         label: "Initiative rejected",
-        sublabel: "Remains at Initiative stage",
-        accent: "border-btr/40 bg-btr/5 text-btr",
-        isPhase: true,
+        sublabel: "No phase change",
+        tone: "text-btr",
         fromStage: fromStage ?? "Initiative",
         toStage: null,
         comment,
@@ -125,9 +122,8 @@ function getPhaseEventMeta(action: string, details: Record<string, unknown> | nu
     case "idea_on_hold":
       return {
         label: "Initiative on hold",
-        sublabel: "Paused at Initiative stage",
-        accent: "border-hn/40 bg-hn/5 text-hn",
-        isPhase: true,
+        sublabel: "Paused pending review",
+        tone: "text-hn",
         fromStage: fromStage ?? "Initiative",
         toStage: null,
         comment,
@@ -136,8 +132,7 @@ function getPhaseEventMeta(action: string, details: Record<string, unknown> | nu
       return {
         label: action.replace(/_/g, " "),
         sublabel: null,
-        accent: "border-border bg-surface-elevated text-muted",
-        isPhase: false,
+        tone: "text-muted",
         fromStage: null,
         toStage: null,
         comment,
@@ -159,40 +154,44 @@ function PhaseEvent({
   const meta = getPhaseEventMeta(action, details);
 
   return (
-    <div className="relative py-4">
-      <div className="absolute inset-x-0 top-1/2 h-px bg-border" aria-hidden />
-      <div
-        className={`relative mx-2 border px-3 py-3 ${meta.accent}`}
+    <div className="flex gap-2.5 bg-surface-elevated/40 px-4 py-3">
+      <span
+        aria-hidden
+        className="flex size-5 shrink-0 items-center justify-center border border-border-strong bg-surface-elevated"
       >
-        <p className="font-display text-[10px] font-bold uppercase tracking-wide">
-          {meta.label}
-        </p>
+        <GitBranch className="size-2.5 text-foreground/80" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-display text-[9px] font-bold uppercase tracking-[0.12em] text-muted">
+            Adsomnia Workspace
+          </span>
+          <span className="text-[9px] text-muted">{timeAgo(createdAt)}</span>
+        </div>
+        <p className={`mt-1 text-xs leading-snug ${meta.tone}`}>{meta.label}</p>
         {meta.fromStage && meta.toStage && (
-          <div className="mt-1.5 flex items-center gap-2 font-display text-xs font-bold uppercase tracking-wide">
-            <span>{meta.fromStage}</span>
-            <ArrowRight className="size-3 shrink-0 opacity-70" />
-            <span>{meta.toStage}</span>
-          </div>
+          <p className="mt-1 flex items-center gap-1.5 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+            <span className={meta.tone}>{meta.fromStage}</span>
+            <ArrowRight className="size-2.5 shrink-0 opacity-60" />
+            <span className={meta.tone}>{meta.toStage}</span>
+          </p>
         )}
         {!meta.fromStage && meta.toStage && (
-          <p className="mt-1 font-display text-xs font-bold uppercase tracking-wide">
+          <p
+            className={`mt-1 font-display text-[10px] font-bold uppercase tracking-wide ${meta.tone}`}
+          >
             {meta.toStage}
           </p>
         )}
-        {meta.fromStage && !meta.toStage && (
-          <p className="mt-1 font-display text-xs font-bold uppercase tracking-wide">
-            {meta.fromStage}
-          </p>
-        )}
         {meta.sublabel && (
-          <p className="mt-1 text-[10px] opacity-80">{meta.sublabel}</p>
+          <p className="mt-0.5 text-[10px] text-muted/80">{meta.sublabel}</p>
         )}
         {meta.comment && (
-          <p className="mt-2 text-xs italic opacity-90">
-            &ldquo;{meta.comment}&rdquo;
+          <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
+            {meta.comment}
           </p>
         )}
-        <p className="mt-2 text-[10px] opacity-70">
+        <p className="mt-1 text-[9px] text-muted/70">
           {userName} · {formatDate(createdAt)}
         </p>
       </div>

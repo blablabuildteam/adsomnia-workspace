@@ -4,6 +4,8 @@ import { useActionState } from "react";
 import { ArrowRight, GitBranch, AlertCircle } from "lucide-react";
 import { login, type LoginResult } from "@/lib/auth";
 import { inputClass } from "@/lib/form-styles";
+import { BrandTexture } from "@/components/ui/BrandTexture";
+import { CornerTicks } from "@/components/ui/CornerTicks";
 
 const initial: LoginResult = {};
 
@@ -11,8 +13,9 @@ export default function LoginPage() {
   const [state, formAction, pending] = useActionState(login, initial);
 
   return (
-    <div className="app-atmosphere flex min-h-screen items-center justify-center px-4">
-      <div className="workspace-content w-full max-w-[400px]">
+    <div className="app-atmosphere relative flex min-h-screen items-center justify-center overflow-hidden px-4">
+      <BrandTexture variant="page" />
+      <div className="workspace-content relative z-10 w-full max-w-[400px]">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex size-12 items-center justify-center border border-border-strong bg-surface-elevated">
             <GitBranch className="size-6 text-foreground" />
@@ -28,7 +31,11 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form action={formAction} className="border border-border bg-surface p-6">
+        <form
+          action={formAction}
+          className="relative border border-border bg-surface/95 p-6 backdrop-blur-sm"
+        >
+          <CornerTicks />
           {state.error && (
             <div className="mb-4 flex items-center gap-2 border border-btr/40 bg-btr/10 px-3 py-2.5 text-sm text-btr">
               <AlertCircle className="size-4 shrink-0" />
@@ -76,6 +83,10 @@ export default function LoginPage() {
 
         <p className="mt-4 text-center text-xs text-muted">
           Contact your administrator for access credentials.
+        </p>
+
+        <p className="mt-10 text-center font-display text-[9px] font-bold uppercase tracking-[0.45em] text-muted/40">
+          Traffic Never Sleeps
         </p>
       </div>
     </div>

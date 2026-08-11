@@ -20,6 +20,8 @@ import type {
 } from "@/lib/queries";
 import { ApprovalPanel } from "./ApprovalPanel";
 import { CommentSection } from "./CommentSection";
+import { BrandTexture } from "@/components/ui/BrandTexture";
+import { CornerTicks } from "@/components/ui/CornerTicks";
 
 function StageStepper({ currentStageId }: { currentStageId: string }) {
   const currentIndex = STAGES.findIndex((s) => s.id === currentStageId);
@@ -136,7 +138,8 @@ export function InitiativeDetailView({
 
       <div className="mx-auto w-full max-w-[1200px] px-4 pb-40 sm:px-6 lg:pb-48">
         {/* Header */}
-        <header className="mb-6">
+        <header className="relative mb-6">
+          <BrandTexture variant="hero" />
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-3">
@@ -192,8 +195,9 @@ export function InitiativeDetailView({
         <div className="grid gap-6 lg:grid-cols-12">
           {/* Main content */}
           <div className="space-y-6 lg:col-span-8">
-            <section>
-              <div className="flex items-end justify-between gap-4 border border-border border-b-0 bg-surface-elevated px-4 py-4 sm:px-5">
+            <section className="relative border border-border">
+              <CornerTicks />
+              <div className="flex items-end justify-between gap-4 border-b border-border bg-surface-elevated px-4 py-4 sm:px-5">
                 <div>
                   <p className="font-display text-[10px] font-bold uppercase tracking-[0.25em] text-muted">
                     Phase {String(stage?.number ?? 1).padStart(2, "0")}
@@ -209,7 +213,7 @@ export function InitiativeDetailView({
                 )}
               </div>
 
-              <div className="border border-border bg-surface">
+              <div className="bg-surface">
                 <h3 className="border-b border-border px-4 py-3 font-display text-xs font-bold uppercase tracking-wide">
                   Initiative Details
                 </h3>

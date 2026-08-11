@@ -4,7 +4,11 @@ import Link from "next/link";
 import { ArrowRight, Columns3, ChevronRight } from "lucide-react";
 import { STAGES, getParty } from "@/data/workflow";
 import { WorkspaceChip } from "@/components/WorkspaceChip";
+import { BrandTexture } from "@/components/ui/BrandTexture";
+import { CornerTicks } from "@/components/ui/CornerTicks";
 import type { InitiativeWithUsers } from "@/lib/queries";
+
+const hoverTicks = "opacity-0 transition-opacity duration-300 group-hover:opacity-100";
 
 const STATUS_COLORS: Record<string, string> = {
   submitted: "#FFFFFF",
@@ -41,8 +45,9 @@ function InitiativeCard({ initiative }: { initiative: InitiativeWithUsers }) {
   return (
     <Link
       href={`/initiatives/${initiative.id}`}
-      className="group block border border-border bg-surface-elevated p-3 transition-colors hover:border-border-strong hover:bg-white/[0.04]"
+      className="group relative block border border-border bg-surface-elevated p-3 transition-colors hover:border-border-strong hover:bg-white/[0.04]"
     >
+      <CornerTicks className={hoverTicks} />
       <div className="flex items-center justify-between gap-2">
         <span className="font-display text-[10px] font-bold uppercase tracking-wider text-muted">
           {initiative.ticketId}
@@ -129,7 +134,8 @@ export function OverviewView({ initiatives }: OverviewProps) {
 
   return (
     <div className="mx-auto flex w-full max-w-[2200px] flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <header className="relative mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <BrandTexture variant="hero" />
         <div>
           <p className="font-display text-[11px] font-bold uppercase tracking-[0.28em] text-muted">
             Pipeline Overview
@@ -143,7 +149,8 @@ export function OverviewView({ initiatives }: OverviewProps) {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="border border-border bg-surface px-4 py-2">
+          <div className="relative border border-border bg-surface px-4 py-2">
+            <CornerTicks />
             <p className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
               Active in Pipeline
             </p>
@@ -153,10 +160,10 @@ export function OverviewView({ initiatives }: OverviewProps) {
           </div>
           <Link
             href="/ideas/new"
-            className="inline-flex items-center gap-2 border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90"
+            className="group inline-flex items-center gap-2 border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90"
           >
             Submit New Initiative
-            <ArrowRight className="size-3.5" />
+            <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
           </Link>
         </div>
       </header>

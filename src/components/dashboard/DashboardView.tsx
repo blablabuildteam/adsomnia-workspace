@@ -7,7 +7,11 @@ import {
 } from "lucide-react";
 import { STAGES } from "@/data/workflow";
 import { WorkspaceChip } from "@/components/WorkspaceChip";
+import { BrandTexture } from "@/components/ui/BrandTexture";
+import { CornerTicks } from "@/components/ui/CornerTicks";
 import type { InitiativeWithUsers } from "@/lib/queries";
+
+const hoverTicks = "opacity-0 transition-opacity duration-300 group-hover:opacity-100";
 
 function StatCard({
   label,
@@ -21,7 +25,8 @@ function StatCard({
   accent?: string;
 }) {
   return (
-    <div className="border border-border bg-surface p-4">
+    <div className="group relative border border-border bg-surface p-4 transition-colors hover:border-border-strong">
+      <CornerTicks className={hoverTicks} />
       <p className="font-display text-[10px] font-bold uppercase tracking-[0.18em] text-muted">
         {label}
       </p>
@@ -77,8 +82,9 @@ function StatusColumn({
             <Link
               key={init.id}
               href={`/initiatives/${init.id}`}
-              className="group block border border-border bg-surface-elevated p-3 transition-colors hover:border-border-strong hover:bg-white/[0.04]"
+              className="group relative block border border-border bg-surface-elevated p-3 transition-colors hover:border-border-strong hover:bg-white/[0.04]"
             >
+              <CornerTicks className={hoverTicks} />
               <span className="font-display text-[10px] font-bold uppercase tracking-wider text-muted">
                 {init.ticketId}
               </span>
@@ -157,7 +163,8 @@ export function DashboardView({
 
   return (
     <div className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <header className="relative mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <BrandTexture variant="hero" />
         <div>
           <p className="font-display text-[11px] font-bold uppercase tracking-[0.28em] text-muted">
             Governance Overview
@@ -172,10 +179,10 @@ export function DashboardView({
         </div>
         <Link
           href="/ideas/new"
-          className="inline-flex items-center gap-2 border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90"
+          className="group inline-flex items-center gap-2 border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90"
         >
           Submit New Initiative
-          <ArrowRight className="size-3.5" />
+          <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
         </Link>
       </header>
 
@@ -238,15 +245,18 @@ export function DashboardView({
               Pipeline by Stage
             </h2>
           </div>
-          <div className="space-y-2 border border-border bg-surface p-4">
-            {STAGES.map((stage) => (
-              <PipelineStageBar
-                key={stage.id}
-                name={stage.name}
-                count={stageCounts[stage.id] ?? 0}
-                max={maxStageCount}
-              />
-            ))}
+          <div className="relative border border-border bg-surface p-4">
+            <CornerTicks />
+            <div className="space-y-2">
+              {STAGES.map((stage) => (
+                <PipelineStageBar
+                  key={stage.id}
+                  name={stage.name}
+                  count={stageCounts[stage.id] ?? 0}
+                  max={maxStageCount}
+                />
+              ))}
+            </div>
           </div>
         </section>
       </div>
@@ -281,7 +291,7 @@ export function DashboardView({
                 key={init.id}
                 href={`/initiatives/${init.id}`}
                 className={[
-                  "flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-white/[0.03]",
+                  "group flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-white/[0.03]",
                   i > 0 ? "border-t border-border" : "",
                 ].join(" ")}
               >
@@ -302,7 +312,7 @@ export function DashboardView({
                     })}
                   </p>
                 </div>
-                <ArrowRight className="size-4 shrink-0 text-muted" />
+                <ArrowRight className="size-4 shrink-0 text-muted transition-transform group-hover:translate-x-1" />
               </Link>
             );
           })}
