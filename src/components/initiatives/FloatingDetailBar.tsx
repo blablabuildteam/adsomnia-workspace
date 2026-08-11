@@ -48,26 +48,27 @@ export function FloatingDetailBar({ title, stageName, stageColor }: Props) {
           : "-translate-y-full opacity-0 pointer-events-none",
       ].join(" ")}
     >
+      {/* Height matches sidebar brand row: py-4 + size-9 logo = 68px */}
       <div className="border-b border-border bg-surface/90 px-4 backdrop-blur-sm sm:px-6">
-        <div className="mx-auto flex max-w-[1200px] items-center gap-3 py-3">
+        <div className="mx-auto flex h-[68px] max-w-[1200px] items-center gap-3.5">
           <span
-            className="font-display shrink-0 text-[10px] font-bold uppercase tracking-[0.2em]"
+            className="font-display shrink-0 text-xs font-bold uppercase tracking-[0.2em]"
             style={{ color: stageColor }}
           >
             {stageName}
           </span>
           <span className="text-white/20">/</span>
-          <h2 className="font-display min-w-0 flex-1 truncate text-sm font-extrabold uppercase tracking-tight text-foreground">
+          <h2 className="font-display min-w-0 flex-1 truncate text-base font-extrabold uppercase tracking-tight text-foreground">
             {title}
           </h2>
           <button
             type="button"
             onClick={() => window.print()}
-            className="ml-auto inline-flex shrink-0 items-center gap-2 border border-white/10 px-3 py-1.5 text-muted transition-colors hover:border-foreground hover:text-foreground"
+            className="ml-auto inline-flex shrink-0 items-center gap-2 border border-border px-3.5 py-2 text-muted transition-colors hover:border-foreground hover:text-foreground"
             title="Download as PDF"
           >
-            <Download className="size-3.5" />
-            <span className="font-display text-[10px] font-bold uppercase tracking-wide">
+            <Download className="size-4" />
+            <span className="font-display text-xs font-bold uppercase tracking-wide">
               PDF
             </span>
           </button>

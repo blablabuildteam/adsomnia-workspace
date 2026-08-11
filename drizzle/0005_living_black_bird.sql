@@ -1,0 +1,1 @@
+ALTER TABLE "initiatives" ADD COLUMN "scoping_data" jsonb;

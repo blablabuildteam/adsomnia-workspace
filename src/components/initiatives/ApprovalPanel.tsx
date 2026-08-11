@@ -1,7 +1,16 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { CheckCircle2, XCircle, Pause, AlertCircle, User, Calendar, MessageSquare } from "lucide-react";
+import {
+  CheckCircle2,
+  XCircle,
+  Pause,
+  AlertCircle,
+  User,
+  Calendar,
+  MessageSquare,
+  Hourglass,
+} from "lucide-react";
 import {
   approveToValidation,
   rejectInitiative,
@@ -101,9 +110,19 @@ type Props = {
   decision?: ApprovalDecision | null;
   /** When true, renders without outer border (for embedding inside a parent container). */
   embedded?: boolean;
+  /** Whether the current user may make the decision. */
+  canDecide?: boolean;
+  /** Whether the initiative is currently awaiting a leadership decision. */
+  awaitingDecision?: boolean;
 };
 
-export function ApprovalPanel({ initiativeId, decision = null, embedded = false }: Props) {
+export function ApprovalPanel({
+  initiativeId,
+  decision = null,
+  embedded = false,
+  canDecide = false,
+  awaitingDecision = false,
+}: Props) {
   const [selectedAction, setSelectedAction] = useState<Action | null>(null);
 
   const boundApprove = approveToValidation.bind(null, initiativeId);
@@ -135,17 +154,50 @@ export function ApprovalPanel({ initiativeId, decision = null, embedded = false 
         ? holdState
         : null;
 
-  if (decision || successState) {
-    const resolved: ApprovalDecision = decision ?? {
-      decision: successState!.decision ?? "approved",
-      comment: successState!.comment ?? null,
-      approverName: successState!.approverName ?? "You",
-      createdAt: new Date(),
-      toStage:
-        successState!.decision === "approved" ? "validation" : null,
-    };
-    return <DecisionSummary decision={resolved} embedded={embedded} />;
+  if (successState) {
+    return (
+      <DecisionSummary
+        decision={{
+          decision: successState.decision ?? "approved",
+          comment: successState.comment ?? null,
+          approverName: successState.approverName ?? "You",
+          createdAt: new Date(),
+          toStage:
+            successState.decision === "approved" ? "validation" : null,
+        }}
+        embedded={embedded}
+      />
+    );
   }
+
+  if (decision && !awaitingDecision) {
+    return <DecisionSummary decision={decision} embedded={embedded} />;
+  }
+
+  if (awaitingDecision && !canDecide) {
+    return (
+      <div
+        className={`approval-action-frame bg-foreground/5 p-5 text-center ${
+          embedded ? "border-t border-border" : "border border-border"
+        }`}
+      >
+        <span aria-hidden className="approval-action-border" />
+        <span className="inline-flex items-center gap-1.5 border border-foreground/30 bg-foreground/10 px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-wide text-foreground">
+          <Hourglass className="size-3.5" />
+          Under Review
+        </span>
+        <h3 className="mt-3 font-display text-sm font-bold uppercase tracking-wide">
+          Awaiting Leadership Decision
+        </h3>
+        <p className="mx-auto mt-1 max-w-md text-xs text-muted">
+          This initiative has been submitted. Leadership will review and
+          approve to Validation, reject, or put it on hold.
+        </p>
+      </div>
+    );
+  }
+
+  if (!awaitingDecision) return null;
 
   return (
     <div className={`approval-action-frame bg-foreground/5 p-5 text-center ${embedded ? "border-t border-border" : "border border-border"}`}>

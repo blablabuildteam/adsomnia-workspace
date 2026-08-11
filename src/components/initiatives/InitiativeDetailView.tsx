@@ -12,6 +12,7 @@ import {
 } from "./ValidationApprovalPanel";
 import { CommentSection } from "./CommentSection";
 import { ValidationPhaseSection } from "./ValidationPhaseSection";
+import { ScopingPhaseSection } from "./ScopingPhaseSection";
 import { PhaseCard } from "./PhaseCard";
 import { IdeaDetailsSection } from "./IdeaDetailsSection";
 import { DownloadPdfButton } from "./DownloadPdfButton";
@@ -153,12 +154,10 @@ export function InitiativeDetailView({
   const ideaStage = STAGES.find((s) => s.id === "idea")!;
   const validationStage = STAGES.find((s) => s.id === "validation")!;
 
-  const canTakeDecision =
-    canUserApprove &&
-    initiative.currentStage === "idea" &&
-    initiative.status === "submitted";
+  const ideaAwaitingDecision =
+    initiative.currentStage === "idea" && initiative.status === "submitted";
 
-  const showApprovalPanel = canTakeDecision || !!latestDecision;
+  const showApprovalPanel = ideaAwaitingDecision || !!latestDecision;
 
   const showValidation = currentNum >= 2;
   const validationIsCurrent = initiative.currentStage === "validation";
@@ -198,6 +197,26 @@ export function InitiativeDetailView({
     currentNum > 2
       ? "complete"
       : validationAwaitingDecision
+        ? "review"
+        : "current";
+
+  // ── Phase 3: Scoping
+  const scopingStage = STAGES.find((s) => s.id === "scoping")!;
+  const showScoping = currentNum >= 3;
+  const scopingIsCurrent = initiative.currentStage === "scoping";
+  const scopingAwaitingDecision =
+    scopingIsCurrent && initiative.status === "submitted";
+
+  const scopingIsEditable =
+    scopingIsCurrent &&
+    (initiative.status === "approved" ||
+      initiative.status === "draft" ||
+      (scopingAwaitingDecision && isCreator));
+
+  const scopingStatus: "complete" | "current" | "review" =
+    currentNum > 3
+      ? "complete"
+      : scopingAwaitingDecision
         ? "review"
         : "current";
 
@@ -283,7 +302,13 @@ export function InitiativeDetailView({
               stageId="idea"
               number={ideaStage.number}
               name={ideaStage.name}
-              status={initiative.currentStage === "idea" ? "current" : "complete"}
+              status={
+                initiative.currentStage !== "idea"
+                  ? "complete"
+                  : ideaAwaitingDecision
+                    ? "review"
+                    : "current"
+              }
             >
               <IdeaDetailsSection
                 initiativeId={initiative.id}
@@ -300,8 +325,12 @@ export function InitiativeDetailView({
               {showApprovalPanel && (
                 <ApprovalPanel
                   initiativeId={initiative.id}
-                  decision={latestDecision}
+                  decision={
+                    ideaAwaitingDecision ? null : latestDecision
+                  }
                   embedded
+                  canDecide={canUserApprove}
+                  awaitingDecision={ideaAwaitingDecision}
                 />
               )}
             </PhaseCard>
@@ -341,6 +370,33 @@ export function InitiativeDetailView({
                     awaitingDecision={validationAwaitingDecision}
                   />
                 )}
+              </PhaseCard>
+            )}
+
+            {showScoping && (
+              <PhaseCard
+                stageId="scoping"
+                number={scopingStage.number}
+                name={scopingStage.name}
+                status={scopingStatus}
+              >
+                <div className="bg-surface">
+                  {scopingIsEditable ? (
+                    <form>
+                      <ScopingPhaseSection
+                        initiativeId={initiative.id}
+                        data={initiative.scopingData}
+                        resubmitting={scopingAwaitingDecision}
+                      />
+                    </form>
+                  ) : (
+                    <ScopingPhaseSection
+                      initiativeId={initiative.id}
+                      data={initiative.scopingData}
+                      readOnly
+                    />
+                  )}
+                </div>
               </PhaseCard>
             )}
         </div>

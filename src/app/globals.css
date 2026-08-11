@@ -315,29 +315,53 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
   animation: progress-segment-glow 2.6s ease-in-out infinite;
 }
 
-/* Approval panel — subtle pulsing border to signal action required */
-@keyframes approval-border-glow {
-  0%,
-  100% {
-    opacity: 0.25;
-    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.15));
-  }
-  50% {
-    opacity: 0.85;
-    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.35));
+/* Approval panel — rotating light segment to signal action required */
+@property --approval-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes approval-border-spin {
+  to {
+    --approval-angle: 360deg;
   }
 }
 
 .approval-action-frame {
   position: relative;
+  isolation: isolate;
 }
 
 .approval-action-border {
   pointer-events: none;
   position: absolute;
   inset: -1px;
-  border: 1px solid var(--foreground);
-  animation: approval-border-glow 2.2s ease-in-out infinite;
+  z-index: 1;
+  padding: 1.5px;
+  /* Dim base ring so the edge stays visible, bright head travels around */
+  background:
+    conic-gradient(
+      from var(--approval-angle),
+      transparent 0deg,
+      transparent 250deg,
+      rgba(255, 255, 255, 0.12) 290deg,
+      rgba(255, 255, 255, 0.55) 320deg,
+      #ffffff 345deg,
+      rgba(255, 255, 255, 0.55) 355deg,
+      transparent 360deg
+    ),
+    linear-gradient(
+      rgba(255, 255, 255, 0.22),
+      rgba(255, 255, 255, 0.22)
+    );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: approval-border-spin 1.6s linear infinite;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.35));
 }
 
 .animate-drawer-in {
@@ -364,6 +388,39 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
 
 .animate-check-pop {
   animation: check-pop 220ms ease-out;
+}
+
+/* Card grid enter — staggered fade + rise when filter results change */
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-card-enter {
+  animation: card-enter 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--enter-delay, 0ms);
+}
+
+/* Skeleton loading shimmer */
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.skeleton {
+  background: var(--surface-elevated);
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
 }
 
 .fast-track-pulse {

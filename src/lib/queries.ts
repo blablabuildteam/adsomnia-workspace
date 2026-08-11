@@ -7,17 +7,22 @@ import {
   comments,
 } from "@/db/schema";
 import { eq, desc, count, inArray } from "drizzle-orm";
-import type { ValidationData } from "@/lib/validation-data";
+import type { ValidationData, ScopingData } from "@/lib/validation-data";
 
 export type {
   BusinessValueType,
   BusinessValueData,
   ValidationData,
+  ScopingData,
+  ScopingMilestone,
+  ScopingTeamMember,
+  ScopingScopeItem,
 } from "@/lib/validation-data";
 export {
   BUSINESS_VALUE_TYPES,
   isBusinessValueData,
   isBusinessValueComplete,
+  isScopingComplete,
   formatBusinessValueSummary,
 } from "@/lib/validation-data";
 
@@ -31,6 +36,7 @@ export type InitiativeWithUsers = {
   expectedImpact: string | null;
   targetAudience: string | null;
   validationData: ValidationData | null;
+  scopingData: ScopingData | null;
   currentStage: string;
   status: string;
   createdAt: Date;
@@ -51,6 +57,7 @@ export async function getAllInitiatives(): Promise<InitiativeWithUsers[]> {
       expectedImpact: initiatives.expectedImpact,
       targetAudience: initiatives.targetAudience,
       validationData: initiatives.validationData,
+      scopingData: initiatives.scopingData,
       currentStage: initiatives.currentStage,
       status: initiatives.status,
       createdAt: initiatives.createdAt,
@@ -83,6 +90,7 @@ export async function getAllInitiatives(): Promise<InitiativeWithUsers[]> {
     expectedImpact: r.expectedImpact,
     targetAudience: r.targetAudience,
     validationData: (r.validationData as ValidationData) ?? null,
+    scopingData: (r.scopingData as ScopingData) ?? null,
     currentStage: r.currentStage,
     status: r.status,
     createdAt: r.createdAt,
@@ -106,6 +114,7 @@ export async function getInitiativeById(
       expectedImpact: initiatives.expectedImpact,
       targetAudience: initiatives.targetAudience,
       validationData: initiatives.validationData,
+      scopingData: initiatives.scopingData,
       currentStage: initiatives.currentStage,
       status: initiatives.status,
       createdAt: initiatives.createdAt,
@@ -130,6 +139,7 @@ export async function getInitiativeById(
   return {
     ...row,
     validationData: (row.validationData as ValidationData) ?? null,
+    scopingData: (row.scopingData as ScopingData) ?? null,
     submitter: userMap.get(row.submitterId) ?? {
       id: row.submitterId,
       name: "Unknown",

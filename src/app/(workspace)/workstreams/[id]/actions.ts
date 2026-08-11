@@ -7,9 +7,14 @@ import { eq } from "drizzle-orm";
 import { getCurrentUser, canApprove } from "@/lib/session";
 import {
   isBusinessValueComplete,
+  isScopingComplete,
   type BusinessValueData,
   type BusinessValueType,
   type ValidationData,
+  type ScopingData,
+  type ScopingMilestone,
+  type ScopingTeamMember,
+  type ScopingScopeItem,
 } from "@/lib/queries";
 
 const BUSINESS_VALUE_TYPE_IDS: BusinessValueType[] = [
@@ -526,6 +531,98 @@ export async function submitValidationForApproval(
       submittedBy: user.name,
       fromStage: "Validation",
     },
+  });
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+/* ─── Scoping (Phase 3) ────────────────────────────────── */
+
+export type ScopingResult = {
+  error?: string;
+  success?: boolean;
+};
+
+function parseScopingFormData(formData: FormData): ScopingData {
+  const milestonesRaw = formData.get("milestones") as string | null;
+  const teamRaw = formData.get("team") as string | null;
+  const scopeRaw = formData.get("scopeItems") as string | null;
+  const dependencies = (formData.get("scopeDependencies") as string)?.trim() || undefined;
+
+  let milestones: ScopingMilestone[] | undefined;
+  let team: ScopingTeamMember[] | undefined;
+  let scopeItems: ScopingScopeItem[] | undefined;
+
+  try { milestones = milestonesRaw ? JSON.parse(milestonesRaw) : undefined; } catch { /* skip */ }
+  try { team = teamRaw ? JSON.parse(teamRaw) : undefined; } catch { /* skip */ }
+  try { scopeItems = scopeRaw ? JSON.parse(scopeRaw) : undefined; } catch { /* skip */ }
+
+  return { milestones, team, scopeItems, dependencies };
+}
+
+export async function saveScopingData(
+  initiativeId: number,
+  _prev: ScopingResult,
+  formData: FormData,
+): Promise<ScopingResult> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "You must be logged in." };
+
+  const data = parseScopingFormData(formData);
+
+  await db
+    .update(initiatives)
+    .set({
+      scopingData: data,
+      status: "draft",
+      updatedAt: new Date(),
+    })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: "scoping_saved",
+    details: { updatedBy: user.name },
+  });
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/validation");
+  return { success: true };
+}
+
+export async function submitScopingForApproval(
+  initiativeId: number,
+  _prev: ScopingResult,
+  formData: FormData,
+): Promise<ScopingResult> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "You must be logged in." };
+
+  const data = parseScopingFormData(formData);
+
+  if (!isScopingComplete(data)) {
+    return {
+      error: "All scoping fields must be completed before submitting. Ensure milestones, team, scope items, and dependencies are all provided.",
+    };
+  }
+
+  await db
+    .update(initiatives)
+    .set({
+      scopingData: data,
+      status: "submitted",
+      updatedAt: new Date(),
+    })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: "scoping_submitted",
+    details: { submittedBy: user.name, fromStage: "Scoping" },
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);

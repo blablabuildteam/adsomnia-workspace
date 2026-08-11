@@ -157,15 +157,19 @@ export function ValidationApprovalPanel({
 
   if (awaitingDecision && !canDecide) {
     return (
-      <div className="flex flex-wrap items-center gap-3 border-t border-border bg-foreground/5 px-4 py-3 sm:px-5">
+      <div className="approval-action-frame border-t border-border bg-foreground/5 p-5 text-center">
+        <span aria-hidden className="approval-action-border" />
         <span className="inline-flex items-center gap-1.5 border border-foreground/30 bg-foreground/10 px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-wide text-foreground">
           <Hourglass className="size-3.5" />
-          Awaiting Approval
+          Under Review
         </span>
-        <span className="text-xs text-muted">
+        <h3 className="mt-3 font-display text-sm font-bold uppercase tracking-wide">
+          Awaiting Leadership Decision
+        </h3>
+        <p className="mx-auto mt-1 max-w-md text-xs text-muted">
           The business case has been submitted. Leadership will review and
           approve, reject, or send feedback.
-        </span>
+        </p>
       </div>
     );
   }

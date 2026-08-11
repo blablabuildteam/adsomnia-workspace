@@ -256,9 +256,17 @@ export function InitiativesStageView({ initiatives }: Props) {
             </p>
           </div>
         )}
-        <div className="grid items-stretch gap-4 sm:grid-cols-2">
-          {filtered.map((item) => (
-            <InitiativeCard key={item.id} item={item} />
+        <div key={activeFilter} className="grid items-stretch gap-4 sm:grid-cols-2">
+          {filtered.map((item, index) => (
+            <div
+              key={item.id}
+              className="animate-card-enter h-full"
+              style={
+                { "--enter-delay": `${Math.min(index, 8) * 45}ms` } as React.CSSProperties
+              }
+            >
+              <InitiativeCard item={item} />
+            </div>
           ))}
         </div>
       </section>

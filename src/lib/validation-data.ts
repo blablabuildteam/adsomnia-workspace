@@ -77,6 +77,53 @@ export function isBusinessValueComplete(
   return value.types.every((type) => parseImpactScore(value.expectations[type]) !== null);
 }
 
+/* ─── Scoping Data ──────────────────────────────────────── */
+
+export type ScopingMilestone = {
+  id: string;
+  epic: string;
+  milestone: string;
+  startDate?: string;
+  endDate?: string;
+};
+
+export type ScopingTeamMember = {
+  id: string;
+  role: string;
+  name: string;
+  totalHours: number;
+  hoursPerDay: number;
+  startDate?: string;
+  endDate?: string;
+  party?: string;
+};
+
+export type ScopingScopeItem = {
+  id: string;
+  label: string;
+  inScope: boolean;
+};
+
+export type ScopingData = {
+  milestones?: ScopingMilestone[];
+  team?: ScopingTeamMember[];
+  scopeItems?: ScopingScopeItem[];
+  dependencies?: string;
+};
+
+export function isScopingComplete(data: ScopingData | null | undefined): boolean {
+  if (!data) return false;
+  const hasMilestones = (data.milestones?.length ?? 0) > 0 &&
+    data.milestones!.every((m) => m.epic.trim() && m.milestone.trim());
+  const hasTeam = (data.team?.length ?? 0) > 0 &&
+    data.team!.every((t) => t.role.trim() && t.name.trim() && t.totalHours > 0);
+  const hasScope = (data.scopeItems?.length ?? 0) > 0;
+  const hasDeps = (data.dependencies ?? "").trim().length > 0;
+  return hasMilestones && hasTeam && hasScope && hasDeps;
+}
+
+/* ─── Business Value helpers ────────────────────────────── */
+
 export function formatBusinessValueSummary(
   value: ValidationData["businessValue"],
 ): string | null {
