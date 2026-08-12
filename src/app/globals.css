@@ -414,6 +414,61 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
   filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.35));
 }
 
+/* Login form: full revolution synced to sequential corner ticks (2s each) */
+.approval-action-border--slow {
+  animation-duration: 8s;
+}
+
+/*
+ * Each tick appears for ~2s when the border light reaches it, then fully
+ * disappears until the next pass. 8s cycle = 2s × 4 corners.
+ */
+@keyframes corner-tick-appear {
+  0%,
+  100% {
+    opacity: 0;
+    border-color: transparent;
+    filter: none;
+  }
+  2% {
+    opacity: 1;
+    border-color: #ffffff;
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.85));
+  }
+  20% {
+    opacity: 1;
+    border-color: #ffffff;
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.4));
+  }
+  25%,
+  99% {
+    opacity: 0;
+    border-color: transparent;
+    filter: none;
+  }
+}
+
+.corner-tick-glow {
+  z-index: 2;
+  opacity: 0;
+  border-color: transparent;
+  animation: corner-tick-appear 8s linear infinite;
+}
+
+/* Clockwise: TR → BR → BL → TL, 2s apart */
+.corner-tick-glow--tr {
+  animation-delay: 0s;
+}
+.corner-tick-glow--br {
+  animation-delay: 2s;
+}
+.corner-tick-glow--bl {
+  animation-delay: 4s;
+}
+.corner-tick-glow--tl {
+  animation-delay: 6s;
+}
+
 .animate-drawer-in {
   animation: drawer-in 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }

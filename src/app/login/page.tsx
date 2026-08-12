@@ -32,16 +32,14 @@ export default function LoginPage() {
           <h1 className="font-display mt-1 text-3xl font-extrabold uppercase tracking-tight">
             Workspace
           </h1>
-          <p className="mt-3 text-sm text-muted">
-            Sign in to access the Production Framework
-          </p>
         </div>
 
         <form
           action={formAction}
-          className="relative border border-border bg-surface/95 p-6 backdrop-blur-sm"
+          className="approval-action-frame relative border border-border bg-surface/95 p-6 backdrop-blur-sm"
         >
-          <CornerTicks />
+          <span aria-hidden className="approval-action-border approval-action-border--slow" />
+          <CornerTicks pulse />
           {state.error && (
             <div className="mb-4 flex items-center gap-2 border border-btr/40 bg-btr/10 px-3 py-2.5 text-sm text-btr">
               <AlertCircle className="size-4 shrink-0" />
@@ -80,10 +78,13 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={pending}
-            className="mt-6 inline-flex w-full items-center justify-center gap-2 border border-foreground bg-foreground px-4 py-3 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="group relative mt-6 inline-flex w-full items-center justify-center gap-2 overflow-hidden border border-foreground bg-foreground px-4 py-3 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors disabled:opacity-50"
           >
-            {pending ? "Signing in…" : "Sign In"}
-            <ArrowRight className="size-3.5" />
+            <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />
+            <span className="relative">
+              {pending ? "Signing in…" : "Sign In"}
+            </span>
+            <ArrowRight className="relative size-3.5" />
           </button>
         </form>
 
