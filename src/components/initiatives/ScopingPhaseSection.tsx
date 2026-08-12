@@ -23,6 +23,7 @@ import {
   Milestone as MilestoneIcon,
   UserPlus,
   GripVertical,
+  DollarSign,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -70,10 +71,32 @@ function uid(): string {
   return `s${Date.now()}-${++_id}`;
 }
 
+/* ─── Milestone Colors ─────────────────────────────────── */
+
+const MILESTONE_COLORS = [
+  "#CEFF00",
+  "#38BDF8",
+  "#FF3B1F",
+  "#7E90A3",
+  "#22C55E",
+  "#EAB308",
+  "#A78BFA",
+  "#F472B6",
+  "#FB923C",
+  "#2DD4BF",
+];
+
+function nextMilestoneColor(existing: ScopingMilestone[]): string {
+  const usedColors = new Set(existing.map((m) => m.color).filter(Boolean));
+  const available = MILESTONE_COLORS.find((c) => !usedColors.has(c));
+  if (available) return available;
+  return MILESTONE_COLORS[existing.length % MILESTONE_COLORS.length];
+}
+
 /* ─── Factories ────────────────────────────────────────── */
 
-function emptyMilestone(): ScopingMilestone {
-  return { id: uid(), epic: "", milestone: "", startDate: "", endDate: "" };
+function emptyMilestone(existing: ScopingMilestone[] = []): ScopingMilestone {
+  return { id: uid(), epic: "", milestone: "", startDate: "", endDate: "", color: nextMilestoneColor(existing) };
 }
 
 function emptyTeamMember(): ScopingTeamMember {
@@ -103,6 +126,7 @@ const DEV_PREFILL: ScopingData = {
       milestone: "User research & wireframes",
       startDate: "2026-09-01",
       endDate: "2026-09-14",
+      color: "#CEFF00",
     },
     {
       id: uid(),
@@ -110,12 +134,14 @@ const DEV_PREFILL: ScopingData = {
       milestone: "Frontend implementation",
       startDate: "2026-09-15",
       endDate: "2026-10-06",
+      color: "#38BDF8",
     },
     {
       id: uid(),
       epic: "Data Pipeline Migration",
       milestone: "Schema migration & testing",
       startDate: "2026-09-08",
+      color: "#FF3B1F",
       endDate: "2026-09-28",
     },
   ],
@@ -199,10 +225,12 @@ function MiniDateInput({
   value,
   onChange,
   label,
+  min,
 }: {
   value: string;
   onChange: (v: string) => void;
   label: string;
+  min?: string;
 }) {
   return (
     <div className="flex-1">
@@ -212,8 +240,9 @@ function MiniDateInput({
       <input
         type="date"
         value={value}
+        min={min}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full border border-border bg-surface-input px-2 py-1.5 text-xs text-foreground transition-colors focus:border-muted focus:outline-none [color-scheme:dark]"
+        className="date-input w-full border border-border bg-surface-input px-2 py-1.5 text-xs text-foreground transition-colors focus:border-muted focus:outline-none [color-scheme:dark]"
         aria-label={label}
       />
     </div>
@@ -231,37 +260,309 @@ function CountBadge({ count, label }: { count: number; label: string }) {
   );
 }
 
+/* ─── Gantt Chart ──────────────────────────────────────── */
+
+function MilestoneGantt({
+  milestones,
+  team = [],
+}: {
+  milestones: ScopingMilestone[];
+  team?: ScopingTeamMember[];
+}) {
+  const withDates = milestones.filter((m) => m.startDate && m.endDate);
+  const teamWithDates = team.filter((t) => t.startDate && t.endDate);
+  if (withDates.length === 0 && teamWithDates.length === 0) return null;
+
+  const allStarts = [
+    ...withDates.map((m) => new Date(m.startDate!).getTime()),
+    ...teamWithDates.map((t) => new Date(t.startDate!).getTime()),
+  ];
+  const allEnds = [
+    ...withDates.map((m) => new Date(m.endDate!).getTime()),
+    ...teamWithDates.map((t) => new Date(t.endDate!).getTime()),
+  ];
+  const minTime = Math.min(...allStarts);
+  const maxTime = Math.max(...allEnds);
+  const range = maxTime - minTime || 1;
+
+  function milestoneColor(m: ScopingMilestone, index: number): string {
+    if (m.color) return m.color;
+    return MILESTONE_COLORS[index % MILESTONE_COLORS.length];
+  }
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  };
+
+  const totalDays = Math.ceil(range / (1000 * 60 * 60 * 24));
+  const ticks: { label: string; pct: number }[] = [];
+  const tickCount = Math.min(totalDays, 6);
+  for (let i = 0; i <= tickCount; i++) {
+    const t = minTime + (range * i) / tickCount;
+    ticks.push({
+      label: new Date(t).toLocaleDateString(undefined, {
+        day: "numeric",
+        month: "short",
+      }),
+      pct: (i / tickCount) * 100,
+    });
+  }
+
+  return (
+    <div className="mt-4 border border-white/[0.12] bg-white/[0.05]">
+      <div className="border-b border-white/[0.08] bg-white/[0.04] px-3 py-2">
+        <span className="font-display text-[9px] font-bold uppercase tracking-widest text-muted/50">
+          Timeline
+        </span>
+      </div>
+      <div className="relative px-3 py-3">
+        {/* Tick marks */}
+        <div className="relative mb-2 h-4">
+          {ticks.map((tick) => (
+            <span
+              key={tick.pct}
+              className="absolute top-0 -translate-x-1/2 text-[9px] tabular-nums text-muted/50"
+              style={{ left: `${tick.pct}%` }}
+            >
+              {tick.label}
+            </span>
+          ))}
+        </div>
+
+        {/* Milestone bars */}
+        {withDates.length > 0 && (
+          <div className="space-y-1.5">
+            {withDates.map((m, i) => {
+              const start = new Date(m.startDate!).getTime();
+              const end = new Date(m.endDate!).getTime();
+              const left = ((start - minTime) / range) * 100;
+              const width = Math.max(((end - start) / range) * 100, 1);
+              const color = milestoneColor(m, i);
+
+              return (
+                <div key={m.id} className="relative flex h-7 items-center">
+                  <div
+                    className="absolute flex h-full items-center overflow-hidden px-2"
+                    style={{
+                      left: `${left}%`,
+                      width: `${width}%`,
+                      backgroundColor: `${color}20`,
+                      borderLeft: `2px solid ${color}`,
+                    }}
+                    title={`${m.epic}: ${m.milestone} (${formatDate(m.startDate!)} – ${formatDate(m.endDate!)})`}
+                  >
+                    <span
+                      className="truncate text-[10px] font-medium"
+                      style={{ color }}
+                    >
+                      {m.milestone || m.epic || `Milestone ${i + 1}`}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Resource booking bars */}
+        {teamWithDates.length > 0 && (
+          <>
+            <div className="my-2 border-t border-dashed border-border/50" />
+            <div className="mb-1">
+              <span className="font-display text-[9px] font-bold uppercase tracking-widest text-muted/40">
+                Resources
+              </span>
+            </div>
+            <div className="space-y-1">
+              {teamWithDates.map((t) => {
+                const start = new Date(t.startDate!).getTime();
+                const end = new Date(t.endDate!).getTime();
+                const left = ((start - minTime) / range) * 100;
+                const width = Math.max(((end - start) / range) * 100, 1);
+                const partyOpt = PARTY_OPTIONS.find(
+                  (p) => p.value === t.party,
+                );
+                const barColor = partyOpt?.color ?? "#666666";
+
+                const partyLogo = partyOpt?.logo;
+
+                return (
+                  <div key={t.id} className="relative flex h-6 items-center">
+                    <div
+                      className="absolute flex h-full items-center gap-1.5 overflow-hidden px-2"
+                      style={{
+                        left: `${left}%`,
+                        width: `${width}%`,
+                        backgroundColor: "rgba(255,255,255,0.04)",
+                        borderLeft: `2px solid ${barColor}`,
+                      }}
+                      title={`${t.name} — ${t.role} (${t.totalHours}h, ${formatDate(t.startDate!)} – ${formatDate(t.endDate!)})`}
+                    >
+                      {partyLogo && (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={partyLogo}
+                          alt=""
+                          className="h-3.5 w-3.5 shrink-0 object-contain"
+                        />
+                      )}
+                      <span className="truncate text-[10px] font-medium text-foreground/70">
+                        {t.name || t.role}
+                      </span>
+                      <span className="shrink-0 text-[9px] tabular-nums text-muted/50">
+                        {t.totalHours}h
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* Legend */}
+        {withDates.length > 1 && (
+          <div className="mt-3 flex flex-wrap gap-3 border-t border-white/[0.06] pt-2">
+            {withDates.map((m, i) => {
+              const c = milestoneColor(m, i);
+              return (
+                <span
+                  key={m.id}
+                  className="flex items-center gap-1.5 text-[10px] text-muted"
+                >
+                  <span
+                    className="size-2"
+                    style={{ backgroundColor: c }}
+                  />
+                  {m.milestone.trim() || m.epic.trim() || `Milestone ${i + 1}`}
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Milestone Timeline Cards ─────────────────────────── */
+
+function MilestoneColorPicker({
+  color,
+  onChange,
+}: {
+  color: string;
+  onChange: (color: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const count = MILESTONE_COLORS.length;
+  const radius = 24;
+
+  return (
+    <div className="relative z-10">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex size-5 shrink-0 items-center justify-center rounded-full border transition-all hover:scale-110"
+        style={{ borderColor: color, backgroundColor: `${color}30` }}
+        title="Change color"
+        aria-label="Change milestone color"
+      >
+        <MilestoneIcon className="size-2.5" style={{ color }} />
+      </button>
+      {open && (
+        <>
+          {/* Invisible backdrop to close on outside click */}
+          <button
+            type="button"
+            className="fixed inset-0 z-10"
+            onClick={() => setOpen(false)}
+            aria-label="Close color picker"
+          />
+          <div className="absolute left-1/2 top-1/2 z-20">
+            {MILESTONE_COLORS.map((c, i) => {
+              const angle = (i / count) * 2 * Math.PI - Math.PI / 2;
+              const x = Math.cos(angle) * radius;
+              const y = Math.sin(angle) * radius;
+
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => {
+                    onChange(c);
+                    setOpen(false);
+                  }}
+                  className="absolute size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 shadow-sm transition-transform hover:scale-150"
+                  style={{
+                    backgroundColor: c,
+                    borderColor: c === color ? "#FFFFFF" : "transparent",
+                    left: `${x}px`,
+                    top: `${y}px`,
+                    animation: `color-bloom 250ms cubic-bezier(0.34, 1.56, 0.64, 1) both`,
+                    animationDelay: `${i * 25}ms`,
+                  }}
+                  aria-label={`Color ${c}`}
+                />
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 function MilestoneCard({
   milestone,
   index,
   onChange,
   onRemove,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  isDragTarget,
 }: {
   milestone: ScopingMilestone;
   index: number;
   onChange: (updated: ScopingMilestone) => void;
   onRemove: () => void;
+  onDragStart: () => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDrop: () => void;
+  onDragEnd: () => void;
+  isDragTarget: boolean;
 }) {
   const hasContent = milestone.epic.trim() || milestone.milestone.trim();
   const hasDates = milestone.startDate || milestone.endDate;
+  const color = milestone.color || MILESTONE_COLORS[index % MILESTONE_COLORS.length];
 
   return (
     <div
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
       className={[
         "group relative border transition-colors",
         hasContent && hasDates
           ? "border-success/30 bg-success/[0.03]"
           : "border-border bg-surface",
+        isDragTarget ? "ring-1 ring-bbb/50" : "",
       ].join(" ")}
     >
       <div className="flex items-center gap-2 border-b border-border/50 px-3 py-2">
-        <GripVertical className="size-3 shrink-0 text-muted/30" />
+        <GripVertical className="size-3 shrink-0 cursor-grab text-muted/30 active:cursor-grabbing" />
         <span className="font-display text-[9px] font-bold uppercase tracking-widest text-muted/50">
           Milestone {index + 1}
         </span>
-        <MilestoneIcon className="size-3 text-bbb/60" />
+        <MilestoneColorPicker
+          color={color}
+          onChange={(c) => onChange({ ...milestone, color: c })}
+        />
         <button
           type="button"
           onClick={onRemove}
@@ -289,13 +590,34 @@ function MilestoneCard({
         <div className="flex gap-2">
           <MiniDateInput
             value={milestone.startDate ?? ""}
-            onChange={(v) => onChange({ ...milestone, startDate: v })}
+            onChange={(v) => {
+              const prev = milestone.startDate;
+              const end = milestone.endDate;
+              if (prev && end) {
+                const duration =
+                  new Date(end).getTime() - new Date(prev).getTime();
+                const newEnd = new Date(
+                  new Date(v).getTime() + duration,
+                );
+                const yyyy = newEnd.getFullYear();
+                const mm = String(newEnd.getMonth() + 1).padStart(2, "0");
+                const dd = String(newEnd.getDate()).padStart(2, "0");
+                onChange({
+                  ...milestone,
+                  startDate: v,
+                  endDate: `${yyyy}-${mm}-${dd}`,
+                });
+              } else {
+                onChange({ ...milestone, startDate: v });
+              }
+            }}
             label="Start"
           />
           <MiniDateInput
             value={milestone.endDate ?? ""}
             onChange={(v) => onChange({ ...milestone, endDate: v })}
             label="End"
+            min={milestone.startDate || undefined}
           />
         </div>
       </div>
@@ -303,12 +625,81 @@ function MilestoneCard({
   );
 }
 
+/* ─── Milestone Drag Grid ──────────────────────────────── */
+
+function MilestoneDragGrid({
+  milestones,
+  onReorder,
+  onUpdate,
+  onRemove,
+}: {
+  milestones: ScopingMilestone[];
+  onReorder: (milestones: ScopingMilestone[]) => void;
+  onUpdate: (index: number, updated: ScopingMilestone) => void;
+  onRemove: (index: number) => void;
+}) {
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+
+  function handleDragStart(index: number) {
+    setDragIndex(index);
+  }
+
+  function handleDragOver(e: React.DragEvent, index: number) {
+    e.preventDefault();
+    if (dragIndex === null || dragIndex === index) return;
+    setOverIndex(index);
+  }
+
+  function handleDrop(index: number) {
+    if (dragIndex === null || dragIndex === index) return;
+    const reordered = [...milestones];
+    const [moved] = reordered.splice(dragIndex, 1);
+    reordered.splice(index, 0, moved);
+    onReorder(reordered);
+    setDragIndex(null);
+    setOverIndex(null);
+  }
+
+  function handleDragEnd() {
+    setDragIndex(null);
+    setOverIndex(null);
+  }
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {milestones.map((m, i) => (
+        <MilestoneCard
+          key={m.id}
+          milestone={m}
+          index={i}
+          onChange={(updated) => onUpdate(i, updated)}
+          onRemove={() => onRemove(i)}
+          onDragStart={() => handleDragStart(i)}
+          onDragOver={(e) => handleDragOver(e, i)}
+          onDrop={() => handleDrop(i)}
+          onDragEnd={handleDragEnd}
+          isDragTarget={overIndex === i && dragIndex !== i}
+        />
+      ))}
+    </div>
+  );
+}
+
 /* ─── Team Member Cards ────────────────────────────────── */
+
+const PARTY_LOGOS: Record<string, string> = {
+  adsomnia: "/logos/adsomnia.png",
+  btr: "/logos/bendingtherules.jpeg",
+  hn: "/logos/harlemnext.webp",
+  bbb: "/logos/blablabuild.png",
+};
 
 const PARTY_OPTIONS = PARTIES.filter((p) => p.id !== "as").map((p) => ({
   value: p.id,
-  label: p.short,
+  label: p.label,
   color: p.color,
+  logo: PARTY_LOGOS[p.id],
 }));
 
 function HoursBar({ hours, max }: { hours: number; max: number }) {
@@ -335,7 +726,11 @@ function TeamMemberCard({
   onRemove: () => void;
 }) {
   const filled = member.role.trim() && member.name.trim() && member.totalHours > 0;
-  const partyColor = PARTY_OPTIONS.find((p) => p.value === member.party)?.color;
+  const selectedParty = PARTY_OPTIONS.find((p) => p.value === member.party);
+  const partyColor = selectedParty?.color;
+  const partyLogo = selectedParty?.logo;
+  const partyLabel =
+    PARTIES.find((p) => p.id === member.party)?.label ?? selectedParty?.label;
 
   return (
     <div
@@ -345,15 +740,25 @@ function TeamMemberCard({
       ].join(" ")}
     >
       <div className="flex items-center gap-2 border-b border-border/50 px-3 py-2">
-        <div
-          className="flex size-6 items-center justify-center border text-[10px] font-bold uppercase"
-          style={{
-            borderColor: partyColor ?? "#333",
-            color: partyColor ?? "#666",
-          }}
-        >
-          {member.name ? member.name.charAt(0) : "?"}
-        </div>
+        {partyLogo ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={partyLogo}
+            alt={partyLabel ?? "Party"}
+            title={partyLabel}
+            className="h-6 w-6 shrink-0 object-contain"
+          />
+        ) : (
+          <div
+            className="flex size-6 items-center justify-center border text-[10px] font-bold uppercase"
+            style={{
+              borderColor: partyColor ?? "#333",
+              color: partyColor ?? "#666",
+            }}
+          >
+            {member.name ? member.name.charAt(0) : "?"}
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <input
             type="text"
@@ -453,13 +858,32 @@ function TeamMemberCard({
         <div className="flex gap-2">
           <MiniDateInput
             value={member.startDate ?? ""}
-            onChange={(v) => onChange({ ...member, startDate: v })}
+            onChange={(v) => {
+              const prev = member.startDate;
+              const end = member.endDate;
+              if (prev && end) {
+                const duration =
+                  new Date(end).getTime() - new Date(prev).getTime();
+                const newEnd = new Date(new Date(v).getTime() + duration);
+                const yyyy = newEnd.getFullYear();
+                const mm = String(newEnd.getMonth() + 1).padStart(2, "0");
+                const dd = String(newEnd.getDate()).padStart(2, "0");
+                onChange({
+                  ...member,
+                  startDate: v,
+                  endDate: `${yyyy}-${mm}-${dd}`,
+                });
+              } else {
+                onChange({ ...member, startDate: v });
+              }
+            }}
             label="From"
           />
           <MiniDateInput
             value={member.endDate ?? ""}
             onChange={(v) => onChange({ ...member, endDate: v })}
             label="Until"
+            min={member.startDate || undefined}
           />
         </div>
       </div>
@@ -624,7 +1048,12 @@ export function ScopingPhaseSection({
   const pending = savePending || submitPending;
   const error = saveState.error || submitState.error;
   const saved = saveState.success;
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [submissionUpdated, setSubmissionUpdated] = useState(false);
+
+  useEffect(() => {
+    if (saveState.success) setSavedAt(new Date());
+  }, [saveState]);
 
   useEffect(() => {
     if (submitState.success && resubmitting) setSubmissionUpdated(true);
@@ -635,12 +1064,18 @@ export function ScopingPhaseSection({
   }
 
   // ── Milestones state
-  const [milestones, setMilestones] = useState<ScopingMilestone[]>(
-    data?.milestones?.length ? data.milestones : [emptyMilestone()],
-  );
+  const [milestones, setMilestones] = useState<ScopingMilestone[]>(() => {
+    if (data?.milestones?.length) {
+      return data.milestones.map((m, i) => ({
+        ...m,
+        color: m.color || MILESTONE_COLORS[i % MILESTONE_COLORS.length],
+      }));
+    }
+    return [emptyMilestone()];
+  });
   const addMilestone = () => {
     markDirty();
-    setMilestones((prev) => [...prev, emptyMilestone()]);
+    setMilestones((prev) => [...prev, emptyMilestone(prev)]);
   };
   const updateMilestone = useCallback(
     (i: number, updated: ScopingMilestone) => {
@@ -758,11 +1193,6 @@ export function ScopingPhaseSection({
             {error}
           </div>
         )}
-        {saved && (
-          <p className="border border-success/30 bg-success/5 px-3 py-2 text-xs text-success">
-            Draft saved successfully.
-          </p>
-        )}
 
         <div className="divide-y divide-border">
           {/* ─── 1. Milestone Timeline ──────────────────────── */}
@@ -771,27 +1201,26 @@ export function ScopingPhaseSection({
               <ScopingFieldLabel field="milestones" required complete={milestonesReady}>
                 Epic & Milestone Timeline
               </ScopingFieldLabel>
-              <CountBadge count={milestones.length} label="milestones" />
+              <div className="flex items-center gap-2">
+                <CountBadge count={milestones.length} label="milestones" />
+                <button
+                  type="button"
+                  onClick={addMilestone}
+                  className="inline-flex items-center gap-1 border border-dashed border-border px-2 py-1 text-[10px] text-muted transition-colors hover:border-bbb/50 hover:text-bbb"
+                >
+                  <Plus className="size-3" />
+                  Add
+                </button>
+              </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {milestones.map((m, i) => (
-                <MilestoneCard
-                  key={m.id}
-                  milestone={m}
-                  index={i}
-                  onChange={(updated) => updateMilestone(i, updated)}
-                  onRemove={() => removeMilestone(i)}
-                />
-              ))}
-              <button
-                type="button"
-                onClick={addMilestone}
-                className="flex min-h-[120px] items-center justify-center gap-2 border border-dashed border-border text-xs text-muted transition-colors hover:border-bbb/50 hover:text-bbb"
-              >
-                <Plus className="size-3.5" />
-                Add Milestone
-              </button>
-            </div>
+            <MilestoneDragGrid
+              milestones={milestones}
+              onReorder={(reordered) => { markDirty(); setMilestones(reordered); }}
+              onUpdate={updateMilestone}
+              onRemove={removeMilestone}
+            />
+            <div className="mt-4 border-t border-border" />
+            <MilestoneGantt milestones={milestones} team={team} />
           </div>
 
           {/* ─── 2. Team & Hour Estimates ───────────────────── */}
@@ -800,11 +1229,19 @@ export function ScopingPhaseSection({
               <ScopingFieldLabel field="team" required complete={teamReady}>
                 Role-Based Team & Hours
               </ScopingFieldLabel>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <span className="font-display text-[10px] font-bold tabular-nums text-muted">
                   {totalHours}h total
                 </span>
                 <CountBadge count={team.length} label="members" />
+                <button
+                  type="button"
+                  onClick={addTeamMember}
+                  className="inline-flex items-center gap-1 border border-dashed border-border px-2 py-1 text-[10px] text-muted transition-colors hover:border-bbb/50 hover:text-bbb"
+                >
+                  <Plus className="size-3" />
+                  Add
+                </button>
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -818,14 +1255,6 @@ export function ScopingPhaseSection({
                 />
               ))}
             </div>
-            <button
-              type="button"
-              onClick={addTeamMember}
-              className="flex w-full items-center justify-center gap-2 border border-dashed border-border px-3 py-3 text-xs text-muted transition-colors hover:border-bbb/50 hover:text-bbb"
-            >
-              <UserPlus className="size-3.5" />
-              Add Team Member
-            </button>
           </div>
 
           {/* ─── 3. Scope Boundaries (toggle chips) ────────── */}
@@ -915,14 +1344,86 @@ export function ScopingPhaseSection({
               placeholder="e.g. Requires partner API v3 access (pending contract). Assumes current infra handles 2× throughput."
             />
           </label>
+
+          {/* ─── 5. Costs (placeholder) ────────────────────── */}
+          <div className="py-5 first:pt-0 last:pb-0">
+            <div className="flex items-center gap-2 font-display text-xs font-bold uppercase tracking-wide text-muted">
+              <DollarSign className="size-3.5" />
+              Costs
+              <span className="ml-2 border border-border px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-muted/60">
+                Coming Soon
+              </span>
+            </div>
+            <div className="mt-3 border border-dashed border-border bg-surface p-4">
+              <div className="flex flex-col items-center gap-3 py-4 text-center">
+                <div className="flex size-10 items-center justify-center border border-border bg-surface-elevated">
+                  <DollarSign className="size-5 text-muted/40" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted">
+                    Cost estimation based on team roles
+                  </p>
+                  <p className="mx-auto mt-1 max-w-sm text-[11px] leading-relaxed text-muted/60">
+                    Internal cost rates will be linked to party roles — costs will auto-calculate from the team hours defined above.
+                  </p>
+                </div>
+                {team.length > 0 && (
+                  <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                    {team
+                      .filter((t) => t.role.trim() && t.totalHours > 0)
+                      .map((t) => (
+                        <span
+                          key={t.id}
+                          className="inline-flex items-center gap-1.5 border border-border px-2 py-1 text-[10px] text-muted"
+                        >
+                          <span className="font-medium text-foreground/80">
+                            {t.role}
+                          </span>
+                          <span className="tabular-nums text-muted/60">
+                            {t.totalHours}h
+                          </span>
+                          <span className="text-muted/30">&times;</span>
+                          <span className="tabular-nums text-muted/50">
+                            &euro;—/h
+                          </span>
+                        </span>
+                      ))}
+                    {team.filter((t) => t.role.trim() && t.totalHours > 0)
+                      .length > 0 && (
+                      <span className="inline-flex items-center gap-1 border border-border bg-foreground/[0.04] px-2 py-1 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+                        Total: &euro;—
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* ─── Actions ─────────────────────────────────────── */}
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
+          {saved && savedAt && (
+            <span className="mr-auto inline-flex items-center gap-1.5 text-xs text-success">
+              <Check className="animate-check-pop size-3.5" />
+              Draft saved on{" "}
+              {savedAt.toLocaleDateString(undefined, {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}{" "}
+              at{" "}
+              {savedAt.toLocaleTimeString(undefined, {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+          )}
           {!resubmitting && (
             <button
               type="submit"
               formAction={saveAction}
+              formNoValidate
               disabled={pending}
               className="group relative inline-flex items-center gap-2 overflow-hidden border border-border px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-muted transition-colors hover:border-foreground hover:text-foreground disabled:opacity-50"
             >
@@ -987,21 +1488,25 @@ function ScopingReadOnly({
           <CountBadge count={milestones.length} label="milestones" />
         </div>
         {milestones.length > 0 ? (
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {milestones.map((m, i) => (
-              <div key={m.id ?? i} className="border border-border bg-surface p-3">
-                <p className="font-display text-xs font-bold uppercase tracking-wide text-foreground">
-                  {m.epic}
-                </p>
-                <p className="mt-0.5 text-xs text-muted">{m.milestone}</p>
-                {(m.startDate || m.endDate) && (
-                  <p className="mt-1.5 text-[10px] tabular-nums text-muted/70">
-                    {m.startDate ?? "—"} → {m.endDate ?? "—"}
+          <>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {milestones.map((m, i) => (
+                <div key={m.id ?? i} className="border border-border bg-surface p-3">
+                  <p className="font-display text-xs font-bold uppercase tracking-wide text-foreground">
+                    {m.epic}
                   </p>
-                )}
-              </div>
-            ))}
-          </div>
+                  <p className="mt-0.5 text-xs text-muted">{m.milestone}</p>
+                  {(m.startDate || m.endDate) && (
+                    <p className="mt-1.5 text-[10px] tabular-nums text-muted/70">
+                      {m.startDate ?? "—"} → {m.endDate ?? "—"}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 border-t border-border" />
+            <MilestoneGantt milestones={milestones} team={team} />
+          </>
         ) : (
           <p className="text-sm text-foreground/90">—</p>
         )}
@@ -1021,22 +1526,37 @@ function ScopingReadOnly({
         {team.length > 0 ? (
           <div className="grid gap-2 sm:grid-cols-2">
             {team.map((t, i) => {
-              const partyColor = PARTY_OPTIONS.find(
+              const selectedParty = PARTY_OPTIONS.find(
                 (p) => p.value === t.party,
-              )?.color;
+              );
+              const partyColor = selectedParty?.color;
+              const partyLogo = selectedParty?.logo;
+              const partyLabel =
+                PARTIES.find((p) => p.id === t.party)?.label ??
+                selectedParty?.label;
               return (
                 <div key={t.id ?? i} className="border border-border bg-surface p-3">
                   <div className="flex items-center gap-2">
-                    <div
-                      className="flex size-5 items-center justify-center border text-[9px] font-bold"
-                      style={{
-                        borderColor: partyColor ?? "#333",
-                        color: partyColor ?? "#666",
-                      }}
-                    >
-                      {t.name.charAt(0) || "?"}
-                    </div>
-                    <span className="font-display text-xs font-bold uppercase tracking-wide text-foreground">
+                    {partyLogo ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={partyLogo}
+                        alt={partyLabel ?? "Party"}
+                        title={partyLabel}
+                        className="h-5 w-5 shrink-0 object-contain"
+                      />
+                    ) : (
+                      <div
+                        className="flex size-5 items-center justify-center border text-[9px] font-bold"
+                        style={{
+                          borderColor: partyColor ?? "#333",
+                          color: partyColor ?? "#666",
+                        }}
+                      >
+                        {t.name.charAt(0) || "?"}
+                      </div>
+                    )}
+                    <span className="min-w-0 flex-1 font-display text-xs font-bold uppercase tracking-wide text-foreground">
                       {t.name}
                     </span>
                   </div>
@@ -1117,6 +1637,47 @@ function ScopingReadOnly({
         <p className="text-sm leading-relaxed text-foreground/90">
           {data?.dependencies || "—"}
         </p>
+      </div>
+
+      {/* Costs (placeholder) */}
+      <div className="p-4">
+        <div className="mb-2 flex items-center gap-2 text-muted">
+          <DollarSign className="size-3.5 shrink-0" />
+          <p className="font-display text-[10px] font-bold uppercase tracking-wide">
+            Costs
+          </p>
+          <span className="ml-1 border border-border px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-muted/60">
+            Coming Soon
+          </span>
+        </div>
+        <div className="border border-dashed border-border bg-surface p-3">
+          <p className="text-xs text-muted/60">
+            Cost estimation will auto-calculate from team roles and internal rates.
+          </p>
+          {team.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {team
+                .filter((t) => t.role.trim() && t.totalHours > 0)
+                .map((t, i) => (
+                  <span
+                    key={t.id ?? i}
+                    className="inline-flex items-center gap-1.5 border border-border px-2 py-0.5 text-[10px] text-muted"
+                  >
+                    <span className="font-medium text-foreground/80">
+                      {t.role}
+                    </span>
+                    <span className="tabular-nums text-muted/60">
+                      {t.totalHours}h
+                    </span>
+                    <span className="text-muted/30">&times;</span>
+                    <span className="tabular-nums text-muted/50">
+                      &euro;—/h
+                    </span>
+                  </span>
+                ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

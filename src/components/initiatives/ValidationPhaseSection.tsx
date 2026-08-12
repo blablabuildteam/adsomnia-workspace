@@ -729,6 +729,7 @@ export function ValidationPhaseSection({
             <button
               type="submit"
               formAction={saveAction}
+              formNoValidate
               disabled={pending}
               className="group relative inline-flex items-center gap-2 overflow-hidden border border-border px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-muted transition-colors hover:border-foreground hover:text-foreground disabled:opacity-50"
             >

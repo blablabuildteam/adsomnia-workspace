@@ -85,6 +85,7 @@ export type ScopingMilestone = {
   milestone: string;
   startDate?: string;
   endDate?: string;
+  color?: string;
 };
 
 export type ScopingTeamMember = {

@@ -247,6 +247,56 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
   cursor: pointer;
 }
 
+/* Scoping date inputs — polished dark calendar trigger */
+.date-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.8) brightness(1.2);
+  opacity: 0.6;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  padding: 2px;
+  border-radius: 2px;
+}
+
+.date-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.date-input:focus::-webkit-calendar-picker-indicator {
+  opacity: 1;
+}
+
+.date-input::-webkit-datetime-edit {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.date-input::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+
+.date-input::-webkit-datetime-edit-day-field,
+.date-input::-webkit-datetime-edit-month-field,
+.date-input::-webkit-datetime-edit-year-field {
+  padding: 1px 2px;
+  border-radius: 2px;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.date-input::-webkit-datetime-edit-day-field:focus,
+.date-input::-webkit-datetime-edit-month-field:focus,
+.date-input::-webkit-datetime-edit-year-field:focus {
+  background-color: rgba(206, 255, 0, 0.15);
+  color: #ffffff;
+  outline: none;
+}
+
+.date-input::-webkit-datetime-edit-text {
+  color: rgba(255, 255, 255, 0.3);
+  padding: 0 1px;
+}
+
 /* Horizontal timeline scrollbar */
 .timeline-scroll {
   scrollbar-width: thin;
@@ -421,6 +471,18 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
 .skeleton {
   background: var(--surface-elevated);
   animation: skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+/* Color picker bloom — dots radiate outward from center */
+@keyframes color-bloom {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 .fast-track-pulse {
