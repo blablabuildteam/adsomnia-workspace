@@ -24,6 +24,7 @@ import {
   UserPlus,
   GripVertical,
   DollarSign,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -37,7 +38,10 @@ import type {
   ScopingMilestone,
   ScopingTeamMember,
   ScopingScopeItem,
+  ScopingValueMetric,
+  BusinessValueType,
 } from "@/lib/validation-data";
+import { BUSINESS_VALUE_TYPES } from "@/lib/validation-data";
 import { PARTIES } from "@/data/workflow";
 
 const initial: ScopingResult = {};
@@ -51,6 +55,8 @@ const FIELD_HELP: Record<string, string> = {
     "Break delivery into Epics and Milestones with target date windows. These feed directly into the Jira structure and capacity booking.",
   team:
     "For each role: who, how many hours total, hours per day, and which period. This drives resource booking and Go/No-Go cost analysis.",
+  valueMetrics:
+    "Quantify the expected value for each selected business impact. These targets will be mirrored against total delivery costs at Go/No-Go.",
   scope:
     "Define what's in scope for the first delivery slice, and what's explicitly out. Flip items between in and out.",
   dependencies:
@@ -173,6 +179,10 @@ const DEV_PREFILL: ScopingData = {
     { id: uid(), label: "Data pipeline v2 migration", inScope: true },
     { id: uid(), label: "Legacy API deprecation", inScope: false },
     { id: uid(), label: "Mobile app support", inScope: false },
+  ],
+  valueMetrics: [
+    { type: "speed", metric: "Reduction in onboarding time", target: 12000, unit: "€/year" },
+    { type: "growth", metric: "New MRR from improved conversion", target: 8500, unit: "€/month" },
   ],
   dependencies:
     "Requires partner API v3 access (pending contract). Calendar dependency: design team on partial leave Sep 20–27. Assumes current infrastructure can handle 2× throughput.",
@@ -1113,6 +1123,25 @@ export function ScopingPhaseSection({
     setTeam((prev) => prev.filter((_, idx) => idx !== i));
   };
 
+  // ── Value metrics state
+  const [valueMetrics, setValueMetrics] = useState<ScopingValueMetric[]>(
+    data?.valueMetrics?.length ? data.valueMetrics : [],
+  );
+  const toggleValueType = (type: BusinessValueType) => {
+    markDirty();
+    setValueMetrics((prev) => {
+      const existing = prev.find((v) => v.type === type);
+      if (existing) return prev.filter((v) => v.type !== type);
+      return [...prev, { type, metric: "", target: null, unit: "€/year" }];
+    });
+  };
+  const updateValueMetric = (type: BusinessValueType, changes: Partial<ScopingValueMetric>) => {
+    markDirty();
+    setValueMetrics((prev) =>
+      prev.map((v) => (v.type === type ? { ...v, ...changes } : v)),
+    );
+  };
+
   // ── Scope items state
   const [scopeItems, setScopeItems] = useState<ScopingScopeItem[]>(
     data?.scopeItems?.length
@@ -1144,6 +1173,9 @@ export function ScopingPhaseSection({
   const teamReady =
     team.length > 0 &&
     team.every((t) => t.role.trim() && t.name.trim() && t.totalHours > 0);
+  const valueReady =
+    valueMetrics.length > 0 &&
+    valueMetrics.every((v) => v.metric.trim() && v.target !== null && v.target > 0);
   const scopeReady =
     scopeItems.length > 0 && scopeItems.every((s) => s.label.trim());
   const depsReady = dependencies.trim().length > 0;
@@ -1151,6 +1183,7 @@ export function ScopingPhaseSection({
   const sections = [
     { done: milestonesReady, label: "Milestones" },
     { done: teamReady, label: "Team" },
+    { done: valueReady, label: "Value" },
     { done: scopeReady, label: "Scope" },
     { done: depsReady, label: "Dependencies" },
   ];
@@ -1159,6 +1192,7 @@ export function ScopingPhaseSection({
     markDirty();
     setMilestones(DEV_PREFILL.milestones!.map((m) => ({ ...m, id: uid() })));
     setTeam(DEV_PREFILL.team!.map((t) => ({ ...t, id: uid() })));
+    setValueMetrics(DEV_PREFILL.valueMetrics!);
     setScopeItems(
       DEV_PREFILL.scopeItems!.map((s) => ({ ...s, id: uid() })),
     );
@@ -1184,6 +1218,7 @@ export function ScopingPhaseSection({
       {/* Hidden JSON fields for server action */}
       <input type="hidden" name="milestones" value={JSON.stringify(milestones)} />
       <input type="hidden" name="team" value={JSON.stringify(team)} />
+      <input type="hidden" name="valueMetrics" value={JSON.stringify(valueMetrics)} />
       <input type="hidden" name="scopeItems" value={JSON.stringify(scopeItems)} />
 
       <div className="space-y-4 p-4">
@@ -1257,7 +1292,129 @@ export function ScopingPhaseSection({
             </div>
           </div>
 
-          {/* ─── 3. Scope Boundaries (toggle chips) ────────── */}
+          {/* ─── 3. Quantifiable Value ─────────────────────── */}
+          <div className="space-y-3 py-5 first:pt-0 last:pb-0">
+            <ScopingFieldLabel field="valueMetrics" required complete={valueReady}>
+              Quantifiable Value
+            </ScopingFieldLabel>
+            <p className="text-[11px] leading-relaxed text-muted">
+              Select where value is created, then define a measurable metric and
+              target. These will be mirrored against total delivery costs at Go/No-Go.
+            </p>
+
+            {/* Type toggle buttons */}
+            <div className="flex flex-wrap gap-2">
+              {BUSINESS_VALUE_TYPES.map((type) => {
+                const selected = valueMetrics.some((v) => v.type === type.id);
+                return (
+                  <button
+                    key={type.id}
+                    type="button"
+                    onClick={() => toggleValueType(type.id)}
+                    aria-pressed={selected}
+                    className={[
+                      "flex items-center gap-1.5 border px-3 py-2 font-display text-[10px] font-bold uppercase tracking-wide transition-colors",
+                      selected
+                        ? "border-foreground bg-foreground/[0.06] text-foreground"
+                        : "border-border text-muted hover:border-foreground hover:text-foreground",
+                    ].join(" ")}
+                  >
+                    {selected && (
+                      <Check className="animate-check-pop size-3.5 shrink-0" />
+                    )}
+                    {type.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Metric inputs for each selected type */}
+            {valueMetrics.length > 0 && (
+              <div className="space-y-3">
+                {valueMetrics.map((vm) => {
+                  const typeLabel =
+                    BUSINESS_VALUE_TYPES.find((t) => t.id === vm.type)?.label ?? vm.type;
+                  const filled = vm.metric.trim() && vm.target !== null && vm.target > 0;
+                  return (
+                    <div
+                      key={vm.type}
+                      className={[
+                        "border p-3 transition-colors",
+                        filled
+                          ? "border-success/30 bg-success/[0.03]"
+                          : "border-border bg-surface",
+                      ].join(" ")}
+                    >
+                      <div className="mb-2 flex items-center gap-2">
+                        <TrendingUp className="size-3.5 text-bbb/60" />
+                        <span className="font-display text-[10px] font-bold uppercase tracking-wide text-foreground">
+                          {typeLabel}
+                        </span>
+                        {filled && (
+                          <Check className="animate-check-pop ml-auto size-3.5 text-success" />
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={vm.metric}
+                          onChange={(e) =>
+                            updateValueMetric(vm.type, { metric: e.target.value })
+                          }
+                          placeholder="What are we measuring? (e.g. Reduction in setup time per client)"
+                          className="w-full border-b border-border bg-transparent px-0 py-1 text-xs text-foreground placeholder:text-muted/40 focus:border-muted focus:outline-none"
+                        />
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1">
+                            <span className="mb-0.5 block text-[9px] uppercase tracking-wider text-muted/60">
+                              Target value
+                            </span>
+                            <div className="flex items-center gap-0">
+                              <input
+                                type="number"
+                                min={0}
+                                value={vm.target ?? ""}
+                                onChange={(e) =>
+                                  updateValueMetric(vm.type, {
+                                    target: e.target.value ? Number(e.target.value) : null,
+                                  })
+                                }
+                                placeholder="0"
+                                className="w-full border border-r-0 border-border bg-surface-input px-2 py-1.5 text-xs tabular-nums text-foreground focus:border-muted focus:outline-none"
+                              />
+                              <select
+                                value={vm.unit}
+                                onChange={(e) =>
+                                  updateValueMetric(vm.type, { unit: e.target.value })
+                                }
+                                className="border border-border bg-surface-input px-2 py-1.5 text-xs text-muted focus:border-muted focus:outline-none"
+                              >
+                                <option value="€/year">€/year</option>
+                                <option value="€/month">€/month</option>
+                                <option value="€/quarter">€/quarter</option>
+                                <option value="hours/week">hours/week</option>
+                                <option value="hours/month">hours/month</option>
+                                <option value="%">%</option>
+                                <option value="units">units</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {valueMetrics.length === 0 && (
+              <p className="text-xs text-muted">
+                Select at least one value type above — Speed, Cost Efficiency, or Growth — then define a quantifiable target for each.
+              </p>
+            )}
+          </div>
+
+          {/* ─── 4. Scope Boundaries (toggle chips) ────────── */}
           <div className="space-y-3 py-5 first:pt-0 last:pb-0">
             <ScopingFieldLabel field="scope" required complete={scopeReady}>
               Scope Boundaries
@@ -1326,7 +1483,7 @@ export function ScopingPhaseSection({
             </div>
           </div>
 
-          {/* ─── 4. Dependencies & Assumptions ─────────────── */}
+          {/* ─── 5. Dependencies & Assumptions ─────────────── */}
           <label className="block py-5 first:pt-0 last:pb-0">
             <ScopingFieldLabel field="dependencies" required complete={depsReady}>
               Dependencies & Assumptions
@@ -1345,7 +1502,7 @@ export function ScopingPhaseSection({
             />
           </label>
 
-          {/* ─── 5. Costs (placeholder) ────────────────────── */}
+          {/* ─── 6. Costs (placeholder) ────────────────────── */}
           <div className="py-5 first:pt-0 last:pb-0">
             <div className="flex items-center gap-2 font-display text-xs font-bold uppercase tracking-wide text-muted">
               <DollarSign className="size-3.5" />
@@ -1570,6 +1727,42 @@ function ScopingReadOnly({
                     </span>
                   </div>
                   <HoursBar hours={t.totalHours} max={maxHours} />
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-foreground/90">—</p>
+        )}
+      </div>
+
+      {/* Quantifiable Value */}
+      <div className="p-4">
+        <div className="mb-2 flex items-center gap-2 text-muted">
+          <TrendingUp className="size-3.5 shrink-0" />
+          <p className="font-display text-[10px] font-bold uppercase tracking-wide">
+            Quantifiable Value
+          </p>
+        </div>
+        {(data?.valueMetrics?.length ?? 0) > 0 ? (
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {data!.valueMetrics!.map((vm, i) => {
+              const typeLabel =
+                BUSINESS_VALUE_TYPES.find((t) => t.id === vm.type)?.label ?? vm.type;
+              return (
+                <div key={vm.type ?? i} className="border border-border bg-surface p-3">
+                  <div className="mb-1.5 flex items-center gap-2">
+                    <span className="border border-border px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-wide text-foreground">
+                      {typeLabel}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted">{vm.metric || "—"}</p>
+                  <div className="mt-1.5 flex items-baseline gap-1.5">
+                    <span className="font-display text-sm font-bold tabular-nums text-foreground">
+                      {vm.target != null ? vm.target.toLocaleString() : "—"}
+                    </span>
+                    <span className="text-[10px] text-muted">{vm.unit}</span>
+                  </div>
                 </div>
               );
             })}

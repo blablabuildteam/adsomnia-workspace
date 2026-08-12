@@ -17,6 +17,7 @@ export type {
   ScopingMilestone,
   ScopingTeamMember,
   ScopingScopeItem,
+  ScopingValueMetric,
 } from "@/lib/validation-data";
 export {
   BUSINESS_VALUE_TYPES,

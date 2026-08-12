@@ -105,9 +105,17 @@ export type ScopingScopeItem = {
   inScope: boolean;
 };
 
+export type ScopingValueMetric = {
+  type: BusinessValueType;
+  metric: string;
+  target: number | null;
+  unit: string;
+};
+
 export type ScopingData = {
   milestones?: ScopingMilestone[];
   team?: ScopingTeamMember[];
+  valueMetrics?: ScopingValueMetric[];
   scopeItems?: ScopingScopeItem[];
   dependencies?: string;
 };
@@ -118,9 +126,11 @@ export function isScopingComplete(data: ScopingData | null | undefined): boolean
     data.milestones!.every((m) => m.epic.trim() && m.milestone.trim());
   const hasTeam = (data.team?.length ?? 0) > 0 &&
     data.team!.every((t) => t.role.trim() && t.name.trim() && t.totalHours > 0);
+  const hasValue = (data.valueMetrics?.length ?? 0) > 0 &&
+    data.valueMetrics!.every((v) => v.metric.trim() && v.target !== null && v.target > 0);
   const hasScope = (data.scopeItems?.length ?? 0) > 0;
   const hasDeps = (data.dependencies ?? "").trim().length > 0;
-  return hasMilestones && hasTeam && hasScope && hasDeps;
+  return hasMilestones && hasTeam && hasValue && hasScope && hasDeps;
 }
 
 /* ─── Business Value helpers ────────────────────────────── */

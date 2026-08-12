@@ -15,6 +15,7 @@ import {
   type ScopingMilestone,
   type ScopingTeamMember,
   type ScopingScopeItem,
+  type ScopingValueMetric,
 } from "@/lib/queries";
 
 const BUSINESS_VALUE_TYPE_IDS: BusinessValueType[] = [
@@ -549,17 +550,20 @@ function parseScopingFormData(formData: FormData): ScopingData {
   const milestonesRaw = formData.get("milestones") as string | null;
   const teamRaw = formData.get("team") as string | null;
   const scopeRaw = formData.get("scopeItems") as string | null;
+  const valueMetricsRaw = formData.get("valueMetrics") as string | null;
   const dependencies = (formData.get("scopeDependencies") as string)?.trim() || undefined;
 
   let milestones: ScopingMilestone[] | undefined;
   let team: ScopingTeamMember[] | undefined;
   let scopeItems: ScopingScopeItem[] | undefined;
+  let valueMetrics: ScopingValueMetric[] | undefined;
 
   try { milestones = milestonesRaw ? JSON.parse(milestonesRaw) : undefined; } catch { /* skip */ }
   try { team = teamRaw ? JSON.parse(teamRaw) : undefined; } catch { /* skip */ }
   try { scopeItems = scopeRaw ? JSON.parse(scopeRaw) : undefined; } catch { /* skip */ }
+  try { valueMetrics = valueMetricsRaw ? JSON.parse(valueMetricsRaw) : undefined; } catch { /* skip */ }
 
-  return { milestones, team, scopeItems, dependencies };
+  return { milestones, team, valueMetrics, scopeItems, dependencies };
 }
 
 export async function saveScopingData(
