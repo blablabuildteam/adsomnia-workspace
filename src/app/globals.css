@@ -495,6 +495,22 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
   }
 }
 
+/* Live ticker for overflowing labels (e.g. scoping card mini-Gantt) */
+@keyframes label-ticker {
+  0%,
+  12% {
+    transform: translateX(0);
+  }
+  88%,
+  100% {
+    transform: translateX(calc(-1 * var(--ticker-distance, 0px)));
+  }
+}
+
+.label-ticker-track {
+  animation: label-ticker var(--ticker-duration, 6s) ease-in-out infinite alternate;
+}
+
 .flow-arrow-animated {
   stroke-dasharray: 6 6;
   animation: flow-dash 0.8s linear infinite;

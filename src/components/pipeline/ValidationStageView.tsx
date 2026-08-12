@@ -19,7 +19,7 @@ import {
   User,
   XCircle,
 } from "lucide-react";
-import { STAGES, getParty, PARTIES } from "@/data/workflow";
+import { STAGES, getStageColor, PARTIES } from "@/data/workflow";
 import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStrip } from "@/components/pipeline/PipelineStrip";
@@ -38,7 +38,7 @@ const hoverTicks =
   "opacity-0 transition-opacity duration-300 group-hover:opacity-100";
 
 const stage = STAGES.find((s) => s.id === "validation")!;
-const party = getParty(stage.parties[0]);
+const stageColor = getStageColor(stage.id);
 
 type FilterKey = "all" | "in-progress" | "in-review" | "rejected";
 
@@ -397,7 +397,7 @@ export function ValidationStageView({ initiatives }: Props) {
           <div className="flex items-center gap-4">
             <span
               className="flex size-9 shrink-0 items-center justify-center border text-sm font-bold"
-              style={{ borderColor: party.color, color: party.color }}
+              style={{ borderColor: stageColor, color: stageColor }}
             >
               02
             </span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -16,7 +16,7 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
-import { STAGES, getParty, PARTIES } from "@/data/workflow";
+import { STAGES, getStageColor, PARTIES } from "@/data/workflow";
 import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStrip } from "@/components/pipeline/PipelineStrip";
@@ -27,7 +27,7 @@ const hoverTicks =
   "opacity-0 transition-opacity duration-300 group-hover:opacity-100";
 
 const stage = STAGES.find((s) => s.id === "scoping")!;
-const party = getParty(stage.parties[0]);
+const stageColor = getStageColor(stage.id);
 
 type FilterKey = "all" | "in-progress" | "in-review" | "rejected";
 
@@ -122,6 +122,63 @@ function getDateRange(data: ScopingData | null): string | null {
   return `${fmt(sorted[0])} – ${fmt(sorted[sorted.length - 1])}`;
 }
 
+/* Ticker label — scrolls only when text overflows the fixed width */
+function TickerLabel({
+  text,
+  title,
+  className,
+}: {
+  text: string;
+  title?: string;
+  className?: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [overflow, setOverflow] = useState(0);
+
+  useEffect(() => {
+    const measure = () => {
+      const container = containerRef.current;
+      const el = textRef.current;
+      if (!container || !el) return;
+      const distance = Math.max(0, el.scrollWidth - container.clientWidth);
+      setOverflow(distance);
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (containerRef.current) ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, [text]);
+
+  const duration = Math.max(4, overflow / 12);
+
+  return (
+    <div
+      ref={containerRef}
+      className={["overflow-hidden whitespace-nowrap", className]
+        .filter(Boolean)
+        .join(" ")}
+      title={title ?? text}
+    >
+      <span
+        ref={textRef}
+        className={overflow > 0 ? "label-ticker-track inline-block" : "inline-block"}
+        style={
+          overflow > 0
+            ? ({
+                "--ticker-distance": `${overflow}px`,
+                "--ticker-duration": `${duration}s`,
+              } as React.CSSProperties)
+            : undefined
+        }
+      >
+        {text}
+      </span>
+    </div>
+  );
+}
+
 /* Stacked mini-Gantt — label + muted bar per milestone on a shared time axis */
 function MiniGantt({ data }: { data: ScopingData | null }) {
   const withDates = (data?.milestones ?? []).filter(
@@ -149,15 +206,15 @@ function MiniGantt({ data }: { data: ScopingData | null }) {
         const left = ((start - min) / range) * 100;
         const width = Math.max(((end - start) / range) * 100, 3);
         const color = m.color || "#CEFF00";
-        const label = m.milestone || m.epic || `Milestone ${i + 1}`;
+        const label = m.epic?.trim() || `Milestone ${i + 1}`;
+        const detail = m.milestone?.trim();
         return (
           <div key={m.id} className="flex items-center gap-2">
-            <span
-              className="w-[72px] shrink-0 truncate text-[9px] text-muted/70"
-              title={label}
-            >
-              {label}
-            </span>
+            <TickerLabel
+              text={label}
+              title={detail ? `${label} — ${detail}` : label}
+              className="w-[88px] shrink-0 text-[9px] text-muted/70"
+            />
             <div className="relative h-1.5 min-w-0 flex-1 bg-white/[0.04]">
               <div
                 className="absolute inset-y-0"
@@ -167,7 +224,7 @@ function MiniGantt({ data }: { data: ScopingData | null }) {
                   backgroundColor: color,
                   opacity: 0.45,
                 }}
-                title={`${label}: ${fmt(m.startDate!)} – ${fmt(m.endDate!)}`}
+                title={`${label}${detail ? ` — ${detail}` : ""}: ${fmt(m.startDate!)} – ${fmt(m.endDate!)}`}
               />
             </div>
           </div>
@@ -436,7 +493,7 @@ export function ScopingStageView({ initiatives }: Props) {
           <div className="flex items-center gap-4">
             <span
               className="flex size-9 shrink-0 items-center justify-center border text-sm font-bold"
-              style={{ borderColor: party.color, color: party.color }}
+              style={{ borderColor: stageColor, color: stageColor }}
             >
               03
             </span>

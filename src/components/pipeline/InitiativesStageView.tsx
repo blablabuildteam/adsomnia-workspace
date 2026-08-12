@@ -16,7 +16,7 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
-import { STAGES, getParty } from "@/data/workflow";
+import { STAGES, getStageColor } from "@/data/workflow";
 import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStrip } from "@/components/pipeline/PipelineStrip";
@@ -25,7 +25,7 @@ import type { InitiativeWithUsers } from "@/lib/queries";
 const hoverTicks = "opacity-0 transition-opacity duration-300 group-hover:opacity-100";
 
 const stage = STAGES.find((s) => s.id === "idea")!;
-const party = getParty(stage.parties[0]);
+const stageColor = getStageColor(stage.id);
 
 type FilterKey = "all" | "submitted" | "on-hold" | "rejected";
 
@@ -191,7 +191,7 @@ export function InitiativesStageView({ initiatives }: Props) {
           <div className="flex items-center gap-4">
             <span
               className="flex size-9 shrink-0 items-center justify-center border text-sm font-bold"
-              style={{ borderColor: party.color, color: party.color }}
+              style={{ borderColor: stageColor, color: stageColor }}
             >
               01
             </span>
