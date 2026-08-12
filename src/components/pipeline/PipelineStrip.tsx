@@ -31,16 +31,17 @@ export function PipelineStrip({ currentStageId, className }: Props) {
   return (
     <nav
       aria-label="Pipeline stages"
-      className={["w-full overflow-visible pb-7", className]
+      className={["w-full overflow-visible pb-6 -mb-6", className]
         .filter(Boolean)
         .join(" ")}
     >
-      <ol className="flex items-start">
+      <ol className="flex items-center">
         {STAGES.map((stage, i) => {
           const active = stage.id === currentStageId;
           const last = i === STAGES.length - 1;
           const href = STAGE_PIPELINE_HREF[stage.id];
           const stageColor = getStageColor(stage.id);
+          const onFill = stageLabelOnFill(stageColor);
 
           return (
             <li
@@ -53,7 +54,7 @@ export function PipelineStrip({ currentStageId, className }: Props) {
               {!last && (
                 <span
                   aria-hidden
-                  className="absolute left-[34px] right-1.5 top-3.5 h-px -translate-y-1/2 bg-border transition-colors duration-150 group-hover/stage:bg-[color-mix(in_srgb,var(--stage-color)_35%,var(--color-border))]"
+                  className="absolute left-[40px] right-1.5 top-1/2 h-px -translate-y-1/2 bg-border transition-colors duration-150 group-hover/stage:bg-[color-mix(in_srgb,var(--stage-color)_35%,var(--color-border))]"
                   style={
                     { "--stage-color": stageColor } as React.CSSProperties
                   }
@@ -61,25 +62,24 @@ export function PipelineStrip({ currentStageId, className }: Props) {
               )}
               <Link
                 href={href}
-                title={stage.name}
+                aria-label={stage.name}
                 aria-current={active ? "step" : undefined}
                 style={
                   { "--stage-color": stageColor } as React.CSSProperties
                 }
-                className="relative flex flex-col items-start outline-none"
+                className="relative inline-flex flex-col items-center outline-none"
               >
                 <span
                   className={[
-                    "font-display relative z-[1] flex size-7 shrink-0 items-center justify-center border text-[10px] font-bold transition-all duration-150",
+                    "font-display relative z-[1] flex size-[34px] shrink-0 items-center justify-center overflow-hidden border text-xs font-bold transition-colors duration-300",
                     active
                       ? ""
                       : [
                           "border-border bg-background text-muted/60",
                           "group-hover/stage:border-[var(--stage-color)]",
-                          "group-hover/stage:bg-[color-mix(in_srgb,var(--stage-color)_14%,transparent)]",
-                          "group-hover/stage:text-[var(--stage-color)]",
+                          "group-hover/stage:text-[var(--on-fill)]",
                           "group-focus-visible/stage:border-[var(--stage-color)]",
-                          "group-focus-visible/stage:text-[var(--stage-color)]",
+                          "group-focus-visible/stage:text-[var(--on-fill)]",
                         ].join(" "),
                   ].join(" ")}
                   style={
@@ -87,21 +87,33 @@ export function PipelineStrip({ currentStageId, className }: Props) {
                       ? {
                           borderColor: stageColor,
                           backgroundColor: stageColor,
-                          color: stageLabelOnFill(stageColor),
+                          color: onFill,
+                          ["--on-fill" as string]: onFill,
                         }
-                      : undefined
+                      : ({
+                          ["--stage-color" as string]: stageColor,
+                          ["--on-fill" as string]: onFill,
+                        } as React.CSSProperties)
                   }
                 >
-                  {String(stage.number).padStart(2, "0")}
+                  <span
+                    aria-hidden
+                    className={[
+                      "absolute inset-0 origin-left scale-x-0 transition-transform duration-300 ease-out",
+                      "group-hover/stage:scale-x-100 group-focus-visible/stage:scale-x-100",
+                      active ? "bg-background/20" : "bg-[var(--stage-color)]",
+                    ].join(" ")}
+                  />
+                  <span className="relative z-[1]">
+                    {String(stage.number).padStart(2, "0")}
+                  </span>
                 </span>
                 <span
                   className={[
-                    "font-display pointer-events-none absolute left-1/2 top-[calc(100%+4px)] z-10 hidden -translate-x-1/2 whitespace-nowrap text-[9px] font-bold uppercase tracking-wide transition-colors duration-150 md:block",
-                    active
-                      ? ""
-                      : "text-muted/40 group-hover/stage:text-[var(--stage-color)] group-focus-visible/stage:text-[var(--stage-color)]",
+                    "font-display pointer-events-none absolute left-1/2 top-[calc(100%+5px)] z-10 -translate-x-1/2 whitespace-nowrap text-[11px] font-bold uppercase tracking-wide opacity-0 transition-all duration-200 ease-out",
+                    "group-hover/stage:opacity-100 group-focus-visible/stage:opacity-100",
                   ].join(" ")}
-                  style={active ? { color: stageColor } : undefined}
+                  style={{ color: stageColor }}
                 >
                   {stage.name}
                 </span>

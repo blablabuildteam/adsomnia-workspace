@@ -150,7 +150,7 @@ export function OverviewView({ initiatives }: OverviewProps) {
           </p>
         </div>
         <div className="flex shrink-0 flex-col gap-5 sm:items-end">
-          <PipelineStrip className="sm:w-[440px] lg:w-[560px]" />
+          <PipelineStrip className="sm:mr-8 sm:w-[528px] lg:mr-12 lg:w-[672px]" />
           <div className="relative border border-border bg-surface px-4 py-2">
             <CornerTicks />
             <p className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">

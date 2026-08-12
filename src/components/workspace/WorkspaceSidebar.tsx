@@ -72,9 +72,9 @@ function NavLink({
             : "border-transparent text-muted hover:border-border hover:bg-surface-elevated hover:text-foreground",
       ].join(" ")}
     >
-      <Icon className="size-4 shrink-0" />
+      <Icon className="size-[18px] shrink-0" />
       {!collapsed && (
-        <span className="truncate text-xs font-medium uppercase tracking-wide">
+        <span className="truncate text-sm font-medium uppercase tracking-wide">
           {label}
         </span>
       )}
@@ -105,7 +105,7 @@ function PipelineNav({
             : "border-transparent text-muted hover:border-border hover:bg-surface-elevated hover:text-foreground",
         ].join(" ")}
       >
-        <Columns3 className="size-4 shrink-0" />
+        <Columns3 className="size-[18px] shrink-0" />
       </Link>
     );
   }
@@ -122,19 +122,19 @@ function PipelineNav({
             : "border-transparent text-muted hover:border-border hover:bg-surface-elevated hover:text-foreground",
         ].join(" ")}
       >
-        <Columns3 className="size-4 shrink-0" />
-        <span className="flex-1 truncate text-left text-xs font-medium uppercase tracking-wide">
+        <Columns3 className="size-[18px] shrink-0" />
+        <span className="flex-1 truncate text-left text-sm font-medium uppercase tracking-wide">
           Pipeline
         </span>
         <ChevronDown
           className={[
-            "size-3.5 shrink-0 transition-transform",
+            "size-4 shrink-0 transition-transform",
             open ? "rotate-0" : "-rotate-90",
           ].join(" ")}
         />
       </button>
       {open && (
-        <ul className="mt-0.5 space-y-0.5 pl-5">
+        <ul className="mt-1 space-y-0.5 pl-5">
           {PIPELINE_SUB_ITEMS.map((item) => {
             const active = pathname === item.href;
             const phaseColor = item.stageId
@@ -146,7 +146,7 @@ function PipelineNav({
                 <Link
                   href={item.href}
                   className={[
-                    "group relative flex items-center border-l-2 px-3 py-1.5 text-[11px] font-medium tracking-wide transition-colors",
+                    "group relative flex items-center border-l-2 px-3 py-2 text-sm font-medium tracking-wide transition-colors",
                     active
                       ? "text-foreground"
                       : "text-muted hover:text-foreground",

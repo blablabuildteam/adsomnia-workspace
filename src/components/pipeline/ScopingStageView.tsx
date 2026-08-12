@@ -6,7 +6,6 @@ import {
   ArrowRight,
   Building2,
   Calendar,
-  CheckSquare,
   Clock,
   Eye,
   Filter,
@@ -55,6 +54,13 @@ function matchesScopingFilter(
 const LEAD_PARTY_FILTERS = ["btr", "hn", "bbb", "as"] as const;
 type LeadPartyFilter = (typeof LEAD_PARTY_FILTERS)[number];
 
+const PARTY_LOGOS: Record<string, string> = {
+  adsomnia: "/logos/adsomnia.png",
+  btr: "/logos/bendingtherules.jpeg",
+  hn: "/logos/harlemnext.webp",
+  bbb: "/logos/blablabuild.png",
+};
+
 const SCOPING_SECTION_TOTAL = 4;
 
 const STATUS_META: Record<
@@ -86,18 +92,6 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function resolvePartyLabel(stored: string | undefined): string | undefined {
-  if (!stored) return undefined;
-  if (stored === "as") return "Adsomnia Internal";
-  return PARTIES.find((p) => p.id === stored)?.label ?? stored;
-}
-
-function resolvePartyColor(stored: string | undefined): string {
-  if (!stored) return "#666666";
-  const p = PARTIES.find((party) => party.id === stored);
-  return p?.color ?? "#FFFFFF";
-}
-
 function getScopingSectionCount(data: ScopingData | null): number {
   if (!data) return 0;
   let count = 0;
@@ -112,6 +106,77 @@ function getTotalHours(data: ScopingData | null): number {
   if (!data?.team) return 0;
   return data.team.reduce((sum, t) => sum + (t.totalHours || 0), 0);
 }
+
+function getDateRange(data: ScopingData | null): string | null {
+  if (!data?.milestones?.length) return null;
+  const dates = data.milestones
+    .flatMap((m) => [m.startDate, m.endDate])
+    .filter(Boolean) as string[];
+  if (dates.length === 0) return null;
+  const sorted = dates.sort();
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleDateString(undefined, {
+      day: "numeric",
+      month: "short",
+    });
+  return `${fmt(sorted[0])} – ${fmt(sorted[sorted.length - 1])}`;
+}
+
+/* Stacked mini-Gantt — label + muted bar per milestone on a shared time axis */
+function MiniGantt({ data }: { data: ScopingData | null }) {
+  const withDates = (data?.milestones ?? []).filter(
+    (m) => m.startDate && m.endDate,
+  );
+  if (withDates.length === 0) return null;
+
+  const starts = withDates.map((m) => new Date(m.startDate!).getTime());
+  const ends = withDates.map((m) => new Date(m.endDate!).getTime());
+  const min = Math.min(...starts);
+  const max = Math.max(...ends);
+  const range = max - min || 1;
+
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleDateString(undefined, {
+      day: "numeric",
+      month: "short",
+    });
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {withDates.map((m, i) => {
+        const start = new Date(m.startDate!).getTime();
+        const end = new Date(m.endDate!).getTime();
+        const left = ((start - min) / range) * 100;
+        const width = Math.max(((end - start) / range) * 100, 3);
+        const color = m.color || "#CEFF00";
+        const label = m.milestone || m.epic || `Milestone ${i + 1}`;
+        return (
+          <div key={m.id} className="flex items-center gap-2">
+            <span
+              className="w-[72px] shrink-0 truncate text-[9px] text-muted/70"
+              title={label}
+            >
+              {label}
+            </span>
+            <div className="relative h-1.5 min-w-0 flex-1 bg-white/[0.04]">
+              <div
+                className="absolute inset-y-0"
+                style={{
+                  left: `${left}%`,
+                  width: `${width}%`,
+                  backgroundColor: color,
+                  opacity: 0.45,
+                }}
+                title={`${label}: ${fmt(m.startDate!)} – ${fmt(m.endDate!)}`}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 
 function ScopingCard({ item }: { item: InitiativeWithUsers }) {
   const daysSinceUpdate = Math.floor(
@@ -128,13 +193,15 @@ function ScopingCard({ item }: { item: InitiativeWithUsers }) {
     (item.status === "draft" || item.status === "approved");
 
   const leadParty = item.validationData?.leadProductionParty;
+  const leadPartyLogo = leadParty ? PARTY_LOGOS[leadParty] : undefined;
+  const leadPartyLabel = leadParty
+    ? PARTIES.find((p) => p.id === leadParty)?.label ?? leadParty
+    : undefined;
   const milestonesCount = sd?.milestones?.length ?? 0;
   const teamCount = sd?.team?.length ?? 0;
   const totalHours = getTotalHours(sd);
-  const inScopeCount =
-    sd?.scopeItems?.filter((s) => s.inScope).length ?? 0;
-  const outScopeCount =
-    sd?.scopeItems?.filter((s) => !s.inScope).length ?? 0;
+  const dateRange = getDateRange(sd);
+  const complete = isScopingComplete(sd);
 
   return (
     <Link
@@ -142,6 +209,8 @@ function ScopingCard({ item }: { item: InitiativeWithUsers }) {
       className="group relative flex h-full flex-col border border-border bg-surface transition-colors hover:border-border-strong hover:bg-white/[0.02]"
     >
       <CornerTicks className={hoverTicks} />
+
+      {/* Header */}
       <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <span className="font-display shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted">
@@ -161,7 +230,7 @@ function ScopingCard({ item }: { item: InitiativeWithUsers }) {
                 className="h-full transition-[width] duration-300"
                 style={{
                   width: `${progressPct}%`,
-                  backgroundColor: "#CEFF00",
+                  backgroundColor: complete ? "#22C55E" : "#CEFF00",
                 }}
               />
             </div>
@@ -172,14 +241,8 @@ function ScopingCard({ item }: { item: InitiativeWithUsers }) {
         </div>
         <div className="flex shrink-0 items-center gap-2 text-[10px] text-muted/70">
           {hasSavedDraft && (
-            <span
-              className="inline-flex items-center gap-1 text-muted"
-              title="Draft saved"
-            >
+            <span className="inline-flex items-center gap-1 text-muted" title="Draft saved">
               <Save className="size-3" />
-              <span className="font-display text-[10px] font-bold uppercase tracking-wide">
-                Saved
-              </span>
             </span>
           )}
           <Clock className="size-3" />
@@ -187,129 +250,127 @@ function ScopingCard({ item }: { item: InitiativeWithUsers }) {
             ? "Today"
             : daysSinceUpdate === 1
               ? "1 day ago"
-              : `${daysSinceUpdate} days ago`}
+              : `${daysSinceUpdate}d`}
         </div>
       </div>
 
+      {/* Body */}
       <div className="flex flex-1 flex-col px-5 py-4">
         <h3 className="text-sm font-semibold leading-snug group-hover:text-foreground">
           {item.title}
         </h3>
 
-        <div className="mt-3 grid flex-1 grid-cols-2 gap-px bg-border">
-          <div className="flex min-h-[72px] flex-col bg-surface p-2.5">
-            <div className="mb-1.5 flex items-center gap-1.5 text-muted">
-              <Calendar className="size-3" />
-              <p className="font-display text-[9px] font-bold uppercase tracking-wide text-muted/60">
-                Milestones & Timeline
-              </p>
+        {/* Key metrics row */}
+        <div className="mt-3 grid grid-cols-3 gap-px bg-border">
+          {/* Timeline: start – end date */}
+          <div className="flex flex-col bg-surface p-2.5">
+            <div className="mb-1 flex items-center gap-1.5">
+              <Calendar className="size-3 text-muted/50" />
+              <span className="font-display text-[9px] font-bold uppercase tracking-wide text-muted/50">
+                Timeline
+              </span>
             </div>
-            <div className="flex-1">
-              {milestonesCount > 0 ? (
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted">
-                    {milestonesCount} milestone{milestonesCount !== 1 ? "s" : ""}
-                  </p>
-                  {sd!.milestones!.slice(0, 2).map((m) => (
-                    <p
-                      key={m.id}
-                      className="truncate text-[10px] leading-relaxed text-muted/70"
-                    >
-                      {m.epic}: {m.milestone}
-                    </p>
-                  ))}
-                  {milestonesCount > 2 && (
-                    <p className="text-[10px] text-muted/50">
-                      +{milestonesCount - 2} more
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs leading-relaxed text-muted">—</p>
-              )}
-            </div>
-          </div>
-          <div className="flex min-h-[72px] flex-col bg-surface p-2.5">
-            <div className="mb-1.5 flex items-center gap-1.5 text-muted">
-              <Users className="size-3" />
-              <p className="font-display text-[9px] font-bold uppercase tracking-wide text-muted/60">
-                Team & Hours
-              </p>
-            </div>
-            <div className="flex-1">
-              {teamCount > 0 ? (
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted">
-                    {teamCount} member{teamCount !== 1 ? "s" : ""}
-                  </p>
-                  <p className="text-[10px] tabular-nums text-muted/70">
-                    {totalHours}h total
-                  </p>
-                </div>
-              ) : (
-                <p className="text-xs leading-relaxed text-muted">—</p>
-              )}
-            </div>
-          </div>
-          <div className="flex min-h-[72px] flex-col bg-surface p-2.5">
-            <div className="mb-1.5 flex items-center gap-1.5 text-muted">
-              <CheckSquare className="size-3" />
-              <p className="font-display text-[9px] font-bold uppercase tracking-wide text-muted/60">
-                Scope Boundaries
-              </p>
-            </div>
-            <div className="flex-1">
-              {inScopeCount > 0 || outScopeCount > 0 ? (
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-medium text-muted">
-                    <span className="text-foreground/80">{inScopeCount}</span> in
-                  </span>
-                  <span className="text-[10px] font-medium text-muted">
-                    <span className="text-muted/70">{outScopeCount}</span> out
-                  </span>
-                </div>
-              ) : (
-                <p className="text-xs leading-relaxed text-muted">—</p>
-              )}
-            </div>
-          </div>
-          <div className="flex min-h-[72px] flex-col bg-surface p-2.5">
-            <div className="mb-1.5 flex items-center gap-1.5 text-muted">
-              <Building2 className="size-3" />
-              <p className="font-display text-[9px] font-bold uppercase tracking-wide text-muted/60">
-                Lead Party
-              </p>
-            </div>
-            <div className="flex-1">
-              {leadParty ? (
-                <span
-                  className="inline-flex items-center gap-1.5 border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                  style={{
-                    borderColor: resolvePartyColor(leadParty),
-                    color: resolvePartyColor(leadParty),
-                  }}
-                >
-                  {resolvePartyLabel(leadParty)}
+            {dateRange ? (
+              <>
+                <span className="font-display text-sm font-bold tabular-nums text-foreground">
+                  {dateRange}
                 </span>
-              ) : (
-                <p className="text-xs leading-relaxed text-muted">—</p>
-              )}
+                <span className="mt-0.5 text-[9px] text-muted/60">
+                  {milestonesCount} milestone{milestonesCount !== 1 ? "s" : ""}
+                </span>
+              </>
+            ) : (
+              <span className="text-xs text-muted/40">—</span>
+            )}
+          </div>
+
+          {/* Team & Hours */}
+          <div className="flex flex-col bg-surface p-2.5">
+            <div className="mb-1 flex items-center gap-1.5">
+              <Users className="size-3 text-muted/50" />
+              <span className="font-display text-[9px] font-bold uppercase tracking-wide text-muted/50">
+                Team
+              </span>
             </div>
+            {teamCount > 0 ? (
+              <>
+                <span className="font-display text-sm font-bold tabular-nums text-foreground">
+                  {totalHours}h
+                  <span className="ml-1 text-[10px] font-bold text-muted">
+                    / {teamCount}
+                  </span>
+                </span>
+                <span className="mt-0.5 truncate text-[9px] text-muted/60">
+                  {sd!.team!
+                    .slice(0, 2)
+                    .map((t) => t.name || t.role)
+                    .join(", ")}
+                  {teamCount > 2 ? ` +${teamCount - 2}` : ""}
+                </span>
+              </>
+            ) : (
+              <span className="text-xs text-muted/40">—</span>
+            )}
+          </div>
+
+          {/* Costs (placeholder) */}
+          <div className="flex flex-col bg-surface p-2.5">
+            <div className="mb-1 flex items-center gap-1.5">
+              <span className="text-[10px] text-muted/50">€</span>
+              <span className="font-display text-[9px] font-bold uppercase tracking-wide text-muted/50">
+                Costs
+              </span>
+            </div>
+            {totalHours > 0 ? (
+              <>
+                <span className="font-display text-sm font-bold tabular-nums text-muted/40">
+                  €—
+                </span>
+                <span className="mt-0.5 text-[9px] text-muted/40">
+                  Est. pending
+                </span>
+              </>
+            ) : (
+              <span className="text-xs text-muted/40">—</span>
+            )}
           </div>
         </div>
+
+        {/* Mini Gantt */}
+        {milestonesCount > 0 && (
+          <div className="mt-3 border-t border-border/50 pt-3">
+            <MiniGantt data={sd} />
+          </div>
+        )}
       </div>
 
+      {/* Footer */}
       <div className="flex items-center justify-between border-t border-border px-5 py-3">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 text-xs text-muted">
-            <GitBranch className="size-3" />
-            <span>
-              {isScopingComplete(sd) ? "Complete" : "In progress"}
+          {leadPartyLogo ? (
+            <span className="inline-flex items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={leadPartyLogo}
+                alt={leadPartyLabel ?? ""}
+                className="h-4 w-4 shrink-0 object-contain"
+              />
+              <span className="font-display text-[10px] font-bold uppercase tracking-wide text-foreground">
+                {leadPartyLabel}
+              </span>
             </span>
-          </div>
-          <div className="text-[10px] text-muted/50">
-            Sponsor: {item.sponsor.name}
-          </div>
+          ) : leadPartyLabel ? (
+            <span className="inline-flex items-center gap-1 font-display text-[10px] font-bold uppercase tracking-wide text-foreground">
+              <Building2 className="size-3" />
+              {leadPartyLabel}
+            </span>
+          ) : null}
+          {complete && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-success">
+              <GitBranch className="size-3" />
+              Complete
+            </span>
+          )}
         </div>
         <ArrowRight className="size-3.5 text-muted transition-transform group-hover:translate-x-0.5" />
       </div>
@@ -369,7 +430,7 @@ export function ScopingStageView({ initiatives }: Props) {
 
   return (
     <div className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-      <header className="relative mb-8 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+      <header className="relative mb-8 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
         <BrandTexture variant="hero" />
         <div className="min-w-0">
           <div className="flex items-center gap-4">
@@ -386,7 +447,7 @@ export function ScopingStageView({ initiatives }: Props) {
         </div>
         <PipelineStrip
           currentStageId="scoping"
-          className="shrink-0 sm:w-[440px] lg:w-[560px]"
+          className="shrink-0 sm:mr-8 sm:w-[528px] lg:mr-12 lg:w-[672px]"
         />
       </header>
 
@@ -452,7 +513,7 @@ export function ScopingStageView({ initiatives }: Props) {
                       : "border-border text-muted hover:border-foreground hover:text-foreground",
                   ].join(" ")}
                 >
-                  {p.short}
+                  {p.label}
                   <span
                     className={[
                       "ml-1.5 tabular-nums",
