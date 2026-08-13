@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Image from "next/image";
-import { ArrowRight, AlertCircle } from "lucide-react";
+import { ArrowRight, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { login, type LoginResult } from "@/lib/auth";
 import { inputClass } from "@/lib/form-styles";
 import { BrandTexture } from "@/components/ui/BrandTexture";
@@ -12,6 +12,7 @@ const initial: LoginResult = {};
 
 export default function LoginPage() {
   const [state, formAction, pending] = useActionState(login, initial);
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <div className="app-atmosphere relative flex min-h-screen items-center justify-center overflow-hidden px-4">
@@ -65,14 +66,29 @@ export default function LoginPage() {
             <span className="font-display text-sm font-bold uppercase tracking-wide">
               Password
             </span>
-            <input
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              className={`${inputClass} mt-2`}
-              placeholder="••••••••"
-            />
+            <div className="relative mt-2">
+              <input
+                name="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                required
+                className={`${inputClass} pr-11`}
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-muted transition-colors hover:text-foreground"
+              >
+                {showPassword ? (
+                  <EyeOff className="size-4" />
+                ) : (
+                  <Eye className="size-4" />
+                )}
+              </button>
+            </div>
           </label>
 
           <button
