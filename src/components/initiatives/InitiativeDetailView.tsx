@@ -16,6 +16,7 @@ import { ScopingPhaseSection } from "./ScopingPhaseSection";
 import { PhaseCard } from "./PhaseCard";
 import { IdeaDetailsSection } from "./IdeaDetailsSection";
 import { DownloadPdfButton } from "./DownloadPdfButton";
+import { ShareButton } from "./ShareButton";
 import { FloatingDetailBar } from "./FloatingDetailBar";
 
 const STAGE_INDEX: Record<string, number> = {};
@@ -128,6 +129,8 @@ type Props = {
   latestDecision?: ApprovalDecision | null;
   validationDecision?: ValidationDecision | null;
   isCreator?: boolean;
+  /** When set, shows a Share CTA that copies this public path. */
+  sharePath?: string;
 };
 
 export function InitiativeDetailView({
@@ -140,6 +143,7 @@ export function InitiativeDetailView({
   latestDecision = null,
   validationDecision = null,
   isCreator = false,
+  sharePath,
 }: Props) {
   const stage = STAGES.find(
     (s) => s.id === initiative.currentStage,
@@ -226,6 +230,7 @@ export function InitiativeDetailView({
         title={initiative.title}
         stageName={stage?.name ?? initiative.currentStage}
         stageColor={getStageColor(initiative.currentStage)}
+        sharePath={sharePath}
       />
       <div className="mx-auto w-full max-w-[1200px] px-4 pb-40 pt-4 sm:px-6 sm:pt-6 lg:pb-48">
         {/* Header */}
@@ -246,7 +251,10 @@ export function InitiativeDetailView({
                 {initiative.title}
               </h1>
             </div>
-            <DownloadPdfButton />
+            <div className="flex shrink-0 items-center gap-2">
+              {sharePath && <ShareButton path={sharePath} />}
+              <DownloadPdfButton />
+            </div>
           </div>
         </header>
 

@@ -2,14 +2,21 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Download } from "lucide-react";
+import { ShareButton } from "./ShareButton";
 
 type Props = {
   title: string;
   stageName: string;
   stageColor: string;
+  sharePath?: string;
 };
 
-export function FloatingDetailBar({ title, stageName, stageColor }: Props) {
+export function FloatingDetailBar({
+  title,
+  stageName,
+  stageColor,
+  sharePath,
+}: Props) {
   const [visible, setVisible] = useState(false);
   const rafId = useRef(0);
 
@@ -61,17 +68,20 @@ export function FloatingDetailBar({ title, stageName, stageColor }: Props) {
           <h2 className="font-display min-w-0 flex-1 truncate text-base font-extrabold uppercase tracking-tight text-foreground">
             {title}
           </h2>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="ml-auto inline-flex shrink-0 items-center gap-2 border border-border px-3.5 py-2 text-muted transition-colors hover:border-foreground hover:text-foreground"
-            title="Download as PDF"
-          >
-            <Download className="size-4" />
-            <span className="font-display text-xs font-bold uppercase tracking-wide">
-              PDF
-            </span>
-          </button>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {sharePath && <ShareButton path={sharePath} size="md" />}
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex shrink-0 items-center gap-2 border border-border px-3.5 py-2 text-muted transition-colors hover:border-foreground hover:text-foreground"
+              title="Download as PDF"
+            >
+              <Download className="size-4" />
+              <span className="font-display text-xs font-bold uppercase tracking-wide">
+                PDF
+              </span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

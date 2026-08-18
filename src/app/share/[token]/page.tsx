@@ -1,44 +1,49 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { InitiativeDetailView } from "@/components/initiatives/InitiativeDetailView";
+import type { ApprovalDecision } from "@/components/initiatives/ApprovalPanel";
+import type { ValidationDecision } from "@/components/initiatives/ValidationApprovalPanel";
 import {
   getInitiativeById,
   getActivityForInitiative,
   getCommentsForInitiative,
   getApprovalHistory,
 } from "@/lib/queries";
-import { getCurrentUser, canApprove } from "@/lib/session";
-import { createSharePath } from "@/lib/share";
-import type { ApprovalDecision } from "@/components/initiatives/ApprovalPanel";
-import type { ValidationDecision } from "@/components/initiatives/ValidationApprovalPanel";
+import { verifyShareToken } from "@/lib/share";
 
 type Props = {
-  params: Promise<{ id: string }>;
+  params: Promise<{ token: string }>;
 };
 
-export default async function InitiativePage({ params }: Props) {
-  const { id } = await params;
-  const numericId = parseInt(id, 10);
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { token } = await params;
+  const id = verifyShareToken(token);
+  if (id == null) {
+    return { title: "Shared initiative", robots: { index: false, follow: false } };
+  }
 
-  if (isNaN(numericId)) {
+  const initiative = await getInitiativeById(id);
+  if (!initiative) {
+    return { title: "Shared initiative", robots: { index: false, follow: false } };
+  }
+
+  return {
+    title: `${initiative.title} — Shared`,
+    description: `${initiative.ticketId} · Adsomnia Workspace`,
+    robots: { index: false, follow: false },
+  };
+}
+
+export default async function SharedInitiativePage({ params }: Props) {
+  const { token } = await params;
+  const id = verifyShareToken(token);
+  if (id == null) {
     notFound();
   }
 
-  const [initiative, user] = await Promise.all([
-    getInitiativeById(numericId),
-    getCurrentUser(),
-  ]);
-
+  const initiative = await getInitiativeById(id);
   if (!initiative) {
-    return (
-      <div className="mx-auto flex max-w-lg flex-1 flex-col items-center justify-center px-4 py-16 text-center">
-        <p className="font-display text-2xl font-extrabold uppercase">
-          Initiative Not Found
-        </p>
-        <p className="mt-2 text-sm text-muted">
-          No initiative with ID <span className="font-mono">{id}</span>.
-        </p>
-      </div>
-    );
+    notFound();
   }
 
   const [activity, comments, approvals] = await Promise.all([
@@ -46,8 +51,6 @@ export default async function InitiativePage({ params }: Props) {
     getCommentsForInitiative(initiative.id),
     getApprovalHistory(initiative.id),
   ]);
-  const canUserApprove = user ? canApprove(user) : false;
-  const isCreator = user?.id === initiative.submitter.id;
 
   const latestIdea = approvals.find((a) => a.fromStage === "idea");
   const latestDecision: ApprovalDecision | null =
@@ -77,13 +80,12 @@ export default async function InitiativePage({ params }: Props) {
       initiative={initiative}
       activity={activity}
       comments={comments}
-      canUserApprove={canUserApprove}
-      canComment={!!user}
-      currentUserName={user?.name ?? "Unknown"}
+      canUserApprove={false}
+      canComment={false}
+      currentUserName=""
       latestDecision={latestDecision}
       validationDecision={validationDecision}
-      isCreator={isCreator}
-      sharePath={createSharePath(initiative.id)}
+      isCreator={false}
     />
   );
 }
