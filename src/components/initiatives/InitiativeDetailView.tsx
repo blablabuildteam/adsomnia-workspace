@@ -112,14 +112,16 @@ const STATUS_BADGE_STYLES: Record<string, string> = {
   approved: "border-success bg-success/10 text-success",
   rejected: "border-btr bg-btr/10 text-btr",
   "on-hold": "border-hn bg-hn/10 text-hn",
+  feedback: "border-feedback bg-feedback/10 text-feedback",
   draft: "border-border bg-surface text-muted",
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  submitted: "Submitted",
+  submitted: "Review",
   approved: "Approved",
   rejected: "Rejected",
   "on-hold": "On Hold",
+  feedback: "Feedback",
   draft: "Draft",
 };
 
@@ -155,11 +157,6 @@ export function InitiativeDetailView({
     (s) => s.id === initiative.currentStage,
   ) as WorkflowStage;
 
-  const statusStyle =
-    STATUS_BADGE_STYLES[initiative.status] ?? STATUS_BADGE_STYLES.draft;
-  const statusLabel =
-    STATUS_LABELS[initiative.status] ?? initiative.status;
-
   const currentNum = STAGE_INDEX[initiative.currentStage] ?? 1;
   const ideaStage = STAGES.find((s) => s.id === "idea")!;
   const validationStage = STAGES.find((s) => s.id === "validation")!;
@@ -167,7 +164,42 @@ export function InitiativeDetailView({
   const ideaAwaitingDecision =
     initiative.currentStage === "idea" && initiative.status === "submitted";
 
-  const showApprovalPanel = ideaAwaitingDecision || !!latestDecision;
+  const ideaHasFeedback =
+    initiative.currentStage === "idea" &&
+    initiative.status === "draft" &&
+    latestDecision?.decision === "feedback";
+
+  const displayedIdeaDecision =
+    latestDecision && !ideaAwaitingDecision
+      ? (ideaHasFeedback && latestDecision.decision === "feedback") ||
+        (initiative.status === "on-hold" &&
+          latestDecision.decision === "on-hold") ||
+        (initiative.status === "rejected" &&
+          latestDecision.decision === "rejected") ||
+        (initiative.currentStage !== "idea" &&
+          latestDecision.decision === "approved")
+        ? latestDecision
+        : null
+      : null;
+
+  const showApprovalPanel = ideaAwaitingDecision || !!displayedIdeaDecision;
+
+  const canEditIdea =
+    initiative.currentStage === "idea" &&
+    (initiative.status === "rejected"
+      ? isCreator
+      : isCreator || canUserApprove);
+
+  const ideaCanResubmit =
+    initiative.currentStage === "idea" &&
+    ((ideaHasFeedback && (isCreator || canUserApprove)) ||
+      (initiative.status === "on-hold" && (isCreator || canUserApprove)) ||
+      (initiative.status === "rejected" && isCreator));
+
+  const statusKey = ideaHasFeedback ? "feedback" : initiative.status;
+  const statusStyle =
+    STATUS_BADGE_STYLES[statusKey] ?? STATUS_BADGE_STYLES.draft;
+  const statusLabel = STATUS_LABELS[statusKey] ?? initiative.status;
 
   const showValidation = currentNum >= 2;
   const validationIsCurrent = initiative.currentStage === "validation";
@@ -182,11 +214,7 @@ export function InitiativeDetailView({
       initiative.status === "draft" ||
       (validationAwaitingDecision && isCreator));
 
-  // Initiative details stay editable pre-approval for the creator/leadership.
-  const canEditIdea =
-    (isCreator || canUserApprove) &&
-    initiative.currentStage === "idea" &&
-    initiative.status !== "rejected";
+  // Initiative details stay editable in the Initiative stage per status rules above.
 
   // Only surface the latest validation decision when it matches the current
   // state (avoids showing stale decisions after a resubmission).
@@ -361,13 +389,14 @@ export function InitiativeDetailView({
                   targetAudience: initiative.targetAudience,
                 }}
                 canEdit={canEditIdea}
+                canResubmit={ideaCanResubmit}
               />
 
               {showApprovalPanel && (
                 <ApprovalPanel
                   initiativeId={initiative.id}
                   decision={
-                    ideaAwaitingDecision ? null : latestDecision
+                    ideaAwaitingDecision ? null : displayedIdeaDecision
                   }
                   embedded
                   canDecide={canUserApprove}

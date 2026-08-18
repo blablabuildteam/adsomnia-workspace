@@ -9,10 +9,12 @@ import {
   Pencil,
   AlertCircle,
   Save,
+  Send,
   type LucideIcon,
 } from "lucide-react";
 import {
   updateIdeaDetails,
+  resubmitIdea,
   type IdeaUpdateResult,
 } from "@/app/(workspace)/workstreams/[id]/actions";
 import { inputClass } from "@/lib/form-styles";
@@ -64,18 +66,24 @@ type Props = {
   values: IdeaFields;
   /** Whether the current user may edit (creator or leadership, pre-approval). */
   canEdit: boolean;
+  /** True when the initiative can be resubmitted (after feedback or on hold). */
+  canResubmit?: boolean;
 };
 
-export function IdeaDetailsSection({ initiativeId, values, canEdit }: Props) {
+export function IdeaDetailsSection({ initiativeId, values, canEdit, canResubmit = false }: Props) {
   const [editing, setEditing] = useState(false);
 
   const boundUpdate = updateIdeaDetails.bind(null, initiativeId);
-  const [state, action, pending] = useActionState(boundUpdate, initial);
+  const boundResubmit = resubmitIdea.bind(null, initiativeId);
+  const [saveState, saveAction, savePending] = useActionState(boundUpdate, initial);
+  const [resubmitState, resubmitAction, resubmitPending] = useActionState(boundResubmit, initial);
 
-  // Close the form once the save has gone through.
+  const state = saveState.error ? saveState : resubmitState.error ? resubmitState : saveState;
+  const pending = savePending || resubmitPending;
+
   useEffect(() => {
-    if (state.success) setEditing(false);
-  }, [state]);
+    if (saveState.success || resubmitState.success) setEditing(false);
+  }, [saveState, resubmitState]);
 
   return (
     <div className="bg-surface">
@@ -115,7 +123,7 @@ export function IdeaDetailsSection({ initiativeId, values, canEdit }: Props) {
           })}
         </div>
       ) : (
-        <form action={action} className="space-y-4 p-4">
+        <form className="space-y-4 p-4">
           {state.error && (
             <div className="flex items-center gap-2 border border-btr/40 bg-btr/10 px-3 py-2 text-xs text-btr">
               <AlertCircle className="size-3.5 shrink-0" />
@@ -167,15 +175,30 @@ export function IdeaDetailsSection({ initiativeId, values, canEdit }: Props) {
             </button>
             <button
               type="submit"
+              formAction={saveAction}
               disabled={pending}
               className="group relative inline-flex items-center gap-2 overflow-hidden border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors disabled:opacity-50"
             >
               <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />
               <Save className="relative size-3.5" />
               <span className="relative">
-                {pending ? "Saving…" : "Save Changes"}
+                {savePending ? "Saving…" : "Save Changes"}
               </span>
             </button>
+            {canResubmit && (
+              <button
+                type="submit"
+                formAction={resubmitAction}
+                disabled={pending}
+                className="group relative inline-flex items-center gap-2 overflow-hidden border border-success bg-success px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors disabled:opacity-50"
+              >
+                <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                <Send className="relative size-3.5" />
+                <span className="relative">
+                  {resubmitPending ? "Resubmitting…" : "Resubmit"}
+                </span>
+              </button>
+            )}
           </div>
         </form>
       )}

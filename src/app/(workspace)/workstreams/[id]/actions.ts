@@ -103,16 +103,21 @@ export async function updateIdeaDetails(
   if (!existing) {
     return { error: "Initiative not found." };
   }
-  if (existing.submitterId !== user.id && !canApprove(user)) {
-    return { error: "Only the creator or leadership can edit this initiative." };
-  }
   if (existing.currentStage !== "idea") {
     return {
       error: "Initiative details can only be edited before Validation approval.",
     };
   }
+
+  const isOwner = existing.submitterId === user.id;
+  const isLeadership = canApprove(user);
+
   if (existing.status === "rejected") {
-    return { error: "Rejected initiatives cannot be edited." };
+    if (!isOwner) {
+      return { error: "Only the initiative owner can edit a rejected submission." };
+    }
+  } else if (!isOwner && !isLeadership) {
+    return { error: "Only the creator or leadership can edit this initiative." };
   }
 
   const title = (formData.get("title") as string)?.trim();
@@ -148,6 +153,90 @@ export async function updateIdeaDetails(
 
   revalidatePath(`/workstreams/${initiativeId}`);
   revalidatePath("/dashboard");
+  revalidatePath("/pipeline/initiatives");
+  return { success: true };
+}
+
+/** Saves updated details AND resubmits the initiative for leadership review. */
+export async function resubmitIdea(
+  initiativeId: number,
+  _prev: IdeaUpdateResult,
+  formData: FormData,
+): Promise<IdeaUpdateResult> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "You must be logged in." };
+  }
+
+  const [existing] = await db
+    .select({
+      submitterId: initiatives.submitterId,
+      currentStage: initiatives.currentStage,
+      status: initiatives.status,
+    })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
+  if (!existing) {
+    return { error: "Initiative not found." };
+  }
+  if (existing.currentStage !== "idea") {
+    return { error: "This initiative is no longer in the Initiative stage." };
+  }
+
+  const isOwner = existing.submitterId === user.id;
+  const isLeadership = canApprove(user);
+
+  if (existing.status === "rejected") {
+    if (!isOwner) {
+      return { error: "Only the initiative owner can resubmit a rejected submission." };
+    }
+  } else if (existing.status === "draft" || existing.status === "on-hold") {
+    if (!isOwner && !isLeadership) {
+      return { error: "Only the creator or leadership can resubmit." };
+    }
+  } else {
+    return {
+      error: "Only feedback, on-hold, or rejected initiatives can be resubmitted.",
+    };
+  }
+
+  const title = (formData.get("title") as string)?.trim();
+  const problemStatement = (formData.get("problemStatement") as string)?.trim();
+  const opportunitySolution = (
+    formData.get("opportunitySolution") as string
+  )?.trim();
+  const expectedImpact = (formData.get("expectedImpact") as string)?.trim();
+  const targetAudience = (formData.get("targetAudience") as string)?.trim();
+
+  if (!title || !problemStatement || !opportunitySolution || !expectedImpact) {
+    return { error: "Title, problem, solution, and impact are required." };
+  }
+
+  await db
+    .update(initiatives)
+    .set({
+      title,
+      problemStatement,
+      opportunitySolution,
+      expectedImpact,
+      targetAudience: targetAudience || null,
+      status: "submitted",
+      updatedAt: new Date(),
+    })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: "idea_resubmitted",
+    details: { resubmittedBy: user.name },
+  });
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/pipeline/initiatives");
   return { success: true };
 }
 

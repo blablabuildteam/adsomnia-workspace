@@ -9,6 +9,7 @@ import {
   Clock,
   Filter,
   Lightbulb,
+  MessageCircle,
   PauseCircle,
   Target,
   TrendingUp,
@@ -27,11 +28,13 @@ const hoverTicks = "opacity-0 transition-opacity duration-300 group-hover:opacit
 const stage = STAGES.find((s) => s.id === "idea")!;
 const stageColor = getStageColor(stage.id);
 
-type FilterKey = "all" | "submitted" | "on-hold" | "rejected";
+type FilterKey = "all" | "submitted" | "feedback" | "approved" | "on-hold" | "rejected";
 
 const FILTERS: { key: FilterKey; label: string; color: string }[] = [
   { key: "all", label: "All", color: "#FFFFFF" },
-  { key: "submitted", label: "To be Reviewed", color: "#FFFFFF" },
+  { key: "submitted", label: "Review", color: "#38BDF8" },
+  { key: "feedback", label: "Feedback", color: "#A855F7" },
+  { key: "approved", label: "Approved", color: "#22c55e" },
   { key: "on-hold", label: "On Hold", color: "#7E90A3" },
   { key: "rejected", label: "Rejected", color: "#FF3B1F" },
 ];
@@ -41,14 +44,16 @@ const STATUS_META: Record<
   { label: string; color: string; icon: React.ComponentType<{ className?: string }> }
 > = {
   draft: { label: "Draft", color: "#666666", icon: Clock },
-  submitted: { label: "To be Reviewed", color: "#FFFFFF", icon: ArrowUpRight },
+  submitted: { label: "Review", color: "#38BDF8", icon: ArrowUpRight },
+  "feedback-received": { label: "Feedback", color: "#A855F7", icon: MessageCircle },
   approved: { label: "Approved", color: "#22c55e", icon: CheckCircle2 },
   rejected: { label: "Rejected", color: "#FF3B1F", icon: XCircle },
   "on-hold": { label: "On Hold", color: "#7E90A3", icon: PauseCircle },
 };
 
-function StatusBadge({ status }: { status: string }) {
-  const meta = STATUS_META[status] ?? STATUS_META.draft;
+function StatusBadge({ status, hasFeedback }: { status: string; hasFeedback?: boolean }) {
+  const key = hasFeedback && status === "draft" ? "feedback-received" : status;
+  const meta = STATUS_META[key] ?? STATUS_META.draft;
   const Icon = meta.icon;
   return (
     <span
@@ -61,7 +66,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function InitiativeCard({ item }: { item: InitiativeWithUsers }) {
+function InitiativeCard({ item, hasFeedback }: { item: InitiativeWithUsers; hasFeedback?: boolean }) {
   const daysSinceUpdate = Math.floor(
     (Date.now() - item.updatedAt.getTime()) / (1000 * 60 * 60 * 24),
   );
@@ -78,7 +83,7 @@ function InitiativeCard({ item }: { item: InitiativeWithUsers }) {
           <span className="font-display text-[10px] font-bold uppercase tracking-wider text-muted">
             {item.ticketId}
           </span>
-          <StatusBadge status={item.status} />
+          <StatusBadge status={item.status} hasFeedback={hasFeedback} />
         </div>
         <div className="flex items-center gap-2 text-[10px] text-muted/70">
           <Clock className="size-3" />
@@ -163,24 +168,43 @@ function InitiativeCard({ item }: { item: InitiativeWithUsers }) {
 
 type Props = {
   initiatives: InitiativeWithUsers[];
+  feedbackIds?: number[];
 };
 
-export function InitiativesStageView({ initiatives }: Props) {
+export function InitiativesStageView({ initiatives, feedbackIds = [] }: Props) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
 
-  const inStage = initiatives.filter((i) => i.currentStage === "idea");
+  const feedbackSet = new Set(feedbackIds);
+  const inIdeaStage = initiatives.filter((i) => i.currentStage === "idea");
+  // Approved into Validation, but Phase 2 details have not been started yet.
+  // The first Validation save flips status from "approved" to "draft".
+  const approvedAwaitingValidation = initiatives.filter(
+    (i) => i.currentStage === "validation" && i.status === "approved",
+  );
+
+  const feedbackItems = inIdeaStage.filter(
+    (i) => i.status === "draft" && feedbackSet.has(i.id),
+  );
+
+  const allItems = [...inIdeaStage, ...approvedAwaitingValidation];
 
   const counts: Record<FilterKey, number> = {
-    all: inStage.length,
-    submitted: inStage.filter((i) => i.status === "submitted").length,
-    "on-hold": inStage.filter((i) => i.status === "on-hold").length,
-    rejected: inStage.filter((i) => i.status === "rejected").length,
+    all: allItems.length,
+    submitted: inIdeaStage.filter((i) => i.status === "submitted").length,
+    feedback: feedbackItems.length,
+    approved: approvedAwaitingValidation.length,
+    "on-hold": inIdeaStage.filter((i) => i.status === "on-hold").length,
+    rejected: inIdeaStage.filter((i) => i.status === "rejected").length,
   };
 
   const filtered =
     activeFilter === "all"
-      ? inStage
-      : inStage.filter((i) => i.status === activeFilter);
+      ? allItems
+      : activeFilter === "feedback"
+        ? feedbackItems
+        : activeFilter === "approved"
+          ? approvedAwaitingValidation
+          : inIdeaStage.filter((i) => i.status === activeFilter);
 
   return (
     <div className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -265,7 +289,7 @@ export function InitiativesStageView({ initiatives }: Props) {
                 { "--enter-delay": `${Math.min(index, 8) * 45}ms` } as React.CSSProperties
               }
             >
-              <InitiativeCard item={item} />
+              <InitiativeCard item={item} hasFeedback={feedbackSet.has(item.id)} />
             </div>
           ))}
         </div>

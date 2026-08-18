@@ -4,6 +4,7 @@ import {
   Clock,
   TrendingUp,
   Inbox,
+  Eye,
 } from "lucide-react";
 import { STAGES, getStageColor } from "@/data/workflow";
 import { WorkspaceChip } from "@/components/WorkspaceChip";
@@ -21,7 +22,7 @@ function StatCard({
 }: {
   label: string;
   value: number | string;
-  sub?: string;
+  sub?: ReactNode;
   accent?: string;
 }) {
   return (
@@ -205,9 +206,13 @@ export function DashboardView({
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:gap-4">
         <StatCard label="Total Initiatives" value={total} />
         <StatCard
-          label="Awaiting Approval"
+          label="Review"
           value={submittedCount}
-          sub="Submitted — pending review"
+          sub={
+            <span className="flex items-center gap-1.5">
+              <Eye className="size-3 animate-pulse" /> Submitted — pending review
+            </span>
+          }
         />
         <StatCard
           label="Approved"

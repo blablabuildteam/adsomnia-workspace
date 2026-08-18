@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Eye } from "lucide-react";
 import { getStageColor } from "@/data/workflow";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 
@@ -14,7 +14,7 @@ const STATUS_COLORS = {
  * Phase wrapper with three visual states:
  * - "complete": collapsed by default, neutral chrome, dimmed body
  * - "current": open by default, stage-color accent + yellow "In Progress" badge
- * - "review": like current, but badged "Awaiting Approval" in blue
+ * - "review": like current, but badged "Review" in blue
  * All use the same summary layout (status badge + chevron) so labels align.
  */
 export function PhaseCard({
@@ -89,12 +89,8 @@ export function PhaseCard({
                 backgroundColor: `${STATUS_COLORS.review}1A`,
               }}
             >
-              <span
-                className="size-1.5 shrink-0 animate-pulse rounded-full"
-                style={{ backgroundColor: STATUS_COLORS.review }}
-                aria-hidden
-              />
-              Awaiting Approval
+              <Eye className="size-3 animate-pulse" />
+              Review
             </span>
           ) : isCurrent ? (
             <span
