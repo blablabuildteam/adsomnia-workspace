@@ -132,7 +132,7 @@ export const INTAKE_SECTIONS: IntakeStageSection[] = [
     fields: [
       {
         id: "businessValue",
-        label: "Quantifiable Business Value",
+        label: "Expected Business Value",
         expectation:
           "Turn the impact hypothesis into measurable value. Where possible include KPI, current baseline, and rough upside. If exact numbers are unknown, state assumptions clearly.",
         type: "textarea",
@@ -142,7 +142,7 @@ export const INTAKE_SECTIONS: IntakeStageSection[] = [
       },
       {
         id: "solutionDirection",
-        label: "Global Solution Direction & High-Level Architecture",
+        label: "High-Level Approach of the Solution",
         expectation:
           "Outline the preferred approach and main building blocks (systems, integrations, build vs buy). No detailed design — enough for Scoping to estimate Epics and hours.",
         type: "textarea",
@@ -195,13 +195,13 @@ export const INTAKE_SECTIONS: IntakeStageSection[] = [
       },
       {
         id: "risks",
-        label: "Risks & ‘Do Nothing’ Scenario",
+        label: "Other Notes",
         expectation:
-          "Key risks if we proceed, and the cost or impact of not doing the initiative. Be specific enough for leadership to weigh Go / No-Go later.",
+          "Optional notes that do not fit elsewhere — leftover context, open questions, or anything leadership should see.",
         type: "textarea",
-        required: true,
+        required: false,
         placeholder:
-          "e.g. Risk: partner template variance. Do nothing: continue manual setup and accept tracking gaps (~12% of DE traffic affected).",
+          "Optional — leftover context, open questions, or anything leadership should see.",
       },
       {
         id: "validationSignOff",

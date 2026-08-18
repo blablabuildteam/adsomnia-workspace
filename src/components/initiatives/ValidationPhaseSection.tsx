@@ -4,7 +4,6 @@ import {
   useActionState,
   useEffect,
   useState,
-  type CSSProperties,
   type ReactNode,
 } from "react";
 import {
@@ -21,7 +20,7 @@ import {
   Building2,
   Link2,
   PenLine,
-  ShieldAlert,
+  StickyNote,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -35,13 +34,16 @@ import {
   IMPACT_DEFAULT,
   IMPACT_MAX,
   IMPACT_MIN,
+  impactScoreLabel,
   isBusinessValueData,
   parseImpactScore,
+  resolveBusinessValueState,
   type BusinessValueType,
   type ValidationData,
 } from "@/lib/validation-data";
 import { PARTIES } from "@/data/workflow";
 import type { ValidationDecision } from "./ValidationApprovalPanel";
+import { ImpactSlider } from "./ImpactSlider";
 
 const initial: ValidationResult = {};
 
@@ -98,12 +100,6 @@ function resolveLeadPartyState(stored: string | undefined | null): {
 
 const IS_DEV = process.env.NODE_ENV === "development";
 
-const EMPTY_IMPACTS: Record<BusinessValueType, number | null> = {
-  speed: null,
-  "cost-efficiency": null,
-  growth: null,
-};
-
 const DEV_PREFILL = {
   businessValueTypes: ["speed", "cost-efficiency"] as BusinessValueType[],
   businessValueImpacts: {
@@ -119,30 +115,15 @@ const DEV_PREFILL = {
   dependencies:
     "Depends on CMS API access; blocked until partner template audit is complete (WS-1098).",
   risks:
-    "Risk: partner template variance breaks auto-deployment. Do nothing: continue manual setup at ~10h/week.",
+    "Partner template variance may break auto-deployment; worth a note for leadership.",
 };
-
-function resolveBusinessValueState(stored: ValidationData["businessValue"]): {
-  types: BusinessValueType[];
-  impacts: Record<BusinessValueType, number | null>;
-} {
-  if (!stored || typeof stored === "string" || !isBusinessValueData(stored)) {
-    return { types: [], impacts: { ...EMPTY_IMPACTS } };
-  }
-  const impacts = { ...EMPTY_IMPACTS };
-  for (const type of stored.types) {
-    impacts[type] =
-      parseImpactScore(stored.expectations[type]) ?? IMPACT_DEFAULT;
-  }
-  return { types: stored.types, impacts };
-}
 
 /** Help text for validation form fields. */
 const FIELD_HELP: Record<string, string> = {
   businessValue:
     "Select where value is created — Speed, Cost Efficiency, and/or Growth — then rate expected impact from 1 (low) to 10 (high) for each.",
   solutionDirection:
-    "Outline the technical approach and architecture. Who owns the build? What systems are involved?",
+    "Outline the preferred high-level approach. Who owns the build? What systems are involved? No detailed design yet.",
   tShirtSize:
     "Estimate effort: S (<40h), M (40–80h), L (80–160h), XL (160h+). Consider complexity, unknowns, and team capacity.",
   priority:
@@ -152,7 +133,7 @@ const FIELD_HELP: Record<string, string> = {
   dependencies:
     "List upstream blockers, required access, or parallel workstreams. Include ticket refs if known.",
   risks:
-    "Call out the main risks if we proceed — technical, operational, or commercial.",
+    "Optional notes that do not fit elsewhere — leftover context, open questions, or anything leadership should see.",
 };
 
 const FIELD_ICONS: Record<keyof typeof FIELD_HELP, LucideIcon> = {
@@ -162,16 +143,8 @@ const FIELD_ICONS: Record<keyof typeof FIELD_HELP, LucideIcon> = {
   priority: Flag,
   leadProductionParty: Building2,
   dependencies: Link2,
-  risks: ShieldAlert,
+  risks: StickyNote,
 };
-
-function impactLabel(score: number): string {
-  if (score <= 2) return "Minimal";
-  if (score <= 4) return "Low";
-  if (score <= 6) return "Moderate";
-  if (score <= 8) return "High";
-  return "Critical";
-}
 
 function FieldInfoIcon({ field }: { field: keyof typeof FIELD_HELP }) {
   const helpText = FIELD_HELP[field];
@@ -182,54 +155,6 @@ function FieldInfoIcon({ field }: { field: keyof typeof FIELD_HELP }) {
         {helpText}
       </span>
     </span>
-  );
-}
-
-function ImpactSlider({
-  name,
-  label,
-  value,
-  onChange,
-}: {
-  name: string;
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-}) {
-  const pct = ((value - IMPACT_MIN) / (IMPACT_MAX - IMPACT_MIN)) * 100;
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <span className="font-display flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-foreground">
-          Impact — {label}
-          <Check className="animate-check-pop size-3.5 shrink-0 text-success" />
-        </span>
-        <span className="flex items-baseline gap-2">
-          <span className="font-display text-sm font-bold tabular-nums text-foreground">
-            {value}
-            <span className="text-muted">/10</span>
-          </span>
-          <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-            {impactLabel(value)}
-          </span>
-        </span>
-      </div>
-      <div className="relative pt-1">
-        <input
-          type="range"
-          name={name}
-          min={IMPACT_MIN}
-          max={IMPACT_MAX}
-          step={1}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          aria-label={`${label} impact score`}
-          className="impact-slider w-full"
-          style={{ "--impact-pct": `${pct}%` } as CSSProperties}
-        />
-      </div>
-    </div>
   );
 }
 
@@ -332,7 +257,7 @@ function BusinessCaseHeader({
         </h3>
         <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted">
           Validate whether this initiative is worth building. Capture the value,
-          effort, who leads, and what could go wrong — so leadership can decide
+          effort, who leads, and any extra context — so leadership can decide
           with confidence.
         </p>
       </div>
@@ -484,7 +409,7 @@ export function ValidationPhaseSection({
         <div className="divide-y divide-border">
           <div className="space-y-3 py-5 first:pt-0 last:pb-0">
             <FieldLabel field="businessValue" required complete={businessValueComplete}>
-              Quantifiable Business Value
+              Expected Business Value
             </FieldLabel>
             <div className="flex flex-wrap gap-2">
               {BUSINESS_VALUE_TYPES.map((type) => {
@@ -631,7 +556,7 @@ export function ValidationPhaseSection({
               required
               complete={solutionDirection.trim().length > 0}
             >
-              Global Solution Direction & Architecture
+              High-Level Approach of the Solution
             </FieldLabel>
             <textarea
               name="solutionDirection"
@@ -706,12 +631,11 @@ export function ValidationPhaseSection({
           </label>
 
           <label className="block py-5 first:pt-0 last:pb-0">
-            <FieldLabel field="risks" required complete={risks.trim().length > 0}>
-              Risk
+            <FieldLabel field="risks" complete={risks.trim().length > 0}>
+              Other Notes
             </FieldLabel>
             <textarea
               name="risks"
-              required
               rows={2}
               value={risks}
               onChange={(e) => {
@@ -719,7 +643,7 @@ export function ValidationPhaseSection({
                 setRisks(e.target.value);
               }}
               className={`${inputClass} mt-1`}
-              placeholder="e.g. Partner template variance breaks auto-deployment."
+              placeholder="Optional — leftover context, open questions, or anything leadership should see."
             />
           </label>
         </div>
@@ -813,7 +737,7 @@ function ValidationReadOnly({ data }: { data: ValidationData | null }) {
   }[] = [
     {
       field: "solutionDirection",
-      label: "Solution Direction",
+      label: "High-Level Approach of the Solution",
       value: data?.solutionDirection,
     },
     {
@@ -821,7 +745,7 @@ function ValidationReadOnly({ data }: { data: ValidationData | null }) {
       label: "Dependencies & Blockers",
       value: data?.dependencies,
     },
-    { field: "risks", label: "Risk", value: data?.risks },
+    { field: "risks", label: "Other Notes", value: data?.risks },
   ];
 
   return (
@@ -830,7 +754,7 @@ function ValidationReadOnly({ data }: { data: ValidationData | null }) {
         <div className="mb-2 flex items-center gap-2 text-muted">
           <BarChart3 className="size-3.5 shrink-0" />
           <p className="font-display text-[10px] font-bold uppercase tracking-wide">
-            Business Value
+            Expected Business Value
           </p>
         </div>
         {structuredBusinessValue && structuredBusinessValue.types.length > 0 ? (
@@ -865,7 +789,7 @@ function ValidationReadOnly({ data }: { data: ValidationData | null }) {
                       </span>
                       {score !== null && (
                         <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                          {impactLabel(score)}
+                          {impactScoreLabel(score)}
                         </span>
                       )}
                     </span>

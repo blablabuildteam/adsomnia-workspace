@@ -19,7 +19,9 @@ export type ValidationData = {
   priority?: string;
   leadProductionParty?: string;
   dependencies?: string;
+  /** Optional Other Notes. Key kept as `risks` so existing drafts still load. */
   risks?: string;
+  attachments?: Attachment[];
 };
 
 export const BUSINESS_VALUE_TYPES: {
@@ -34,6 +36,49 @@ export const BUSINESS_VALUE_TYPES: {
 export const IMPACT_MIN = 1;
 export const IMPACT_MAX = 10;
 export const IMPACT_DEFAULT = 5;
+
+export const EMPTY_IMPACTS: Record<BusinessValueType, number | null> = {
+  speed: null,
+  "cost-efficiency": null,
+  growth: null,
+};
+
+export function impactScoreLabel(score: number): string {
+  if (score <= 2) return "Minimal";
+  if (score <= 4) return "Low";
+  if (score <= 6) return "Moderate";
+  if (score <= 8) return "High";
+  return "Critical";
+}
+
+export function resolveBusinessValueState(
+  stored: ValidationData["businessValue"],
+): {
+  types: BusinessValueType[];
+  impacts: Record<BusinessValueType, number | null>;
+} {
+  if (!stored || typeof stored === "string" || !isBusinessValueData(stored)) {
+    return { types: [], impacts: { ...EMPTY_IMPACTS } };
+  }
+  const impacts = { ...EMPTY_IMPACTS };
+  for (const type of stored.types) {
+    impacts[type] =
+      parseImpactScore(stored.expectations[type]) ?? IMPACT_DEFAULT;
+  }
+  return { types: stored.types, impacts };
+}
+
+export function buildBusinessValueData(
+  types: BusinessValueType[],
+  impacts: Record<BusinessValueType, number | null>,
+): BusinessValueData {
+  const expectations: BusinessValueData["expectations"] = {};
+  for (const type of types) {
+    const score = impacts[type];
+    if (score !== null) expectations[type] = score;
+  }
+  return { types, expectations };
+}
 
 export function isBusinessValueData(
   value: ValidationData["businessValue"],
@@ -77,6 +122,76 @@ export function isBusinessValueComplete(
   return value.types.every((type) => parseImpactScore(value.expectations[type]) !== null);
 }
 
+/* ─── Attachments (shared by Validation & Scoping) ──────── */
+
+export type AttachmentKind =
+  | "google-doc"
+  | "google-sheet"
+  | "google-slides"
+  | "google-form"
+  | "google-drive"
+  | "link"
+  | "file";
+
+export type Attachment = {
+  id: string;
+  kind: AttachmentKind;
+  title: string;
+  url?: string;
+  fileName?: string;
+  fileSize?: number;
+  mimeType?: string;
+};
+
+const GOOGLE_URL_PATTERNS: { pattern: RegExp; kind: AttachmentKind }[] = [
+  { pattern: /docs\.google\.com\/document/, kind: "google-doc" },
+  { pattern: /docs\.google\.com\/spreadsheets/, kind: "google-sheet" },
+  { pattern: /docs\.google\.com\/presentation/, kind: "google-slides" },
+  { pattern: /docs\.google\.com\/forms/, kind: "google-form" },
+  { pattern: /drive\.google\.com/, kind: "google-drive" },
+];
+
+export function detectAttachmentKind(url: string): AttachmentKind {
+  for (const { pattern, kind } of GOOGLE_URL_PATTERNS) {
+    if (pattern.test(url)) return kind;
+  }
+  return "link";
+}
+
+export function attachmentKindLabel(kind: AttachmentKind): string {
+  switch (kind) {
+    case "google-doc": return "Google Doc";
+    case "google-sheet": return "Google Sheet";
+    case "google-slides": return "Google Slides";
+    case "google-form": return "Google Form";
+    case "google-drive": return "Google Drive";
+    case "link": return "Link";
+    case "file": return "File";
+  }
+}
+
+/**
+ * Extract a human-readable title from a Google URL.
+ * Falls back to the domain + path tail.
+ */
+export function titleFromUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    const segments = u.pathname.split("/").filter(Boolean);
+    if (u.hostname.includes("google.com") && segments.length >= 3) {
+      const last = segments[segments.length - 1];
+      if (last === "edit" || last === "view" || last === "preview") {
+        return decodeURIComponent(segments[segments.length - 2]).replace(/[-_]/g, " ");
+      }
+      return decodeURIComponent(last).replace(/[-_]/g, " ");
+    }
+    const path = u.pathname === "/" ? "" : u.pathname;
+    return `${u.hostname}${path}`.slice(0, 60);
+  } catch {
+    return url.slice(0, 60);
+  }
+}
+
 /* ─── Scoping Data ──────────────────────────────────────── */
 
 export type ScopingMilestone = {
@@ -115,9 +230,13 @@ export type ScopingValueMetric = {
 export type ScopingData = {
   milestones?: ScopingMilestone[];
   team?: ScopingTeamMember[];
+  /** Refined Impact carried forward from Validation. */
+  impact?: BusinessValueData;
+  /** @deprecated Replaced by `impact`. Kept so existing drafts still parse. */
   valueMetrics?: ScopingValueMetric[];
   scopeItems?: ScopingScopeItem[];
   dependencies?: string;
+  attachments?: Attachment[];
 };
 
 export function isScopingComplete(data: ScopingData | null | undefined): boolean {
@@ -126,11 +245,9 @@ export function isScopingComplete(data: ScopingData | null | undefined): boolean
     data.milestones!.every((m) => m.epic.trim() && m.milestone.trim());
   const hasTeam = (data.team?.length ?? 0) > 0 &&
     data.team!.every((t) => t.role.trim() && t.name.trim() && t.totalHours > 0);
-  const hasValue = (data.valueMetrics?.length ?? 0) > 0 &&
-    data.valueMetrics!.every((v) => v.metric.trim() && v.target !== null && v.target > 0);
+  const hasImpact = isBusinessValueComplete(data.impact);
   const hasScope = (data.scopeItems?.length ?? 0) > 0;
-  const hasDeps = (data.dependencies ?? "").trim().length > 0;
-  return hasMilestones && hasTeam && hasValue && hasScope && hasDeps;
+  return hasMilestones && hasTeam && hasImpact && hasScope;
 }
 
 /* ─── Business Value helpers ────────────────────────────── */

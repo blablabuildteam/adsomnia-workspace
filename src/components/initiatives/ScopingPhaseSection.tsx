@@ -4,8 +4,12 @@ import {
   useActionState,
   useCallback,
   useEffect,
+  useRef,
   useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
+  type RefObject,
 } from "react";
 import {
   Save,
@@ -19,7 +23,7 @@ import {
   Calendar,
   Users,
   SplitSquareVertical,
-  Link2,
+  StickyNote,
   Milestone as MilestoneIcon,
   UserPlus,
   GripVertical,
@@ -38,11 +42,22 @@ import type {
   ScopingMilestone,
   ScopingTeamMember,
   ScopingScopeItem,
-  ScopingValueMetric,
   BusinessValueType,
+  ValidationData,
 } from "@/lib/validation-data";
-import { BUSINESS_VALUE_TYPES } from "@/lib/validation-data";
+import {
+  BUSINESS_VALUE_TYPES,
+  IMPACT_DEFAULT,
+  IMPACT_MAX,
+  IMPACT_MIN,
+  buildBusinessValueData,
+  impactScoreLabel,
+  isBusinessValueData,
+  parseImpactScore,
+  resolveBusinessValueState,
+} from "@/lib/validation-data";
 import { PARTIES } from "@/data/workflow";
+import { ImpactSlider } from "./ImpactSlider";
 
 const initial: ScopingResult = {};
 
@@ -54,20 +69,21 @@ const FIELD_HELP: Record<string, string> = {
   milestones:
     "Break delivery into Epics and Milestones with target date windows. These feed directly into the Jira structure and capacity booking.",
   team:
-    "For each role: who, how many hours total, hours per day, and which period. This drives resource booking and Go/No-Go cost analysis.",
-  valueMetrics:
-    "Quantify the expected value for each selected business impact. These targets will be mirrored against total delivery costs at Go/No-Go.",
+    "For each role: who, how many hours total, and which period. This drives resource booking and Go/No-Go cost analysis.",
+  impact:
+    "Carried forward from Validation. Refine the impact scores if scoping changes the picture.",
   scope:
     "Define what's in scope for the first delivery slice, and what's explicitly out. Flip items between in and out.",
-  dependencies:
-    "Technical, partner, and calendar dependencies that affect timeline or estimates. Assumptions that must hold true.",
+  notes:
+    "Optional notes that do not fit elsewhere — leftover context, open questions, or anything the Go/No-Go reviewers should see.",
 };
 
 const FIELD_ICONS: Record<string, LucideIcon> = {
   milestones: Calendar,
   team: Users,
+  impact: TrendingUp,
   scope: SplitSquareVertical,
-  dependencies: Link2,
+  notes: StickyNote,
 };
 
 /* ─── ID generator ─────────────────────────────────────── */
@@ -180,10 +196,10 @@ const DEV_PREFILL: ScopingData = {
     { id: uid(), label: "Legacy API deprecation", inScope: false },
     { id: uid(), label: "Mobile app support", inScope: false },
   ],
-  valueMetrics: [
-    { type: "speed", metric: "Reduction in onboarding time", target: 12000, unit: "€/year" },
-    { type: "growth", metric: "New MRR from improved conversion", target: 8500, unit: "€/month" },
-  ],
+  impact: {
+    types: ["speed", "growth"],
+    expectations: { speed: 8, growth: 7 },
+  },
   dependencies:
     "Requires partner API v3 access (pending contract). Calendar dependency: design team on partial leave Sep 20–27. Assumes current infrastructure can handle 2× throughput.",
 };
@@ -272,40 +288,242 @@ function CountBadge({ count, label }: { count: number; label: string }) {
 
 /* ─── Gantt Chart ──────────────────────────────────────── */
 
+const DAY_MS = 86_400_000;
+
+function dateToMs(iso: string): number {
+  const [y, m, d] = iso.split("-").map(Number);
+  return Date.UTC(y, m - 1, d);
+}
+
+function msToDate(ms: number): string {
+  const d = new Date(ms);
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function shiftDate(iso: string, days: number): string {
+  return msToDate(dateToMs(iso) + days * DAY_MS);
+}
+
+function formatGanttDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+type GanttDragMode = "move" | "resize-start" | "resize-end";
+
+function GanttBar({
+  trackRef,
+  leftPct,
+  widthPct,
+  startDate,
+  endDate,
+  range,
+  disabled,
+  title,
+  className,
+  style,
+  children,
+  onDatesChange,
+  onDragActive,
+}: {
+  trackRef: RefObject<HTMLDivElement | null>;
+  leftPct: number;
+  widthPct: number;
+  startDate: string;
+  endDate: string;
+  range: number;
+  disabled?: boolean;
+  title: string;
+  className?: string;
+  style: CSSProperties;
+  children: ReactNode;
+  onDatesChange?: (startDate: string, endDate: string) => void;
+  onDragActive?: (active: boolean) => void;
+}) {
+  const interactive = Boolean(onDatesChange) && !disabled;
+  const [dragging, setDragging] = useState(false);
+
+  function beginDrag(event: ReactPointerEvent, mode: GanttDragMode) {
+    if (!interactive || !onDatesChange) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const trackWidth = trackRef.current?.getBoundingClientRect().width ?? 0;
+    if (trackWidth <= 0) return;
+
+    const originX = event.clientX;
+    const origStart = startDate;
+    const origEnd = endDate;
+
+    onDragActive?.(true);
+    setDragging(true);
+
+    const onMove = (ev: PointerEvent) => {
+      const days = Math.round(
+        ((ev.clientX - originX) / trackWidth) * (range / DAY_MS),
+      );
+      let nextStart = origStart;
+      let nextEnd = origEnd;
+      if (mode === "move") {
+        nextStart = shiftDate(origStart, days);
+        nextEnd = shiftDate(origEnd, days);
+      } else if (mode === "resize-start") {
+        nextStart = shiftDate(origStart, days);
+        if (dateToMs(nextStart) > dateToMs(origEnd)) nextStart = origEnd;
+      } else {
+        nextEnd = shiftDate(origEnd, days);
+        if (dateToMs(nextEnd) < dateToMs(origStart)) nextEnd = origStart;
+      }
+      onDatesChange(nextStart, nextEnd);
+    };
+
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      setDragging(false);
+      onDragActive?.(false);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
+  return (
+    <div
+      className={[
+        "absolute h-full",
+        interactive ? (dragging ? "z-20" : "z-10") : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      style={{
+        left: `${leftPct}%`,
+        width: `${widthPct}%`,
+      }}
+    >
+      {dragging && (
+        <div
+          role="status"
+          className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 -translate-x-1/2 whitespace-nowrap border border-border bg-surface-elevated px-2 py-1 shadow-lg"
+        >
+          <span className="font-display text-[10px] font-bold tabular-nums tracking-wide text-foreground">
+            {formatGanttDate(startDate)}
+            <span className="mx-1 font-normal text-muted">–</span>
+            {formatGanttDate(endDate)}
+          </span>
+        </div>
+      )}
+      <div
+        className={[
+          "relative flex h-full items-center gap-1.5 overflow-hidden px-2 select-none",
+          interactive ? (dragging ? "cursor-grabbing" : "cursor-grab") : "",
+          className,
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        style={{
+          ...style,
+          touchAction: interactive ? "none" : undefined,
+        }}
+        title={
+          dragging
+            ? undefined
+            : interactive
+              ? `${title} — drag to move, edges to resize`
+              : title
+        }
+        onPointerDown={
+          interactive ? (e) => beginDrag(e, "move") : undefined
+        }
+      >
+        {interactive && (
+          <>
+            <button
+              type="button"
+              aria-label="Resize start date"
+              className="absolute inset-y-0 left-0 z-10 w-2 cursor-ew-resize"
+              onPointerDown={(e) => beginDrag(e, "resize-start")}
+            />
+            <button
+              type="button"
+              aria-label="Resize end date"
+              className="absolute inset-y-0 right-0 z-10 w-2 cursor-ew-resize"
+              onPointerDown={(e) => beginDrag(e, "resize-end")}
+            />
+          </>
+        )}
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function MilestoneGantt({
   milestones,
   team = [],
+  onMilestoneDates,
+  onTeamDates,
 }: {
   milestones: ScopingMilestone[];
   team?: ScopingTeamMember[];
+  onMilestoneDates?: (id: string, startDate: string, endDate: string) => void;
+  onTeamDates?: (id: string, startDate: string, endDate: string) => void;
 }) {
   const withDates = milestones.filter((m) => m.startDate && m.endDate);
   const teamWithDates = team.filter((t) => t.startDate && t.endDate);
-  if (withDates.length === 0 && teamWithDates.length === 0) return null;
+  const hasBars = withDates.length > 0 || teamWithDates.length > 0;
 
   const allStarts = [
-    ...withDates.map((m) => new Date(m.startDate!).getTime()),
-    ...teamWithDates.map((t) => new Date(t.startDate!).getTime()),
+    ...withDates.map((m) => dateToMs(m.startDate!)),
+    ...teamWithDates.map((t) => dateToMs(t.startDate!)),
   ];
   const allEnds = [
-    ...withDates.map((m) => new Date(m.endDate!).getTime()),
-    ...teamWithDates.map((t) => new Date(t.endDate!).getTime()),
+    ...withDates.map((m) => dateToMs(m.endDate!)),
+    ...teamWithDates.map((t) => dateToMs(t.endDate!)),
   ];
-  const minTime = Math.min(...allStarts);
-  const maxTime = Math.max(...allEnds);
-  const range = maxTime - minTime || 1;
+  const rawMin = allStarts.length ? Math.min(...allStarts) : Date.now();
+  const rawMax = allEnds.length ? Math.max(...allEnds) : Date.now();
+  const rawRange = Math.max(rawMax - rawMin, DAY_MS);
+  const pad = Math.max(3 * DAY_MS, rawRange * 0.1);
+  const computedMin = rawMin - pad;
+  const computedRange = rawRange + pad * 2;
+
+  const [axisLock, setAxisLock] = useState<{
+    min: number;
+    range: number;
+  } | null>(null);
+  const minTime = axisLock?.min ?? computedMin;
+  const range = axisLock?.range ?? computedRange;
+  const interactive = Boolean(onMilestoneDates || onTeamDates);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const activeDrags = useRef(0);
+
+  if (!hasBars) return null;
+
+  function handleDragActive(active: boolean) {
+    if (active) {
+      if (activeDrags.current === 0) {
+        setAxisLock({ min: computedMin, range: computedRange });
+      }
+      activeDrags.current += 1;
+      return;
+    }
+    activeDrags.current = Math.max(0, activeDrags.current - 1);
+    if (activeDrags.current === 0) setAxisLock(null);
+  }
 
   function milestoneColor(m: ScopingMilestone, index: number): string {
     if (m.color) return m.color;
     return MILESTONE_COLORS[index % MILESTONE_COLORS.length];
   }
 
-  const formatDate = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
-  };
-
-  const totalDays = Math.ceil(range / (1000 * 60 * 60 * 24));
+  const totalDays = Math.ceil(range / DAY_MS);
   const ticks: { label: string; pct: number }[] = [];
   const tickCount = Math.min(totalDays, 6);
   for (let i = 0; i <= tickCount; i++) {
@@ -314,6 +532,7 @@ function MilestoneGantt({
       label: new Date(t).toLocaleDateString(undefined, {
         day: "numeric",
         month: "short",
+        timeZone: "UTC",
       }),
       pct: (i / tickCount) * 100,
     });
@@ -321,13 +540,17 @@ function MilestoneGantt({
 
   return (
     <div className="mt-4 border border-white/[0.12] bg-white/[0.05]">
-      <div className="border-b border-white/[0.08] bg-white/[0.04] px-3 py-2">
+      <div className="flex items-center justify-between gap-3 border-b border-white/[0.08] bg-white/[0.04] px-3 py-2">
         <span className="font-display text-[9px] font-bold uppercase tracking-widest text-muted/50">
           Timeline
         </span>
+        {interactive && (
+          <span className="text-[9px] text-muted/40">
+            Drag bars to move · Edges to resize
+          </span>
+        )}
       </div>
       <div className="relative px-3 py-3">
-        {/* Tick marks */}
         <div className="relative mb-2 h-4">
           {ticks.map((tick) => (
             <span
@@ -340,98 +563,117 @@ function MilestoneGantt({
           ))}
         </div>
 
-        {/* Milestone bars */}
-        {withDates.length > 0 && (
-          <div className="space-y-1.5">
-            {withDates.map((m, i) => {
-              const start = new Date(m.startDate!).getTime();
-              const end = new Date(m.endDate!).getTime();
-              const left = ((start - minTime) / range) * 100;
-              const width = Math.max(((end - start) / range) * 100, 1);
-              const color = milestoneColor(m, i);
-
-              return (
-                <div key={m.id} className="relative flex h-7 items-center">
-                  <div
-                    className="absolute flex h-full items-center overflow-hidden px-2"
-                    style={{
-                      left: `${left}%`,
-                      width: `${width}%`,
-                      backgroundColor: `${color}20`,
-                      borderLeft: `2px solid ${color}`,
-                    }}
-                    title={`${m.epic}: ${m.milestone} (${formatDate(m.startDate!)} – ${formatDate(m.endDate!)})`}
-                  >
-                    <span
-                      className="truncate text-[10px] font-medium"
-                      style={{ color }}
-                    >
-                      {m.milestone || m.epic || `Milestone ${i + 1}`}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Resource booking bars */}
-        {teamWithDates.length > 0 && (
-          <>
-            <div className="my-2 border-t border-dashed border-border/50" />
-            <div className="mb-1">
-              <span className="font-display text-[9px] font-bold uppercase tracking-widest text-muted/40">
-                Resources
-              </span>
-            </div>
-            <div className="space-y-1">
-              {teamWithDates.map((t) => {
-                const start = new Date(t.startDate!).getTime();
-                const end = new Date(t.endDate!).getTime();
+        <div ref={trackRef}>
+          {withDates.length > 0 && (
+            <div className="space-y-1.5">
+              {withDates.map((m, i) => {
+                const start = dateToMs(m.startDate!);
+                const end = dateToMs(m.endDate!);
                 const left = ((start - minTime) / range) * 100;
-                const width = Math.max(((end - start) / range) * 100, 1);
-                const partyOpt = PARTY_OPTIONS.find(
-                  (p) => p.value === t.party,
-                );
-                const barColor = partyOpt?.color ?? "#666666";
-
-                const partyLogo = partyOpt?.logo;
+                const width = Math.max(((end - start) / range) * 100, 1.5);
+                const color = milestoneColor(m, i);
+                const label = m.milestone || m.epic || `Milestone ${i + 1}`;
 
                 return (
-                  <div key={t.id} className="relative flex h-6 items-center">
-                    <div
-                      className="absolute flex h-full items-center gap-1.5 overflow-hidden px-2"
+                  <div key={m.id} className="relative flex h-7 items-center">
+                    <GanttBar
+                      trackRef={trackRef}
+                      leftPct={left}
+                      widthPct={width}
+                      startDate={m.startDate!}
+                      endDate={m.endDate!}
+                      range={range}
+                      title={`${m.epic}: ${m.milestone} (${formatGanttDate(m.startDate!)} – ${formatGanttDate(m.endDate!)})`}
                       style={{
-                        left: `${left}%`,
-                        width: `${width}%`,
-                        backgroundColor: "rgba(255,255,255,0.04)",
-                        borderLeft: `2px solid ${barColor}`,
+                        backgroundColor: `${color}20`,
+                        borderLeft: `2px solid ${color}`,
                       }}
-                      title={`${t.name} — ${t.role} (${t.totalHours}h, ${formatDate(t.startDate!)} – ${formatDate(t.endDate!)})`}
+                      onDatesChange={
+                        onMilestoneDates
+                          ? (startDate, endDate) =>
+                              onMilestoneDates(m.id, startDate, endDate)
+                          : undefined
+                      }
+                      onDragActive={handleDragActive}
                     >
-                      {partyLogo && (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={partyLogo}
-                          alt=""
-                          className="h-3.5 w-3.5 shrink-0 object-contain"
-                        />
-                      )}
-                      <span className="truncate text-[10px] font-medium text-foreground/70">
-                        {t.name || t.role}
+                      <span
+                        className="truncate text-[10px] font-medium"
+                        style={{ color }}
+                      >
+                        {label}
                       </span>
-                      <span className="shrink-0 text-[9px] tabular-nums text-muted/50">
-                        {t.totalHours}h
-                      </span>
-                    </div>
+                    </GanttBar>
                   </div>
                 );
               })}
             </div>
-          </>
-        )}
+          )}
 
-        {/* Legend */}
+          {teamWithDates.length > 0 && (
+            <>
+              <div className="my-2 border-t border-dashed border-border/50" />
+              <div className="mb-1">
+                <span className="font-display text-[9px] font-bold uppercase tracking-widest text-muted/40">
+                  Resources
+                </span>
+              </div>
+              <div className="space-y-1">
+                {teamWithDates.map((t) => {
+                  const start = dateToMs(t.startDate!);
+                  const end = dateToMs(t.endDate!);
+                  const left = ((start - minTime) / range) * 100;
+                  const width = Math.max(((end - start) / range) * 100, 1.5);
+                  const partyOpt = PARTY_OPTIONS.find(
+                    (p) => p.value === t.party,
+                  );
+                  const barColor = partyOpt?.color ?? "#666666";
+                  const partyLogo = partyOpt?.logo;
+
+                  return (
+                    <div key={t.id} className="relative flex h-6 items-center">
+                      <GanttBar
+                        trackRef={trackRef}
+                        leftPct={left}
+                        widthPct={width}
+                        startDate={t.startDate!}
+                        endDate={t.endDate!}
+                        range={range}
+                        title={`${t.name} — ${t.role} (${t.totalHours}h, ${formatGanttDate(t.startDate!)} – ${formatGanttDate(t.endDate!)})`}
+                        style={{
+                          backgroundColor: "rgba(255,255,255,0.04)",
+                          borderLeft: `2px solid ${barColor}`,
+                        }}
+                        onDatesChange={
+                          onTeamDates
+                            ? (startDate, endDate) =>
+                                onTeamDates(t.id, startDate, endDate)
+                            : undefined
+                        }
+                        onDragActive={handleDragActive}
+                      >
+                        {partyLogo && (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={partyLogo}
+                            alt=""
+                            className="h-3.5 w-3.5 shrink-0 object-contain"
+                          />
+                        )}
+                        <span className="truncate text-[10px] font-medium text-foreground/70">
+                          {t.name || t.role}
+                        </span>
+                        <span className="shrink-0 text-[9px] tabular-nums text-muted/50">
+                          {t.totalHours}h
+                        </span>
+                      </GanttBar>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+
         {withDates.length > 1 && (
           <div className="mt-3 flex flex-wrap gap-3 border-t border-white/[0.06] pt-2">
             {withDates.map((m, i) => {
@@ -441,10 +683,7 @@ function MilestoneGantt({
                   key={m.id}
                   className="flex items-center gap-1.5 text-[10px] text-muted"
                 >
-                  <span
-                    className="size-2"
-                    style={{ backgroundColor: c }}
-                  />
+                  <span className="size-2" style={{ backgroundColor: c }} />
                   {m.milestone.trim() || m.epic.trim() || `Milestone ${i + 1}`}
                 </span>
               );
@@ -822,9 +1061,8 @@ function TeamMemberCard({
           ))}
         </div>
 
-        {/* Hours — dual inline number inputs with live bar */}
-        <div className="grid grid-cols-2 gap-2">
-          <div>
+        <div className="flex gap-2">
+          <div className="w-[5.5rem] shrink-0">
             <span className="mb-0.5 block text-[9px] uppercase tracking-wider text-muted/60">
               Total hours
             </span>
@@ -842,30 +1080,6 @@ function TeamMemberCard({
               placeholder="0"
             />
           </div>
-          <div>
-            <span className="mb-0.5 block text-[9px] uppercase tracking-wider text-muted/60">
-              Hours / day
-            </span>
-            <input
-              type="number"
-              min={0}
-              max={24}
-              step={0.5}
-              value={member.hoursPerDay || ""}
-              onChange={(e) =>
-                onChange({
-                  ...member,
-                  hoursPerDay: Math.max(0, Number(e.target.value) || 0),
-                })
-              }
-              className="w-full border border-border bg-surface-input px-2 py-1.5 text-xs tabular-nums text-foreground focus:border-muted focus:outline-none"
-              placeholder="0"
-            />
-          </div>
-        </div>
-        <HoursBar hours={member.totalHours} max={maxHours} />
-
-        <div className="flex gap-2">
           <MiniDateInput
             value={member.startDate ?? ""}
             onChange={(v) => {
@@ -896,6 +1110,7 @@ function TeamMemberCard({
             min={member.startDate || undefined}
           />
         </div>
+        <HoursBar hours={member.totalHours} max={maxHours} />
       </div>
     </div>
   );
@@ -1036,13 +1251,25 @@ function ScopingHeader({
 type Props = {
   initiativeId: number;
   data: ScopingData | null;
+  validationData?: ValidationData | null;
   readOnly?: boolean;
   resubmitting?: boolean;
 };
 
+function sameImpactState(
+  a: ReturnType<typeof resolveBusinessValueState>,
+  b: ReturnType<typeof resolveBusinessValueState>,
+): boolean {
+  if (a.types.length !== b.types.length) return false;
+  const aSet = new Set(a.types);
+  if (!b.types.every((type) => aSet.has(type))) return false;
+  return a.types.every((type) => a.impacts[type] === b.impacts[type]);
+}
+
 export function ScopingPhaseSection({
   initiativeId,
   data,
+  validationData,
   readOnly = false,
   resubmitting = false,
 }: Props) {
@@ -1122,25 +1349,61 @@ export function ScopingPhaseSection({
     markDirty();
     setTeam((prev) => prev.filter((_, idx) => idx !== i));
   };
-
-  // ── Value metrics state
-  const [valueMetrics, setValueMetrics] = useState<ScopingValueMetric[]>(
-    data?.valueMetrics?.length ? data.valueMetrics : [],
+  const updateMilestoneDates = useCallback(
+    (id: string, startDate: string, endDate: string) => {
+      markDirty();
+      setMilestones((prev) =>
+        prev.map((m) => (m.id === id ? { ...m, startDate, endDate } : m)),
+      );
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
-  const toggleValueType = (type: BusinessValueType) => {
+  const updateTeamDates = useCallback(
+    (id: string, startDate: string, endDate: string) => {
+      markDirty();
+      setTeam((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, startDate, endDate } : t)),
+      );
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  // ── Impact (carried forward from Validation)
+  const priorImpact = resolveBusinessValueState(validationData?.businessValue);
+  const initialImpact =
+    data?.impact && isBusinessValueData(data.impact) && data.impact.types.length > 0
+      ? resolveBusinessValueState(data.impact)
+      : priorImpact;
+
+  const [impactTypes, setImpactTypes] = useState<BusinessValueType[]>(
+    initialImpact.types,
+  );
+  const [impactScores, setImpactScores] = useState(initialImpact.impacts);
+
+  const toggleImpactType = (type: BusinessValueType) => {
     markDirty();
-    setValueMetrics((prev) => {
-      const existing = prev.find((v) => v.type === type);
-      if (existing) return prev.filter((v) => v.type !== type);
-      return [...prev, { type, metric: "", target: null, unit: "€/year" }];
+    setImpactTypes((current) => {
+      if (current.includes(type)) {
+        setImpactScores((scores) => ({ ...scores, [type]: null }));
+        return current.filter((item) => item !== type);
+      }
+      setImpactScores((scores) => ({
+        ...scores,
+        [type]: scores[type] ?? IMPACT_DEFAULT,
+      }));
+      return [...current, type];
     });
   };
-  const updateValueMetric = (type: BusinessValueType, changes: Partial<ScopingValueMetric>) => {
-    markDirty();
-    setValueMetrics((prev) =>
-      prev.map((v) => (v.type === type ? { ...v, ...changes } : v)),
+
+  const impactData = buildBusinessValueData(impactTypes, impactScores);
+  const fromValidation =
+    priorImpact.types.length > 0 &&
+    sameImpactState(
+      { types: impactTypes, impacts: impactScores },
+      priorImpact,
     );
-  };
 
   // ── Scope items state
   const [scopeItems, setScopeItems] = useState<ScopingScopeItem[]>(
@@ -1174,25 +1437,26 @@ export function ScopingPhaseSection({
     team.length > 0 &&
     team.every((t) => t.role.trim() && t.name.trim() && t.totalHours > 0);
   const valueReady =
-    valueMetrics.length > 0 &&
-    valueMetrics.every((v) => v.metric.trim() && v.target !== null && v.target > 0);
+    impactTypes.length > 0 &&
+    impactTypes.every((type) => impactScores[type] !== null);
   const scopeReady =
     scopeItems.length > 0 && scopeItems.every((s) => s.label.trim());
-  const depsReady = dependencies.trim().length > 0;
+  const notesReady = dependencies.trim().length > 0;
 
   const sections = [
     { done: milestonesReady, label: "Milestones" },
     { done: teamReady, label: "Team" },
-    { done: valueReady, label: "Value" },
+    { done: valueReady, label: "Impact" },
     { done: scopeReady, label: "Scope" },
-    { done: depsReady, label: "Dependencies" },
   ];
 
   function applyDevPrefill() {
     markDirty();
     setMilestones(DEV_PREFILL.milestones!.map((m) => ({ ...m, id: uid() })));
     setTeam(DEV_PREFILL.team!.map((t) => ({ ...t, id: uid() })));
-    setValueMetrics(DEV_PREFILL.valueMetrics!);
+    const prefillImpact = resolveBusinessValueState(DEV_PREFILL.impact);
+    setImpactTypes(prefillImpact.types);
+    setImpactScores(prefillImpact.impacts);
     setScopeItems(
       DEV_PREFILL.scopeItems!.map((s) => ({ ...s, id: uid() })),
     );
@@ -1206,7 +1470,11 @@ export function ScopingPhaseSection({
     return (
       <>
         <ScopingHeader sections={sections} />
-        <ScopingReadOnly data={data} maxHours={maxHours} />
+        <ScopingReadOnly
+          data={data}
+          maxHours={maxHours}
+          validationData={validationData}
+        />
       </>
     );
   }
@@ -1218,7 +1486,7 @@ export function ScopingPhaseSection({
       {/* Hidden JSON fields for server action */}
       <input type="hidden" name="milestones" value={JSON.stringify(milestones)} />
       <input type="hidden" name="team" value={JSON.stringify(team)} />
-      <input type="hidden" name="valueMetrics" value={JSON.stringify(valueMetrics)} />
+      <input type="hidden" name="impact" value={JSON.stringify(impactData)} />
       <input type="hidden" name="scopeItems" value={JSON.stringify(scopeItems)} />
 
       <div className="space-y-4 p-4">
@@ -1255,7 +1523,12 @@ export function ScopingPhaseSection({
               onRemove={removeMilestone}
             />
             <div className="mt-4 border-t border-border" />
-            <MilestoneGantt milestones={milestones} team={team} />
+            <MilestoneGantt
+              milestones={milestones}
+              team={team}
+              onMilestoneDates={updateMilestoneDates}
+              onTeamDates={updateTeamDates}
+            />
           </div>
 
           {/* ─── 2. Team & Hour Estimates ───────────────────── */}
@@ -1292,25 +1565,35 @@ export function ScopingPhaseSection({
             </div>
           </div>
 
-          {/* ─── 3. Quantifiable Value ─────────────────────── */}
+          {/* ─── 3. Impact ─────────────────────────────────── */}
           <div className="space-y-3 py-5 first:pt-0 last:pb-0">
-            <ScopingFieldLabel field="valueMetrics" required complete={valueReady}>
-              Quantifiable Value
-            </ScopingFieldLabel>
+            <div className="flex flex-wrap items-center gap-2">
+              <ScopingFieldLabel field="impact" required complete={valueReady}>
+                Impact
+              </ScopingFieldLabel>
+              {fromValidation && (
+                <span className="border border-border px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-muted">
+                  From Validation
+                </span>
+              )}
+              {!fromValidation && priorImpact.types.length > 0 && (
+                <span className="border border-bbb/40 px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-bbb">
+                  Updated in Scoping
+                </span>
+              )}
+            </div>
             <p className="text-[11px] leading-relaxed text-muted">
-              Select where value is created, then define a measurable metric and
-              target. These will be mirrored against total delivery costs at Go/No-Go.
+              Values from Validation are carried forward. Adjust them if the scoped delivery changes the picture.
             </p>
 
-            {/* Type toggle buttons */}
             <div className="flex flex-wrap gap-2">
               {BUSINESS_VALUE_TYPES.map((type) => {
-                const selected = valueMetrics.some((v) => v.type === type.id);
+                const selected = impactTypes.includes(type.id);
                 return (
                   <button
                     key={type.id}
                     type="button"
-                    onClick={() => toggleValueType(type.id)}
+                    onClick={() => toggleImpactType(type.id)}
                     aria-pressed={selected}
                     className={[
                       "flex items-center gap-1.5 border px-3 py-2 font-display text-[10px] font-bold uppercase tracking-wide transition-colors",
@@ -1328,89 +1611,34 @@ export function ScopingPhaseSection({
               })}
             </div>
 
-            {/* Metric inputs for each selected type */}
-            {valueMetrics.length > 0 && (
-              <div className="space-y-3">
-                {valueMetrics.map((vm) => {
-                  const typeLabel =
-                    BUSINESS_VALUE_TYPES.find((t) => t.id === vm.type)?.label ?? vm.type;
-                  const filled = vm.metric.trim() && vm.target !== null && vm.target > 0;
+            {impactTypes.length === 0 ? (
+              <p className="text-xs text-muted">
+                Select one or more value types, then rate impact from 1 to 10 for each.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {impactTypes.map((type) => {
+                  const label =
+                    BUSINESS_VALUE_TYPES.find((item) => item.id === type)
+                      ?.label ?? type;
+                  const score = impactScores[type] ?? IMPACT_DEFAULT;
                   return (
-                    <div
-                      key={vm.type}
-                      className={[
-                        "border p-3 transition-colors",
-                        filled
-                          ? "border-success/30 bg-success/[0.03]"
-                          : "border-border bg-surface",
-                      ].join(" ")}
-                    >
-                      <div className="mb-2 flex items-center gap-2">
-                        <TrendingUp className="size-3.5 text-bbb/60" />
-                        <span className="font-display text-[10px] font-bold uppercase tracking-wide text-foreground">
-                          {typeLabel}
-                        </span>
-                        {filled && (
-                          <Check className="animate-check-pop ml-auto size-3.5 text-success" />
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <input
-                          type="text"
-                          value={vm.metric}
-                          onChange={(e) =>
-                            updateValueMetric(vm.type, { metric: e.target.value })
-                          }
-                          placeholder="What are we measuring? (e.g. Reduction in setup time per client)"
-                          className="w-full border-b border-border bg-transparent px-0 py-1 text-xs text-foreground placeholder:text-muted/40 focus:border-muted focus:outline-none"
-                        />
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1">
-                            <span className="mb-0.5 block text-[9px] uppercase tracking-wider text-muted/60">
-                              Target value
-                            </span>
-                            <div className="flex items-center gap-0">
-                              <input
-                                type="number"
-                                min={0}
-                                value={vm.target ?? ""}
-                                onChange={(e) =>
-                                  updateValueMetric(vm.type, {
-                                    target: e.target.value ? Number(e.target.value) : null,
-                                  })
-                                }
-                                placeholder="0"
-                                className="w-full border border-r-0 border-border bg-surface-input px-2 py-1.5 text-xs tabular-nums text-foreground focus:border-muted focus:outline-none"
-                              />
-                              <select
-                                value={vm.unit}
-                                onChange={(e) =>
-                                  updateValueMetric(vm.type, { unit: e.target.value })
-                                }
-                                className="border border-border bg-surface-input px-2 py-1.5 text-xs text-muted focus:border-muted focus:outline-none"
-                              >
-                                <option value="€/year">€/year</option>
-                                <option value="€/month">€/month</option>
-                                <option value="€/quarter">€/quarter</option>
-                                <option value="hours/week">hours/week</option>
-                                <option value="hours/month">hours/month</option>
-                                <option value="%">%</option>
-                                <option value="units">units</option>
-                              </select>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <ImpactSlider
+                      key={type}
+                      name={`impactExpectation_${type}`}
+                      label={label}
+                      value={score}
+                      onChange={(next) => {
+                        markDirty();
+                        setImpactScores((current) => ({
+                          ...current,
+                          [type]: next,
+                        }));
+                      }}
+                    />
                   );
                 })}
               </div>
-            )}
-
-            {valueMetrics.length === 0 && (
-              <p className="text-xs text-muted">
-                Select at least one value type above — Speed, Cost Efficiency, or Growth — then define a quantifiable target for each.
-              </p>
             )}
           </div>
 
@@ -1483,14 +1711,13 @@ export function ScopingPhaseSection({
             </div>
           </div>
 
-          {/* ─── 5. Dependencies & Assumptions ─────────────── */}
+          {/* ─── 5. Other Notes ────────────────────────────── */}
           <label className="block py-5 first:pt-0 last:pb-0">
-            <ScopingFieldLabel field="dependencies" required complete={depsReady}>
-              Dependencies & Assumptions
+            <ScopingFieldLabel field="notes" complete={notesReady}>
+              Other Notes
             </ScopingFieldLabel>
             <textarea
               name="scopeDependencies"
-              required
               rows={3}
               value={dependencies}
               onChange={(e) => {
@@ -1498,7 +1725,7 @@ export function ScopingPhaseSection({
                 setDependencies(e.target.value);
               }}
               className={`${inputClass} mt-1`}
-              placeholder="e.g. Requires partner API v3 access (pending contract). Assumes current infra handles 2× throughput."
+              placeholder="Optional — leftover context, open questions, or anything reviewers should see."
             />
           </label>
 
@@ -1625,13 +1852,22 @@ export function ScopingPhaseSection({
 function ScopingReadOnly({
   data,
   maxHours,
+  validationData,
 }: {
   data: ScopingData | null;
   maxHours: number;
+  validationData?: ValidationData | null;
 }) {
   const milestones = data?.milestones ?? [];
   const team = data?.team ?? [];
   const scopeItems = data?.scopeItems ?? [];
+  const validationImpact = validationData?.businessValue;
+  const impact =
+    data?.impact && isBusinessValueData(data.impact) && data.impact.types.length > 0
+      ? data.impact
+      : isBusinessValueData(validationImpact)
+        ? validationImpact
+        : null;
 
   return (
     <div className="divide-y divide-border">
@@ -1718,12 +1954,9 @@ function ScopingReadOnly({
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-muted">{t.role}</p>
-                  <div className="mt-1.5 flex items-center gap-2">
+                  <div className="mt-1.5">
                     <span className="font-display text-[10px] font-bold tabular-nums text-foreground">
                       {t.totalHours}h
-                    </span>
-                    <span className="text-[10px] text-muted">
-                      @ {t.hoursPerDay}h/day
                     </span>
                   </div>
                   <HoursBar hours={t.totalHours} max={maxHours} />
@@ -1736,32 +1969,54 @@ function ScopingReadOnly({
         )}
       </div>
 
-      {/* Quantifiable Value */}
+      {/* Impact */}
       <div className="p-4">
         <div className="mb-2 flex items-center gap-2 text-muted">
           <TrendingUp className="size-3.5 shrink-0" />
           <p className="font-display text-[10px] font-bold uppercase tracking-wide">
-            Quantifiable Value
+            Impact
           </p>
         </div>
-        {(data?.valueMetrics?.length ?? 0) > 0 ? (
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {data!.valueMetrics!.map((vm, i) => {
-              const typeLabel =
-                BUSINESS_VALUE_TYPES.find((t) => t.id === vm.type)?.label ?? vm.type;
+        {impact && impact.types.length > 0 ? (
+          <div className="space-y-3">
+            {impact.types.map((type) => {
+              const label =
+                BUSINESS_VALUE_TYPES.find((item) => item.id === type)?.label ??
+                type;
+              const score = parseImpactScore(impact.expectations[type]);
+              const pct =
+                score !== null
+                  ? ((score - IMPACT_MIN) / (IMPACT_MAX - IMPACT_MIN)) * 100
+                  : 0;
               return (
-                <div key={vm.type ?? i} className="border border-border bg-surface p-3">
-                  <div className="mb-1.5 flex items-center gap-2">
-                    <span className="border border-border px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-wide text-foreground">
-                      {typeLabel}
+                <div key={type}>
+                  <div className="mb-1.5 flex items-center justify-between gap-3">
+                    <span className="border border-border px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide text-foreground">
+                      {label}
+                    </span>
+                    <span className="flex items-baseline gap-2">
+                      <span className="font-display text-xs font-bold tabular-nums text-foreground">
+                        {score !== null ? (
+                          <>
+                            {score}
+                            <span className="text-muted">/10</span>
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </span>
+                      {score !== null && (
+                        <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+                          {impactScoreLabel(score)}
+                        </span>
+                      )}
                     </span>
                   </div>
-                  <p className="text-xs text-muted">{vm.metric || "—"}</p>
-                  <div className="mt-1.5 flex items-baseline gap-1.5">
-                    <span className="font-display text-sm font-bold tabular-nums text-foreground">
-                      {vm.target != null ? vm.target.toLocaleString() : "—"}
-                    </span>
-                    <span className="text-[10px] text-muted">{vm.unit}</span>
+                  <div className="h-1.5 w-full bg-border">
+                    <div
+                      className="h-full bg-muted transition-[width]"
+                      style={{ width: `${pct}%` }}
+                    />
                   </div>
                 </div>
               );
@@ -1819,12 +2074,12 @@ function ScopingReadOnly({
         )}
       </div>
 
-      {/* Dependencies */}
+      {/* Other Notes */}
       <div className="p-4">
         <div className="mb-2 flex items-center gap-2 text-muted">
-          <Link2 className="size-3.5 shrink-0" />
+          <StickyNote className="size-3.5 shrink-0" />
           <p className="font-display text-[10px] font-bold uppercase tracking-wide">
-            Dependencies & Assumptions
+            Other Notes
           </p>
         </div>
         <p className="text-sm leading-relaxed text-foreground/90">

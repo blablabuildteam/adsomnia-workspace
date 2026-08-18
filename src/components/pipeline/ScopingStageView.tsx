@@ -21,7 +21,11 @@ import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStrip } from "@/components/pipeline/PipelineStrip";
 import type { InitiativeWithUsers } from "@/lib/queries";
-import { isScopingComplete, type ScopingData } from "@/lib/validation-data";
+import {
+  isBusinessValueComplete,
+  isScopingComplete,
+  type ScopingData,
+} from "@/lib/validation-data";
 
 const hoverTicks =
   "opacity-0 transition-opacity duration-300 group-hover:opacity-100";
@@ -97,8 +101,8 @@ function getScopingSectionCount(data: ScopingData | null): number {
   let count = 0;
   if ((data.milestones?.length ?? 0) > 0) count++;
   if ((data.team?.length ?? 0) > 0) count++;
+  if (isBusinessValueComplete(data.impact)) count++;
   if ((data.scopeItems?.length ?? 0) > 0) count++;
-  if ((data.dependencies ?? "").trim().length > 0) count++;
   return count;
 }
 

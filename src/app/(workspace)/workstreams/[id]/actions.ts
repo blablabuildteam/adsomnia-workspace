@@ -15,7 +15,6 @@ import {
   type ScopingMilestone,
   type ScopingTeamMember,
   type ScopingScopeItem,
-  type ScopingValueMetric,
 } from "@/lib/queries";
 
 const BUSINESS_VALUE_TYPE_IDS: BusinessValueType[] = [
@@ -505,7 +504,6 @@ export async function submitValidationForApproval(
     "priority",
     "leadProductionParty",
     "dependencies",
-    "risks",
   ];
   const missing = required.filter((k) => !data[k]);
   if (missing.length > 0 || !isBusinessValueComplete(data.businessValue)) {
@@ -550,20 +548,20 @@ function parseScopingFormData(formData: FormData): ScopingData {
   const milestonesRaw = formData.get("milestones") as string | null;
   const teamRaw = formData.get("team") as string | null;
   const scopeRaw = formData.get("scopeItems") as string | null;
-  const valueMetricsRaw = formData.get("valueMetrics") as string | null;
+  const impactRaw = formData.get("impact") as string | null;
   const dependencies = (formData.get("scopeDependencies") as string)?.trim() || undefined;
 
   let milestones: ScopingMilestone[] | undefined;
   let team: ScopingTeamMember[] | undefined;
   let scopeItems: ScopingScopeItem[] | undefined;
-  let valueMetrics: ScopingValueMetric[] | undefined;
+  let impact: BusinessValueData | undefined;
 
   try { milestones = milestonesRaw ? JSON.parse(milestonesRaw) : undefined; } catch { /* skip */ }
   try { team = teamRaw ? JSON.parse(teamRaw) : undefined; } catch { /* skip */ }
   try { scopeItems = scopeRaw ? JSON.parse(scopeRaw) : undefined; } catch { /* skip */ }
-  try { valueMetrics = valueMetricsRaw ? JSON.parse(valueMetricsRaw) : undefined; } catch { /* skip */ }
+  try { impact = impactRaw ? JSON.parse(impactRaw) : undefined; } catch { /* skip */ }
 
-  return { milestones, team, valueMetrics, scopeItems, dependencies };
+  return { milestones, team, impact, scopeItems, dependencies };
 }
 
 export async function saveScopingData(
@@ -609,7 +607,7 @@ export async function submitScopingForApproval(
 
   if (!isScopingComplete(data)) {
     return {
-      error: "All scoping fields must be completed before submitting. Ensure milestones, team, scope items, and dependencies are all provided.",
+      error: "All scoping fields must be completed before submitting. Ensure impact, milestones, team, and scope items are all provided.",
     };
   }
 

@@ -68,7 +68,7 @@ const PRIORITY_FILTERS = ["Now", "Near", "Later", "Backlog"] as const;
 type TShirtFilter = (typeof TSHIRT_FILTERS)[number];
 type PriorityFilter = (typeof PRIORITY_FILTERS)[number];
 
-const VALIDATION_FIELD_TOTAL = 7;
+const VALIDATION_FIELD_TOTAL = 6;
 
 /**
  * Card status for items still in the Validation stage.
@@ -180,7 +180,6 @@ function ValidationCard({ item }: { item: InitiativeWithUsers }) {
         vd.priority,
         vd.leadProductionParty,
         vd.dependencies,
-        vd.risks,
       ].filter(Boolean).length
     : 0;
   const progressPct = Math.round(
@@ -252,7 +251,7 @@ function ValidationCard({ item }: { item: InitiativeWithUsers }) {
             <div className="mb-1.5 flex items-center gap-1.5 text-muted">
               <BarChart3 className="size-3" />
               <p className="font-display text-[9px] font-bold uppercase tracking-wide text-muted/60">
-                Business Value
+                Expected Business Value
               </p>
             </div>
             <div className="flex-1">
@@ -263,7 +262,7 @@ function ValidationCard({ item }: { item: InitiativeWithUsers }) {
             <div className="mb-1 flex items-center gap-1.5 text-muted">
               <Compass className="size-3" />
               <p className="font-display text-[9px] font-bold uppercase tracking-wide text-muted/60">
-                Solution Direction
+                High-Level Approach of the Solution
               </p>
             </div>
             <p className="line-clamp-2 text-xs leading-relaxed text-muted">

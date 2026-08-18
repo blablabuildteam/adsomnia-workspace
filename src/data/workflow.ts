@@ -94,12 +94,12 @@ export const STAGES: WorkflowStage[] = [
     owner: "Adsomnia Leadership Team / Head of Production / Team Lead",
     parties: ["adsomnia"],
     inputs: [
-      "Quantifiable Business Value — turn the impact hypothesis into measurable value (KPI, baseline, and rough upside where possible)",
-      "Global Solution Direction & High-Level Architecture — outline the preferred approach and main building blocks (systems, integrations, build vs buy) without detailed design",
+      "Expected Business Value — turn the impact hypothesis into measurable value (KPI, baseline, and rough upside where possible)",
+      "High-Level Approach of the Solution — outline the preferred approach and main building blocks (systems, integrations, build vs buy) without detailed design",
       "Investment Estimate — T-shirt size S / M / L / XL for overall effort, with a one-line rationale for the chosen size",
       "Strategic Fit & Priority — explain why this belongs in the portfolio now, and propose Now / Next / Later / Rollout placement",
       "Dependencies & Blockers — list other initiatives, teams, vendors, or systems this depends on, and anything that could block start",
-      "Risks & ‘Do Nothing’ Scenario — key risks if we proceed, and the cost/impact of not doing the initiative",
+      "Other Notes (optional) — leftover context, open questions, or anything leadership should see",
     ],
     outputs: [
       `The initiative ticket in the ${WORKSPACE_SYSTEM} is enriched into a Business Case (including T-shirt size and KPIs)`,

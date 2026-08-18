@@ -386,6 +386,7 @@ export function InitiativeDetailView({
                       <ScopingPhaseSection
                         initiativeId={initiative.id}
                         data={initiative.scopingData}
+                        validationData={initiative.validationData}
                         resubmitting={scopingAwaitingDecision}
                       />
                     </form>
@@ -393,6 +394,7 @@ export function InitiativeDetailView({
                     <ScopingPhaseSection
                       initiativeId={initiative.id}
                       data={initiative.scopingData}
+                      validationData={initiative.validationData}
                       readOnly
                     />
                   )}
