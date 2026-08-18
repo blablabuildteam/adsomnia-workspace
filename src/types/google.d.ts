@@ -40,6 +40,8 @@ declare namespace google {
       addView(view: DocsView): this;
       setOAuthToken(token: string): this;
       setDeveloperKey(key: string): this;
+      setAppId(appId: string): this;
+      setOrigin(origin: string): this;
       setCallback(callback: (data: ResponseObject) => void): this;
       setTitle(title: string): this;
       enableFeature(feature: Feature): this;

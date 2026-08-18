@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
+import { useRef, useState, type DragEvent } from "react";
 import {
   FileText,
   Sheet,
@@ -63,40 +63,82 @@ function formatFileSize(bytes: number): string {
 
 const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY ?? "";
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+const GOOGLE_APP_ID = GOOGLE_CLIENT_ID.split("-")[0] ?? "";
 const PICKER_SCOPE = "https://www.googleapis.com/auth/drive.readonly";
 
-let gapiLoaded = false;
-let gisLoaded = false;
+let googleApisReady: Promise<void> | null = null;
 
 function loadScript(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) {
-      resolve();
+    const existing = document.querySelector<HTMLScriptElement>(
+      `script[src="${src}"]`,
+    );
+    if (existing) {
+      if (existing.dataset.loaded === "true") {
+        resolve();
+        return;
+      }
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener(
+        "error",
+        () => reject(new Error(`Failed to load ${src}`)),
+        { once: true },
+      );
       return;
     }
     const s = document.createElement("script");
     s.src = src;
     s.async = true;
-    s.defer = true;
-    s.onload = () => resolve();
+    s.onload = () => {
+      s.dataset.loaded = "true";
+      resolve();
+    };
     s.onerror = () => reject(new Error(`Failed to load ${src}`));
     document.head.appendChild(s);
   });
 }
 
-async function ensureGapi(): Promise<void> {
-  if (gapiLoaded) return;
-  await loadScript("https://apis.google.com/js/api.js");
-  await new Promise<void>((resolve) => {
-    window.gapi.load("picker", { callback: resolve });
+function waitFor(check: () => boolean, label: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (check()) {
+      resolve();
+      return;
+    }
+    const started = Date.now();
+    const id = window.setInterval(() => {
+      if (check()) {
+        window.clearInterval(id);
+        resolve();
+      } else if (Date.now() - started > 8000) {
+        window.clearInterval(id);
+        reject(new Error(`${label} failed to initialize`));
+      }
+    }, 40);
   });
-  gapiLoaded = true;
 }
 
-async function ensureGis(): Promise<void> {
-  if (gisLoaded) return;
-  await loadScript("https://accounts.google.com/gsi/client");
-  gisLoaded = true;
+/** gapi must load first — it overwrites `window.google`. GIS is attached after. */
+function ensureGoogleApis(): Promise<void> {
+  if (!googleApisReady) {
+    googleApisReady = (async () => {
+      await loadScript("https://apis.google.com/js/api.js");
+      await waitFor(() => Boolean(window.gapi?.load), "Google API client");
+      await new Promise<void>((resolve) => {
+        window.gapi.load("picker", { callback: resolve });
+      });
+      await waitFor(() => Boolean(window.google?.picker), "Google Picker");
+
+      await loadScript("https://accounts.google.com/gsi/client");
+      await waitFor(
+        () => Boolean(window.google?.accounts?.oauth2),
+        "Google Identity",
+      );
+    })().catch((error) => {
+      googleApisReady = null;
+      throw error;
+    });
+  }
+  return googleApisReady;
 }
 
 type DrivePickedFile = {
@@ -212,22 +254,6 @@ export function AttachmentZone({ attachments, onChange, readOnly }: Props) {
 
   const hasPickerConfig = Boolean(GOOGLE_API_KEY && GOOGLE_CLIENT_ID);
 
-  /* ── Init GIS token client once ──────────────────────── */
-
-  const initTokenClient = useCallback(async () => {
-    if (tokenClientRef.current || !hasPickerConfig) return;
-    await ensureGis();
-    tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
-      scope: PICKER_SCOPE,
-      callback: () => {/* handled inline in openPicker */},
-    });
-  }, [hasPickerConfig]);
-
-  useEffect(() => {
-    if (hasPickerConfig) initTokenClient();
-  }, [hasPickerConfig, initTokenClient]);
-
   /* ── Helpers ─────────────────────────────────────────── */
 
   function addFiles(files: FileList | File[]) {
@@ -300,7 +326,7 @@ export function AttachmentZone({ attachments, onChange, readOnly }: Props) {
     setPickerError(null);
 
     try {
-      await Promise.all([ensureGapi(), ensureGis()]);
+      await ensureGoogleApis();
 
       if (!tokenClientRef.current) {
         tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
@@ -333,11 +359,12 @@ export function AttachmentZone({ attachments, onChange, readOnly }: Props) {
         .setIncludeFolders(true)
         .setSelectFolderEnabled(false);
 
-      const picker = new window.google.picker.PickerBuilder()
+      const builder = new window.google.picker.PickerBuilder()
         .addView(docsView)
         .addView(new window.google.picker.DocsView(window.google.picker.ViewId.RECENTLY_PICKED))
         .setOAuthToken(token)
         .setDeveloperKey(GOOGLE_API_KEY)
+        .setOrigin(window.location.origin)
         .setCallback((data: google.picker.ResponseObject) => {
           if (data.action === window.google.picker.Action.PICKED) {
             const files: DrivePickedFile[] = data.docs.map((doc) => ({
@@ -351,14 +378,20 @@ export function AttachmentZone({ attachments, onChange, readOnly }: Props) {
           }
         })
         .setTitle("Select files from Google Drive")
-        .enableFeature(window.google.picker.Feature.MULTISELECT_ENABLED)
-        .build();
+        .enableFeature(window.google.picker.Feature.MULTISELECT_ENABLED);
 
+      if (GOOGLE_APP_ID) builder.setAppId(GOOGLE_APP_ID);
+
+      const picker = builder.build();
       picker.setVisible(true);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to open picker";
       if (msg.includes("popup_closed") || msg.includes("access_denied")) {
         // user cancelled — not an error
+      } else if (/invalid|developer key|api.?key/i.test(msg)) {
+        setPickerError(
+          "Google rejected the API key. Enable the Google Picker API on the same Cloud project as the OAuth client, and add http://localhost:3000/* as an allowed HTTP referrer.",
+        );
       } else {
         setPickerError(msg);
       }
