@@ -4,82 +4,63 @@ import { useActionState, useState } from "react";
 import {
   CheckCircle2,
   XCircle,
-  Pause,
   AlertCircle,
   User,
   Calendar,
   MessageSquare,
-  MessageCircle,
+  Undo2,
   Hourglass,
+  Rocket,
+  Ban,
 } from "lucide-react";
 import {
-  approveToValidation,
-  rejectInitiative,
-  putOnHold,
-  requestIdeaFeedback,
-  type ApprovalResult,
+  approveGoNoGoToSetup,
+  rejectGoNoGo,
+  requestGoNoGoChanges,
+  type GoNoGoDecisionResult,
 } from "@/app/(workspace)/workstreams/[id]/actions";
 import { inputClass } from "@/lib/form-styles";
 
-const initial: ApprovalResult = {};
+const initial: GoNoGoDecisionResult = {};
 
-type Action = "approve" | "feedback" | "hold" | "reject";
+type Action = "go" | "no-go" | "feedback";
 
-export type ApprovalDecision = {
-  decision: "approved" | "rejected" | "on-hold" | "feedback";
+export type GoNoGoDecision = {
+  decision: "approved" | "rejected" | "feedback";
   comment: string | null;
   approverName: string;
   createdAt: Date;
-  toStage: string | null;
 };
 
 const DECISION_META: Record<
-  ApprovalDecision["decision"],
-  {
-    label: string;
-    description: string;
-    badge: string;
-    icon: typeof CheckCircle2;
-  }
+  GoNoGoDecision["decision"],
+  { label: string; badge: string; icon: typeof CheckCircle2 }
 > = {
   approved: {
-    label: "Approved",
-    description: "Advanced to Validation",
+    label: "GO — Project Setup",
     badge: "border-success bg-success/10 text-success",
-    icon: CheckCircle2,
-  },
-  feedback: {
-    label: "Feedback",
-    description: "Returned for revision",
-    badge: "border-feedback bg-feedback/10 text-feedback",
-    icon: MessageCircle,
-  },
-  "on-hold": {
-    label: "On Hold",
-    description: "Paused pending review",
-    badge: "border-hn bg-hn/10 text-hn",
-    icon: Pause,
+    icon: Rocket,
   },
   rejected: {
-    label: "Rejected",
-    description: "Not advanced",
+    label: "NO-GO — Closed",
     badge: "border-btr bg-btr/10 text-btr",
-    icon: XCircle,
+    icon: Ban,
+  },
+  feedback: {
+    label: "Feedback — Returned to Scoping",
+    badge: "border-hn bg-hn/10 text-hn",
+    icon: Undo2,
   },
 };
 
-function DecisionSummary({ decision, embedded = false }: { decision: ApprovalDecision; embedded?: boolean }) {
+function DecisionSummary({ decision }: { decision: GoNoGoDecision }) {
   const meta = DECISION_META[decision.decision];
   const Icon = meta.icon;
 
   return (
-    <div
-      className={`flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-5 ${
-        embedded ? "border-t border-border bg-foreground/5" : "border border-border bg-foreground/5"
-      }`}
-    >
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border bg-foreground/5 px-4 py-3 sm:px-5">
       <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-        Approval Decision
+        Go / No-Go Decision
       </span>
       <span
         className={`inline-flex items-center gap-1.5 border px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-wide ${meta.badge}`}
@@ -115,59 +96,40 @@ function DecisionSummary({ decision, embedded = false }: { decision: ApprovalDec
 
 type Props = {
   initiativeId: number;
-  decision?: ApprovalDecision | null;
-  /** When true, renders without outer border (for embedding inside a parent container). */
-  embedded?: boolean;
-  /** Whether the current user may make the decision. */
+  decision?: GoNoGoDecision | null;
   canDecide?: boolean;
-  /** Whether the initiative is currently awaiting a leadership decision. */
   awaitingDecision?: boolean;
 };
 
-export function ApprovalPanel({
+export function GoNoGoApprovalPanel({
   initiativeId,
   decision = null,
-  embedded = false,
   canDecide = false,
   awaitingDecision = false,
 }: Props) {
   const [selectedAction, setSelectedAction] = useState<Action | null>(null);
 
-  const boundApprove = approveToValidation.bind(null, initiativeId);
-  const boundFeedback = requestIdeaFeedback.bind(null, initiativeId);
-  const boundHold = putOnHold.bind(null, initiativeId);
-  const boundReject = rejectInitiative.bind(null, initiativeId);
+  const boundGo = approveGoNoGoToSetup.bind(null, initiativeId);
+  const boundNoGo = rejectGoNoGo.bind(null, initiativeId);
+  const boundFeedback = requestGoNoGoChanges.bind(null, initiativeId);
 
-  const [approveState, approveAction, approvePending] = useActionState(
-    boundApprove,
-    initial,
-  );
+  const [goState, goAction, goPending] = useActionState(boundGo, initial);
+  const [noGoState, noGoAction, noGoPending] = useActionState(boundNoGo, initial);
   const [feedbackState, feedbackAction, feedbackPending] = useActionState(
     boundFeedback,
     initial,
   );
-  const [holdState, holdAction, holdPending] = useActionState(
-    boundHold,
-    initial,
-  );
-  const [rejectState, rejectAction, rejectPending] = useActionState(
-    boundReject,
-    initial,
-  );
 
-  const pending = approvePending || feedbackPending || holdPending || rejectPending;
-  const error =
-    approveState.error || feedbackState.error || holdState.error || rejectState.error;
+  const pending = goPending || noGoPending || feedbackPending;
+  const error = goState.error || noGoState.error || feedbackState.error;
 
-  const successState = approveState.success
-    ? approveState
-    : feedbackState.success
-      ? feedbackState
-      : holdState.success
-        ? holdState
-        : rejectState.success
-          ? rejectState
-          : null;
+  const successState = goState.success
+    ? goState
+    : noGoState.success
+      ? noGoState
+      : feedbackState.success
+        ? feedbackState
+        : null;
 
   if (successState) {
     return (
@@ -177,36 +139,29 @@ export function ApprovalPanel({
           comment: successState.comment ?? null,
           approverName: successState.approverName ?? "You",
           createdAt: new Date(),
-          toStage:
-            successState.decision === "approved" ? "validation" : null,
         }}
-        embedded={embedded}
       />
     );
   }
 
   if (decision && !awaitingDecision) {
-    return <DecisionSummary decision={decision} embedded={embedded} />;
+    return <DecisionSummary decision={decision} />;
   }
 
   if (awaitingDecision && !canDecide) {
     return (
-      <div
-        className={`approval-action-frame bg-foreground/5 p-5 text-center ${
-          embedded ? "border-t border-border" : "border border-border"
-        }`}
-      >
+      <div className="approval-action-frame border-t border-border bg-foreground/5 p-5 text-center">
         <span aria-hidden className="approval-action-border" />
         <span className="inline-flex items-center gap-1.5 border border-foreground/30 bg-foreground/10 px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-wide text-foreground">
           <Hourglass className="size-3.5" />
           Under Review
         </span>
         <h3 className="mt-3 font-display text-sm font-bold uppercase tracking-wide">
-          Awaiting Leadership Decision
+          Awaiting Go / No-Go Decision
         </h3>
         <p className="mx-auto mt-1 max-w-md text-xs text-muted">
-          This initiative has been submitted. Leadership will review and
-          approve to Validation, send feedback, put it on hold, or reject.
+          The scoping proposal has been submitted for leadership review. A Go,
+          No-Go, or Feedback decision will be made.
         </p>
       </div>
     );
@@ -215,14 +170,15 @@ export function ApprovalPanel({
   if (!awaitingDecision) return null;
 
   return (
-    <div className={`approval-action-frame bg-foreground/5 p-5 text-center ${embedded ? "border-t border-border" : "border border-border"}`}>
+    <div className="approval-action-frame border-t border-border bg-foreground/5 p-5 text-center">
       <span aria-hidden className="approval-action-border" />
       <h3 className="font-display text-sm font-bold uppercase tracking-wide">
-        Approval Decision
+        Go / No-Go Decision
       </h3>
       <p className="mx-auto mt-1 max-w-md text-xs text-muted">
-        Admin-only: review the initiative details and advance to Validation,
-        send feedback, put on hold, or reject.
+        Review the scoping proposal, business case, and all prior stages. Decide
+        whether to greenlight into Project Setup, reject, or send feedback for
+        revision.
       </p>
 
       {error && (
@@ -236,35 +192,27 @@ export function ApprovalPanel({
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           <button
             type="button"
-            onClick={() => setSelectedAction("approve")}
+            onClick={() => setSelectedAction("go")}
             className="inline-flex items-center gap-2 border border-success bg-success/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-success transition-colors hover:bg-success/20"
           >
-            <CheckCircle2 className="size-3.5" />
-            Approve for Validation
+            <Rocket className="size-3.5" />
+            GO — Approve
           </button>
           <button
             type="button"
             onClick={() => setSelectedAction("feedback")}
-            className="inline-flex items-center gap-2 border border-feedback bg-feedback/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-feedback transition-colors hover:bg-feedback/20"
-          >
-            <MessageCircle className="size-3.5" />
-            Feedback
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedAction("hold")}
             className="inline-flex items-center gap-2 border border-hn bg-hn/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-hn transition-colors hover:bg-hn/20"
           >
-            <Pause className="size-3.5" />
-            On Hold
+            <Undo2 className="size-3.5" />
+            Send Feedback
           </button>
           <button
             type="button"
-            onClick={() => setSelectedAction("reject")}
+            onClick={() => setSelectedAction("no-go")}
             className="inline-flex items-center gap-2 border border-btr bg-btr/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-btr transition-colors hover:bg-btr/20"
           >
-            <XCircle className="size-3.5" />
-            Reject
+            <Ban className="size-3.5" />
+            NO-GO — Reject
           </button>
         </div>
       )}
@@ -272,13 +220,11 @@ export function ApprovalPanel({
       {selectedAction && (
         <form
           action={
-            selectedAction === "approve"
-              ? approveAction
-              : selectedAction === "feedback"
-                ? feedbackAction
-                : selectedAction === "hold"
-                  ? holdAction
-                  : rejectAction
+            selectedAction === "go"
+              ? goAction
+              : selectedAction === "no-go"
+                ? noGoAction
+                : feedbackAction
           }
           className="mx-auto mt-4 max-w-md space-y-3 text-left"
         >
@@ -293,8 +239,10 @@ export function ApprovalPanel({
               className={`${inputClass} mt-1`}
               placeholder={
                 selectedAction === "feedback"
-                  ? "Explain what needs to change before resubmission…"
-                  : "Explain the reasoning behind this decision…"
+                  ? "Explain what needs revision before the scope can be approved…"
+                  : selectedAction === "go"
+                    ? "Confirm the rationale for approving this project…"
+                    : "Explain the reasoning for rejecting this initiative…"
               }
             />
           </label>
@@ -304,26 +252,22 @@ export function ApprovalPanel({
               disabled={pending}
               className={[
                 "group relative inline-flex items-center gap-2 overflow-hidden border px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-50",
-                selectedAction === "approve"
+                selectedAction === "go"
                   ? "border-success bg-success text-background"
-                  : selectedAction === "feedback"
-                    ? "border-feedback bg-feedback text-background"
-                    : selectedAction === "hold"
-                      ? "border-hn bg-hn text-background"
-                      : "border-btr bg-btr text-background",
+                  : selectedAction === "no-go"
+                    ? "border-btr bg-btr text-background"
+                    : "border-hn bg-hn text-background",
               ].join(" ")}
             >
               <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />
               <span className="relative">
                 {pending
                   ? "Processing…"
-                  : selectedAction === "approve"
-                    ? "Confirm Approval"
-                    : selectedAction === "feedback"
-                      ? "Send Feedback"
-                      : selectedAction === "hold"
-                        ? "Confirm On Hold"
-                        : "Confirm Rejection"}
+                  : selectedAction === "go"
+                    ? "Confirm GO"
+                    : selectedAction === "no-go"
+                      ? "Confirm NO-GO"
+                      : "Send Feedback"}
               </span>
             </button>
             <button

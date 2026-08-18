@@ -13,6 +13,7 @@ import {
   FileText,
   Flag,
   Loader2,
+  MessageCircle,
   PauseCircle,
   Save,
   Shirt,
@@ -40,26 +41,27 @@ const hoverTicks =
 const stage = STAGES.find((s) => s.id === "validation")!;
 const stageColor = getStageColor(stage.id);
 
-type FilterKey = "all" | "in-progress" | "in-review" | "rejected";
+type FilterKey = "all" | "in-progress" | "in-review" | "feedback" | "rejected";
 
 const FILTERS: { key: FilterKey; label: string; color: string }[] = [
   { key: "all", label: "All", color: "#FFFFFF" },
   { key: "in-progress", label: "In Progress", color: "#EAB308" },
   { key: "in-review", label: "In Review", color: "#38BDF8" },
+  { key: "feedback", label: "Feedback", color: "#A855F7" },
   { key: "rejected", label: "Rejected", color: "#FF3B1F" },
 ];
 
-function matchesValidationFilter(
-  status: InitiativeWithUsers["status"],
-  filter: Exclude<FilterKey, "all">,
-): boolean {
-  if (filter === "in-progress") {
-    return status === "draft" || status === "approved";
+function getEffectiveStatus(
+  status: string,
+  id: number,
+  feedbackSet: Set<number>,
+): "in-progress" | "in-review" | "feedback" | "rejected" {
+  if (status === "submitted") return "in-review";
+  if (status === "rejected") return "rejected";
+  if ((status === "draft" || status === "approved") && feedbackSet.has(id)) {
+    return "feedback";
   }
-  if (filter === "in-review") {
-    return status === "submitted";
-  }
-  return status === "rejected";
+  return "in-progress";
 }
 
 const TSHIRT_FILTERS = ["S", "M", "L", "XL"] as const;
@@ -86,12 +88,14 @@ const STATUS_META: Record<
   draft: { label: "In Progress", color: "#EAB308", icon: Loader2 },
   approved: { label: "In Progress", color: "#EAB308", icon: Loader2 },
   submitted: { label: "In Review", color: "#38BDF8", icon: Eye },
+  feedback: { label: "Feedback", color: "#A855F7", icon: MessageCircle },
   rejected: { label: "Rejected", color: "#FF3B1F", icon: XCircle },
   "on-hold": { label: "On Hold", color: "#7E90A3", icon: PauseCircle },
 };
 
-function StatusBadge({ status }: { status: string }) {
-  const meta = STATUS_META[status] ?? STATUS_META.draft;
+function StatusBadge({ status, hasFeedback }: { status: string; hasFeedback?: boolean }) {
+  const key = hasFeedback && (status === "draft" || status === "approved") ? "feedback" : status;
+  const meta = STATUS_META[key] ?? STATUS_META.draft;
   const Icon = meta.icon;
   return (
     <span
@@ -166,7 +170,7 @@ function BusinessValueBars({
   );
 }
 
-function ValidationCard({ item }: { item: InitiativeWithUsers }) {
+function ValidationCard({ item, hasFeedback }: { item: InitiativeWithUsers; hasFeedback?: boolean }) {
   const daysSinceUpdate = Math.floor(
     (Date.now() - item.updatedAt.getTime()) / (1000 * 60 * 60 * 24),
   );
@@ -199,7 +203,7 @@ function ValidationCard({ item }: { item: InitiativeWithUsers }) {
           <span className="font-display shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted">
             {item.ticketId}
           </span>
-          <StatusBadge status={item.status} />
+          <StatusBadge status={item.status} hasFeedback={hasFeedback} />
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <div
               className="h-1.5 min-w-0 flex-1 bg-border"
@@ -324,32 +328,39 @@ function ValidationCard({ item }: { item: InitiativeWithUsers }) {
 
 type Props = {
   initiatives: InitiativeWithUsers[];
+  feedbackIds?: number[];
 };
 
-export function ValidationStageView({ initiatives }: Props) {
+export function ValidationStageView({ initiatives, feedbackIds = [] }: Props) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const [tShirtFilter, setTShirtFilter] = useState<TShirtFilter | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter | null>(
     null,
   );
 
+  const feedbackSet = new Set(feedbackIds);
   const inStage = initiatives.filter((i) => i.currentStage === "validation");
 
   const statusFiltered =
     activeFilter === "all"
       ? inStage
-      : inStage.filter((i) => matchesValidationFilter(i.status, activeFilter));
+      : inStage.filter(
+          (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === activeFilter,
+        );
 
   const counts: Record<FilterKey, number> = {
     all: inStage.length,
-    "in-progress": inStage.filter((i) =>
-      matchesValidationFilter(i.status, "in-progress"),
+    "in-progress": inStage.filter(
+      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "in-progress",
     ).length,
-    "in-review": inStage.filter((i) =>
-      matchesValidationFilter(i.status, "in-review"),
+    "in-review": inStage.filter(
+      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "in-review",
     ).length,
-    rejected: inStage.filter((i) =>
-      matchesValidationFilter(i.status, "rejected"),
+    feedback: inStage.filter(
+      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "feedback",
+    ).length,
+    rejected: inStage.filter(
+      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "rejected",
     ).length,
   };
 
@@ -563,7 +574,7 @@ export function ValidationStageView({ initiatives }: Props) {
                 { "--enter-delay": `${Math.min(index, 8) * 45}ms` } as React.CSSProperties
               }
             >
-              <ValidationCard item={item} />
+              <ValidationCard item={item} hasFeedback={feedbackSet.has(item.id)} />
             </div>
           ))}
         </div>

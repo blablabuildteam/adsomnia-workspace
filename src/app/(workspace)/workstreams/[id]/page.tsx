@@ -10,6 +10,7 @@ import { getCurrentUser, canApprove } from "@/lib/session";
 import { createSharePath } from "@/lib/share";
 import type { ApprovalDecision } from "@/components/initiatives/ApprovalPanel";
 import type { ValidationDecision } from "@/components/initiatives/ValidationApprovalPanel";
+import type { GoNoGoDecision } from "@/components/initiatives/GoNoGoApprovalPanel";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -50,16 +51,15 @@ export default async function InitiativePage({ params }: Props) {
   const isCreator = user?.id === initiative.submitter.id;
 
   const latestIdea = approvals.find((a) => a.fromStage === "idea");
-  const latestDecision: ApprovalDecision | null =
-    latestIdea && latestIdea.decision !== "feedback"
-      ? {
-          decision: latestIdea.decision,
-          comment: latestIdea.comment,
-          approverName: latestIdea.approverName,
-          createdAt: latestIdea.createdAt,
-          toStage: latestIdea.toStage,
-        }
-      : null;
+  const latestDecision: ApprovalDecision | null = latestIdea
+    ? {
+        decision: latestIdea.decision,
+        comment: latestIdea.comment,
+        approverName: latestIdea.approverName,
+        createdAt: latestIdea.createdAt,
+        toStage: latestIdea.toStage,
+      }
+    : null;
 
   const latestValidation = approvals.find((a) => a.fromStage === "validation");
   const validationDecision: ValidationDecision | null =
@@ -69,6 +69,17 @@ export default async function InitiativePage({ params }: Props) {
           comment: latestValidation.comment,
           approverName: latestValidation.approverName,
           createdAt: latestValidation.createdAt,
+        }
+      : null;
+
+  const latestGoNoGo = approvals.find((a) => a.fromStage === "go-nogo");
+  const goNoGoDecision: GoNoGoDecision | null =
+    latestGoNoGo && latestGoNoGo.decision !== "on-hold"
+      ? {
+          decision: latestGoNoGo.decision,
+          comment: latestGoNoGo.comment,
+          approverName: latestGoNoGo.approverName,
+          createdAt: latestGoNoGo.createdAt,
         }
       : null;
 
@@ -82,6 +93,7 @@ export default async function InitiativePage({ params }: Props) {
       currentUserName={user?.name ?? "Unknown"}
       latestDecision={latestDecision}
       validationDecision={validationDecision}
+      goNoGoDecision={goNoGoDecision}
       isCreator={isCreator}
       sharePath={createSharePath(initiative.id)}
     />

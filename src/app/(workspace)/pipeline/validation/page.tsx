@@ -1,8 +1,16 @@
 import { ValidationStageView } from "@/components/pipeline/ValidationStageView";
-import { getAllInitiatives } from "@/lib/queries";
+import { getAllInitiatives, getInitiativeIdsWithLatestDecision } from "@/lib/queries";
 
 export default async function PipelineValidationPage() {
-  const initiatives = await getAllInitiatives();
+  const [initiatives, feedbackIds] = await Promise.all([
+    getAllInitiatives(),
+    getInitiativeIdsWithLatestDecision("validation", "feedback"),
+  ]);
 
-  return <ValidationStageView initiatives={initiatives} />;
+  return (
+    <ValidationStageView
+      initiatives={initiatives}
+      feedbackIds={Array.from(feedbackIds)}
+    />
+  );
 }

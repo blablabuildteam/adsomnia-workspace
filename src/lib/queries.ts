@@ -220,6 +220,39 @@ export async function getCommentsForInitiative(
     .orderBy(desc(comments.createdAt));
 }
 
+/**
+ * Returns initiative IDs whose latest approval for a given stage has the
+ * specified decision. Useful for detecting "feedback" items that share
+ * the same DB status as regular drafts.
+ */
+export async function getInitiativeIdsWithLatestDecision(
+  stage: string,
+  decision: string,
+): Promise<Set<number>> {
+  const rows = await db
+    .select({
+      initiativeId: approvals.initiativeId,
+      decision: approvals.decision,
+      createdAt: approvals.createdAt,
+    })
+    .from(approvals)
+    .where(eq(approvals.fromStage, stage))
+    .orderBy(desc(approvals.createdAt));
+
+  const latest = new Map<number, string>();
+  for (const row of rows) {
+    if (!latest.has(row.initiativeId)) {
+      latest.set(row.initiativeId, row.decision);
+    }
+  }
+
+  const result = new Set<number>();
+  for (const [id, dec] of latest) {
+    if (dec === decision) result.add(id);
+  }
+  return result;
+}
+
 export async function getStageCounts(): Promise<Record<string, number>> {
   const rows = await db
     .select({

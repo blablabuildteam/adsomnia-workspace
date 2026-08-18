@@ -154,7 +154,7 @@ export async function updateIdeaDetails(
 export type ApprovalResult = {
   error?: string;
   success?: boolean;
-  decision?: "approved" | "rejected" | "on-hold";
+  decision?: "approved" | "rejected" | "on-hold" | "feedback";
   comment?: string;
   approverName?: string;
 };
@@ -344,6 +344,56 @@ export async function putOnHold(
   return {
     success: true,
     decision: "on-hold",
+    comment,
+    approverName: user.name,
+  };
+}
+
+/** Send the initiative back to the creator with feedback (editable again). */
+export async function requestIdeaFeedback(
+  initiativeId: number,
+  _prev: ApprovalResult,
+  formData: FormData,
+): Promise<ApprovalResult> {
+  const user = await getCurrentUser();
+  if (!user || !canApprove(user)) {
+    return { error: "Only leadership admins can send feedback." };
+  }
+
+  const comment = (formData.get("comment") as string)?.trim() || null;
+  if (!comment) {
+    return { error: "A remark is required when sending feedback." };
+  }
+
+  await db
+    .update(initiatives)
+    .set({
+      status: "draft",
+      updatedAt: new Date(),
+    })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(approvals).values({
+    initiativeId,
+    approverId: user.id,
+    fromStage: "idea",
+    toStage: null,
+    decision: "feedback",
+    comment,
+  });
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: "idea_feedback",
+    details: { comment, approver: user.name },
+  });
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/dashboard");
+  return {
+    success: true,
+    decision: "feedback",
     comment,
     approverName: user.name,
   };
@@ -627,6 +677,7 @@ export async function submitScopingForApproval(
     .update(initiatives)
     .set({
       scopingData: data,
+      currentStage: "go-nogo",
       status: "submitted",
       updatedAt: new Date(),
     })
@@ -640,6 +691,122 @@ export async function submitScopingForApproval(
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/scoping");
+  revalidatePath("/pipeline/go-nogo");
   revalidatePath("/dashboard");
   return { success: true };
+}
+
+/* ─── Go/No-Go (Phase 4) ──────────────────────────────── */
+
+export type GoNoGoDecisionResult = {
+  error?: string;
+  success?: boolean;
+  decision?: "approved" | "rejected" | "feedback";
+  comment?: string;
+  approverName?: string;
+};
+
+async function recordGoNoGoDecision(
+  initiativeId: number,
+  formData: FormData,
+  opts: {
+    decision: "approved" | "rejected" | "feedback";
+    newStatus: "draft" | "approved" | "rejected";
+    newStage?: "setup";
+    toStage: string | null;
+    action: string;
+    permissionError: string;
+  },
+): Promise<GoNoGoDecisionResult> {
+  const user = await getCurrentUser();
+  if (!user || !canApprove(user)) {
+    return { error: opts.permissionError };
+  }
+
+  const comment = (formData.get("comment") as string)?.trim() || null;
+  if (!comment) {
+    return { error: "A remark is required when making a Go/No-Go decision." };
+  }
+
+  await db
+    .update(initiatives)
+    .set({
+      status: opts.newStatus,
+      ...(opts.newStage ? { currentStage: opts.newStage } : {}),
+      updatedAt: new Date(),
+    })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(approvals).values({
+    initiativeId,
+    approverId: user.id,
+    fromStage: "go-nogo",
+    toStage: opts.toStage,
+    decision: opts.decision,
+    comment,
+  });
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: opts.action,
+    details: { comment, approver: user.name },
+  });
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/go-nogo");
+  revalidatePath("/dashboard");
+  return {
+    success: true,
+    decision: opts.decision,
+    comment,
+    approverName: user.name,
+  };
+}
+
+/** GO — approve and advance to Project Setup. */
+export async function approveGoNoGoToSetup(
+  initiativeId: number,
+  _prev: GoNoGoDecisionResult,
+  formData: FormData,
+): Promise<GoNoGoDecisionResult> {
+  return recordGoNoGoDecision(initiativeId, formData, {
+    decision: "approved",
+    newStatus: "approved",
+    newStage: "setup",
+    toStage: "setup",
+    action: "gonogo_approved",
+    permissionError: "Only leadership can make Go/No-Go decisions.",
+  });
+}
+
+/** NO-GO — reject; initiative is closed. */
+export async function rejectGoNoGo(
+  initiativeId: number,
+  _prev: GoNoGoDecisionResult,
+  formData: FormData,
+): Promise<GoNoGoDecisionResult> {
+  return recordGoNoGoDecision(initiativeId, formData, {
+    decision: "rejected",
+    newStatus: "rejected",
+    toStage: null,
+    action: "gonogo_rejected",
+    permissionError: "Only leadership can make Go/No-Go decisions.",
+  });
+}
+
+/** FEEDBACK — send back to Scoping for revision. */
+export async function requestGoNoGoChanges(
+  initiativeId: number,
+  _prev: GoNoGoDecisionResult,
+  formData: FormData,
+): Promise<GoNoGoDecisionResult> {
+  return recordGoNoGoDecision(initiativeId, formData, {
+    decision: "feedback",
+    newStatus: "draft",
+    toStage: null,
+    action: "gonogo_feedback",
+    permissionError: "Only leadership can send feedback.",
+  });
 }

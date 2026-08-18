@@ -10,6 +10,10 @@ import {
   ValidationApprovalPanel,
   type ValidationDecision,
 } from "./ValidationApprovalPanel";
+import {
+  GoNoGoApprovalPanel,
+  type GoNoGoDecision,
+} from "./GoNoGoApprovalPanel";
 import { CommentSection } from "./CommentSection";
 import { ValidationPhaseSection } from "./ValidationPhaseSection";
 import { ScopingPhaseSection } from "./ScopingPhaseSection";
@@ -128,6 +132,7 @@ type Props = {
   currentUserName: string;
   latestDecision?: ApprovalDecision | null;
   validationDecision?: ValidationDecision | null;
+  goNoGoDecision?: GoNoGoDecision | null;
   isCreator?: boolean;
   /** When set, shows a Share CTA that copies this public path. */
   sharePath?: string;
@@ -142,6 +147,7 @@ export function InitiativeDetailView({
   currentUserName,
   latestDecision = null,
   validationDecision = null,
+  goNoGoDecision = null,
   isCreator = false,
   sharePath,
 }: Props) {
@@ -221,6 +227,33 @@ export function InitiativeDetailView({
     currentNum > 3
       ? "complete"
       : scopingAwaitingDecision
+        ? "review"
+        : "current";
+
+  // ── Phase 4: Go/No-Go
+  const goNoGoStage = STAGES.find((s) => s.id === "go-nogo")!;
+  const showGoNoGo = currentNum >= 4;
+  const goNoGoIsCurrent = initiative.currentStage === "go-nogo";
+  const goNoGoAwaitingDecision =
+    goNoGoIsCurrent && initiative.status === "submitted";
+
+  const displayedGoNoGoDecision =
+    goNoGoDecision && !goNoGoAwaitingDecision
+      ? (goNoGoIsCurrent &&
+          initiative.status === "rejected" &&
+          goNoGoDecision.decision === "rejected") ||
+        (goNoGoIsCurrent &&
+          initiative.status === "draft" &&
+          goNoGoDecision.decision === "feedback") ||
+        (currentNum > 4 && goNoGoDecision.decision === "approved")
+        ? goNoGoDecision
+        : null
+      : null;
+
+  const goNoGoStatus: "complete" | "current" | "review" =
+    currentNum > 4
+      ? "complete"
+      : goNoGoAwaitingDecision
         ? "review"
         : "current";
 
@@ -407,6 +440,31 @@ export function InitiativeDetailView({
                     />
                   )}
                 </div>
+              </PhaseCard>
+            )}
+
+            {showGoNoGo && (
+              <PhaseCard
+                stageId="go-nogo"
+                number={goNoGoStage.number}
+                name={goNoGoStage.name}
+                status={goNoGoStatus}
+              >
+                <div className="bg-surface px-4 py-5 sm:px-5">
+                  <p className="text-xs text-muted">
+                    All prior stages are shown above for review. Use the
+                    approval panel below to make the Go / No-Go decision.
+                  </p>
+                </div>
+
+                {(goNoGoAwaitingDecision || displayedGoNoGoDecision) && (
+                  <GoNoGoApprovalPanel
+                    initiativeId={initiative.id}
+                    decision={displayedGoNoGoDecision}
+                    canDecide={canUserApprove}
+                    awaitingDecision={goNoGoAwaitingDecision}
+                  />
+                )}
               </PhaseCard>
             )}
         </div>
