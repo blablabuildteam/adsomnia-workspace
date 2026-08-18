@@ -207,11 +207,24 @@ export function InitiativeDetailView({
   const validationAwaitingDecision =
     validationIsCurrent && initiative.status === "submitted";
 
+  const validationHasFeedback =
+    validationIsCurrent &&
+    initiative.status === "draft" &&
+    validationDecision?.decision === "feedback";
+
+  const validationCanResubmit =
+    validationIsCurrent &&
+    ((validationHasFeedback && (isCreator || canUserApprove)) ||
+      (initiative.status === "on-hold" && (isCreator || canUserApprove)) ||
+      (initiative.status === "rejected" && isCreator));
+
   // Creators can keep editing while awaiting a decision (update & resubmit).
   const validationIsEditable =
     validationIsCurrent &&
     (initiative.status === "approved" ||
       initiative.status === "draft" ||
+      initiative.status === "on-hold" ||
+      (initiative.status === "rejected" && isCreator) ||
       (validationAwaitingDecision && isCreator));
 
   // Initiative details stay editable in the Initiative stage per status rules above.
@@ -223,6 +236,9 @@ export function InitiativeDetailView({
       ? (validationIsCurrent &&
           initiative.status === "rejected" &&
           validationDecision.decision === "rejected") ||
+        (validationIsCurrent &&
+          initiative.status === "on-hold" &&
+          validationDecision.decision === "on-hold") ||
         (validationIsCurrent &&
           initiative.status === "draft" &&
           validationDecision.decision === "feedback") ||
@@ -420,6 +436,7 @@ export function InitiativeDetailView({
                         data={initiative.validationData}
                         feedback={displayedValidationDecision}
                         resubmitting={validationAwaitingDecision}
+                        canResubmit={validationCanResubmit}
                       />
                     </form>
                   ) : (
@@ -432,7 +449,8 @@ export function InitiativeDetailView({
                 </div>
 
                 {(validationAwaitingDecision ||
-                  displayedValidationDecision) && (
+                  displayedValidationDecision) &&
+                  !validationCanResubmit && (
                   <ValidationApprovalPanel
                     initiativeId={initiative.id}
                     decision={displayedValidationDecision}

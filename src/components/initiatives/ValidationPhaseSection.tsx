@@ -8,6 +8,7 @@ import {
 } from "react";
 import {
   Save,
+  Send,
   SendHorizonal,
   AlertCircle,
   Check,
@@ -27,6 +28,7 @@ import {
 import {
   saveValidationData,
   submitValidationForApproval,
+  resubmitValidation,
   type ValidationResult,
 } from "@/app/(workspace)/workstreams/[id]/actions";
 import { inputClass } from "@/lib/form-styles";
@@ -237,6 +239,8 @@ type Props = {
   feedback?: ValidationDecision | null;
   /** True when the case is already submitted and the creator is updating it. */
   resubmitting?: boolean;
+  /** Show Save Changes + Resubmit buttons for feedback / on-hold / rejected. */
+  canResubmit?: boolean;
 };
 
 export function ValidationPhaseSection({
@@ -245,15 +249,18 @@ export function ValidationPhaseSection({
   readOnly = false,
   feedback = null,
   resubmitting = false,
+  canResubmit = false,
 }: Props) {
   const boundSave = saveValidationData.bind(null, initiativeId);
   const boundSubmit = submitValidationForApproval.bind(null, initiativeId);
+  const boundResubmit = resubmitValidation.bind(null, initiativeId);
 
   const [saveState, saveAction, savePending] = useActionState(boundSave, initial);
   const [submitState, submitAction, submitPending] = useActionState(boundSubmit, initial);
+  const [resubmitState, resubmitAction, resubmitPending] = useActionState(boundResubmit, initial);
 
-  const pending = savePending || submitPending;
-  const error = saveState.error || submitState.error;
+  const pending = savePending || submitPending || resubmitPending;
+  const error = saveState.error || submitState.error || resubmitState.error;
   const saved = saveState.success;
   const [submissionUpdated, setSubmissionUpdated] = useState(false);
 
@@ -345,13 +352,37 @@ export function ValidationPhaseSection({
       <BusinessCaseHeader onPrefill={applyDevPrefill} />
       <div className="space-y-4 p-4">
         {feedback?.decision === "feedback" && (
-          <div className="border border-hn/50 bg-hn/10 px-3 py-2.5">
-            <p className="font-display text-[10px] font-bold uppercase tracking-wide text-hn">
+          <div className="border border-feedback/50 bg-feedback/10 px-3 py-2.5">
+            <p className="font-display text-[10px] font-bold uppercase tracking-wide text-feedback">
               Feedback from leadership — revise & resubmit
             </p>
             {feedback.comment && (
               <p className="mt-1 text-xs leading-relaxed text-foreground/90">
                 “{feedback.comment}” — {feedback.approverName}
+              </p>
+            )}
+          </div>
+        )}
+        {feedback?.decision === "on-hold" && (
+          <div className="border border-hn/50 bg-hn/10 px-3 py-2.5">
+            <p className="font-display text-[10px] font-bold uppercase tracking-wide text-hn">
+              On hold &mdash; edit &amp; resubmit when ready
+            </p>
+            {feedback.comment && (
+              <p className="mt-1 text-xs leading-relaxed text-foreground/90">
+                &ldquo;{feedback.comment}&rdquo; &mdash; {feedback.approverName}
+              </p>
+            )}
+          </div>
+        )}
+        {feedback?.decision === "rejected" && (
+          <div className="border border-btr/50 bg-btr/10 px-3 py-2.5">
+            <p className="font-display text-[10px] font-bold uppercase tracking-wide text-btr">
+              Rejected &mdash; edit &amp; resubmit to appeal
+            </p>
+            {feedback.comment && (
+              <p className="mt-1 text-xs leading-relaxed text-foreground/90">
+                &ldquo;{feedback.comment}&rdquo; &mdash; {feedback.approverName}
               </p>
             )}
           </div>
@@ -663,10 +694,25 @@ export function ValidationPhaseSection({
             >
               <span className="absolute inset-0 origin-left scale-x-0 bg-foreground/[0.06] transition-transform duration-300 ease-out group-hover:scale-x-100" />
               <Save className="relative size-3.5" />
-              <span className="relative">{savePending ? "Saving…" : "Save Draft"}</span>
+              <span className="relative">
+                {savePending ? "Saving…" : canResubmit ? "Save Changes" : "Save Draft"}
+              </span>
             </button>
           )}
-          {submissionUpdated ? (
+          {canResubmit ? (
+            <button
+              type="submit"
+              formAction={resubmitAction}
+              disabled={pending}
+              className="group relative inline-flex items-center gap-2 overflow-hidden border border-success bg-success px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors disabled:opacity-50"
+            >
+              <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />
+              <Send className="relative size-3.5" />
+              <span className="relative">
+                {resubmitPending ? "Resubmitting…" : "Resubmit"}
+              </span>
+            </button>
+          ) : submissionUpdated ? (
             <span className="inline-flex items-center gap-2 border border-success bg-success/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-success">
               <Check className="animate-check-pop size-3.5" />
               Saved

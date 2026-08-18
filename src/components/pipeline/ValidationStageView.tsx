@@ -6,6 +6,7 @@ import {
   ArrowRight,
   BarChart3,
   Building2,
+  CheckCircle2,
   Clock,
   Compass,
   Eye,
@@ -41,13 +42,15 @@ const hoverTicks =
 const stage = STAGES.find((s) => s.id === "validation")!;
 const stageColor = getStageColor(stage.id);
 
-type FilterKey = "all" | "in-progress" | "in-review" | "feedback" | "rejected";
+type FilterKey = "all" | "in-progress" | "review" | "feedback" | "approved" | "on-hold" | "rejected";
 
 const FILTERS: { key: FilterKey; label: string; color: string }[] = [
   { key: "all", label: "All", color: "#FFFFFF" },
   { key: "in-progress", label: "In Progress", color: "#EAB308" },
-  { key: "in-review", label: "In Review", color: "#38BDF8" },
+  { key: "review", label: "Review", color: "#38BDF8" },
   { key: "feedback", label: "Feedback", color: "#A855F7" },
+  { key: "approved", label: "Approved", color: "#22c55e" },
+  { key: "on-hold", label: "On Hold", color: "#7E90A3" },
   { key: "rejected", label: "Rejected", color: "#FF3B1F" },
 ];
 
@@ -55,9 +58,10 @@ function getEffectiveStatus(
   status: string,
   id: number,
   feedbackSet: Set<number>,
-): "in-progress" | "in-review" | "feedback" | "rejected" {
-  if (status === "submitted") return "in-review";
+): "in-progress" | "review" | "feedback" | "on-hold" | "rejected" {
+  if (status === "submitted") return "review";
   if (status === "rejected") return "rejected";
+  if (status === "on-hold") return "on-hold";
   if ((status === "draft" || status === "approved") && feedbackSet.has(id)) {
     return "feedback";
   }
@@ -87,14 +91,14 @@ const STATUS_META: Record<
 > = {
   draft: { label: "In Progress", color: "#EAB308", icon: Loader2 },
   approved: { label: "In Progress", color: "#EAB308", icon: Loader2 },
-  submitted: { label: "In Review", color: "#38BDF8", icon: Eye },
-  feedback: { label: "Feedback", color: "#A855F7", icon: MessageCircle },
+  submitted: { label: "Review", color: "#38BDF8", icon: Eye },
+  "feedback-received": { label: "Feedback", color: "#A855F7", icon: MessageCircle },
   rejected: { label: "Rejected", color: "#FF3B1F", icon: XCircle },
   "on-hold": { label: "On Hold", color: "#7E90A3", icon: PauseCircle },
 };
 
 function StatusBadge({ status, hasFeedback }: { status: string; hasFeedback?: boolean }) {
-  const key = hasFeedback && (status === "draft" || status === "approved") ? "feedback" : status;
+  const key = hasFeedback && (status === "draft" || status === "approved") ? "feedback-received" : status;
   const meta = STATUS_META[key] ?? STATUS_META.draft;
   const Icon = meta.icon;
   return (
@@ -340,24 +344,35 @@ export function ValidationStageView({ initiatives, feedbackIds = [] }: Props) {
 
   const feedbackSet = new Set(feedbackIds);
   const inStage = initiatives.filter((i) => i.currentStage === "validation");
+  const approvedToScoping = initiatives.filter(
+    (i) => i.currentStage === "scoping" && i.status === "approved",
+  );
+
+  const allItems = [...inStage, ...approvedToScoping];
 
   const statusFiltered =
     activeFilter === "all"
-      ? inStage
-      : inStage.filter(
-          (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === activeFilter,
-        );
+      ? allItems
+      : activeFilter === "approved"
+        ? approvedToScoping
+        : inStage.filter(
+            (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === activeFilter,
+          );
 
   const counts: Record<FilterKey, number> = {
-    all: inStage.length,
+    all: allItems.length,
     "in-progress": inStage.filter(
       (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "in-progress",
     ).length,
-    "in-review": inStage.filter(
-      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "in-review",
+    review: inStage.filter(
+      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "review",
     ).length,
     feedback: inStage.filter(
       (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "feedback",
+    ).length,
+    approved: approvedToScoping.length,
+    "on-hold": inStage.filter(
+      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "on-hold",
     ).length,
     rejected: inStage.filter(
       (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "rejected",

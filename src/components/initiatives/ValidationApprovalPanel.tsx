@@ -8,23 +8,25 @@ import {
   User,
   Calendar,
   MessageSquare,
-  Undo2,
+  MessageCircle,
+  PauseCircle,
   Hourglass,
 } from "lucide-react";
 import {
   approveValidationToScoping,
   rejectValidation,
   requestValidationChanges,
+  putValidationOnHold,
   type ValidationDecisionResult,
 } from "@/app/(workspace)/workstreams/[id]/actions";
 import { inputClass } from "@/lib/form-styles";
 
 const initial: ValidationDecisionResult = {};
 
-type Action = "approve" | "reject" | "feedback";
+type Action = "approve" | "feedback" | "hold" | "reject";
 
 export type ValidationDecision = {
-  decision: "approved" | "rejected" | "feedback";
+  decision: "approved" | "rejected" | "on-hold" | "feedback";
   comment: string | null;
   approverName: string;
   createdAt: Date;
@@ -32,22 +34,31 @@ export type ValidationDecision = {
 
 const DECISION_META: Record<
   ValidationDecision["decision"],
-  { label: string; badge: string; icon: typeof CheckCircle2 }
+  { label: string; description: string; badge: string; icon: typeof CheckCircle2 }
 > = {
   approved: {
     label: "Approved · Scoping",
+    description: "Advanced to Scoping",
     badge: "border-success bg-success/10 text-success",
     icon: CheckCircle2,
   },
+  feedback: {
+    label: "Feedback",
+    description: "Returned for revision",
+    badge: "border-feedback bg-feedback/10 text-feedback",
+    icon: MessageCircle,
+  },
+  "on-hold": {
+    label: "On Hold",
+    description: "Paused for now",
+    badge: "border-hn bg-hn/10 text-hn",
+    icon: PauseCircle,
+  },
   rejected: {
     label: "Rejected",
+    description: "Business case rejected",
     badge: "border-btr bg-btr/10 text-btr",
     icon: XCircle,
-  },
-  feedback: {
-    label: "Feedback · Returned",
-    badge: "border-hn bg-hn/10 text-hn",
-    icon: Undo2,
   },
 };
 
@@ -111,32 +122,27 @@ export function ValidationApprovalPanel({
   const [selectedAction, setSelectedAction] = useState<Action | null>(null);
 
   const boundApprove = approveValidationToScoping.bind(null, initiativeId);
-  const boundReject = rejectValidation.bind(null, initiativeId);
   const boundFeedback = requestValidationChanges.bind(null, initiativeId);
+  const boundHold = putValidationOnHold.bind(null, initiativeId);
+  const boundReject = rejectValidation.bind(null, initiativeId);
 
-  const [approveState, approveAction, approvePending] = useActionState(
-    boundApprove,
-    initial,
-  );
-  const [rejectState, rejectAction, rejectPending] = useActionState(
-    boundReject,
-    initial,
-  );
-  const [feedbackState, feedbackAction, feedbackPending] = useActionState(
-    boundFeedback,
-    initial,
-  );
+  const [approveState, approveAction, approvePending] = useActionState(boundApprove, initial);
+  const [feedbackState, feedbackAction, feedbackPending] = useActionState(boundFeedback, initial);
+  const [holdState, holdAction, holdPending] = useActionState(boundHold, initial);
+  const [rejectState, rejectAction, rejectPending] = useActionState(boundReject, initial);
 
-  const pending = approvePending || rejectPending || feedbackPending;
-  const error = approveState.error || rejectState.error || feedbackState.error;
+  const pending = approvePending || feedbackPending || holdPending || rejectPending;
+  const error = approveState.error || feedbackState.error || holdState.error || rejectState.error;
 
   const successState = approveState.success
     ? approveState
-    : rejectState.success
-      ? rejectState
-      : feedbackState.success
-        ? feedbackState
-        : null;
+    : feedbackState.success
+      ? feedbackState
+      : holdState.success
+        ? holdState
+        : rejectState.success
+          ? rejectState
+          : null;
 
   if (successState) {
     return (
@@ -202,15 +208,23 @@ export function ValidationApprovalPanel({
             className="inline-flex items-center gap-2 border border-success bg-success/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-success transition-colors hover:bg-success/20"
           >
             <CheckCircle2 className="size-3.5" />
-            Approve to Scoping
+            Approve for Scoping
           </button>
           <button
             type="button"
             onClick={() => setSelectedAction("feedback")}
+            className="inline-flex items-center gap-2 border border-feedback bg-feedback/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-feedback transition-colors hover:bg-feedback/20"
+          >
+            <MessageCircle className="size-3.5" />
+            Feedback
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedAction("hold")}
             className="inline-flex items-center gap-2 border border-hn bg-hn/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-hn transition-colors hover:bg-hn/20"
           >
-            <Undo2 className="size-3.5" />
-            Send Feedback
+            <PauseCircle className="size-3.5" />
+            On Hold
           </button>
           <button
             type="button"
@@ -228,9 +242,11 @@ export function ValidationApprovalPanel({
           action={
             selectedAction === "approve"
               ? approveAction
-              : selectedAction === "reject"
-                ? rejectAction
-                : feedbackAction
+              : selectedAction === "feedback"
+                ? feedbackAction
+                : selectedAction === "hold"
+                  ? holdAction
+                  : rejectAction
           }
           className="mx-auto mt-4 max-w-md space-y-3 text-left"
         >
@@ -258,9 +274,11 @@ export function ValidationApprovalPanel({
                 "group relative inline-flex items-center gap-2 overflow-hidden border px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-50",
                 selectedAction === "approve"
                   ? "border-success bg-success text-background"
-                  : selectedAction === "reject"
-                    ? "border-btr bg-btr text-background"
-                    : "border-hn bg-hn text-background",
+                  : selectedAction === "feedback"
+                    ? "border-feedback bg-feedback text-background"
+                    : selectedAction === "hold"
+                      ? "border-hn bg-hn text-background"
+                      : "border-btr bg-btr text-background",
               ].join(" ")}
             >
               <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />
@@ -269,9 +287,11 @@ export function ValidationApprovalPanel({
                   ? "Processing…"
                   : selectedAction === "approve"
                     ? "Confirm Approval"
-                    : selectedAction === "reject"
-                      ? "Confirm Rejection"
-                      : "Send Feedback"}
+                    : selectedAction === "feedback"
+                      ? "Send Feedback"
+                      : selectedAction === "hold"
+                        ? "Confirm On Hold"
+                        : "Confirm Rejection"}
               </span>
             </button>
             <button

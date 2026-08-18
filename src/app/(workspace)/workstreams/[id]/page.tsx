@@ -63,9 +63,9 @@ export default async function InitiativePage({ params }: Props) {
 
   const latestValidation = approvals.find((a) => a.fromStage === "validation");
   const validationDecision: ValidationDecision | null =
-    latestValidation && latestValidation.decision !== "on-hold"
+    latestValidation
       ? {
-          decision: latestValidation.decision,
+          decision: latestValidation.decision as ValidationDecision["decision"],
           comment: latestValidation.comment,
           approverName: latestValidation.approverName,
           createdAt: latestValidation.createdAt,

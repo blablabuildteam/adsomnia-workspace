@@ -331,6 +331,8 @@ export async function approveToValidation(
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/initiatives");
+  revalidatePath("/pipeline/validation");
   revalidatePath("/dashboard");
   return {
     success: true,
@@ -380,6 +382,7 @@ export async function rejectInitiative(
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/initiatives");
   revalidatePath("/dashboard");
   return {
     success: true,
@@ -429,6 +432,7 @@ export async function putOnHold(
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/initiatives");
   revalidatePath("/dashboard");
   return {
     success: true,
@@ -479,6 +483,7 @@ export async function requestIdeaFeedback(
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/initiatives");
   revalidatePath("/dashboard");
   return {
     success: true,
@@ -491,7 +496,7 @@ export async function requestIdeaFeedback(
 export type ValidationDecisionResult = {
   error?: string;
   success?: boolean;
-  decision?: "approved" | "rejected" | "feedback";
+  decision?: "approved" | "rejected" | "on-hold" | "feedback";
   comment?: string;
   approverName?: string;
 };
@@ -500,8 +505,8 @@ async function recordValidationDecision(
   initiativeId: number,
   formData: FormData,
   opts: {
-    decision: "approved" | "rejected" | "feedback";
-    newStatus: "draft" | "approved" | "rejected";
+    decision: "approved" | "rejected" | "on-hold" | "feedback";
+    newStatus: "draft" | "approved" | "rejected" | "on-hold";
     newStage?: "scoping";
     toStage: string | null;
     action: string;
@@ -544,6 +549,7 @@ async function recordValidationDecision(
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/initiatives");
   revalidatePath("/pipeline/validation");
   revalidatePath("/dashboard");
   return {
@@ -600,6 +606,84 @@ export async function requestValidationChanges(
   });
 }
 
+/** Put the business case on hold. */
+export async function putValidationOnHold(
+  initiativeId: number,
+  _prev: ValidationDecisionResult,
+  formData: FormData,
+): Promise<ValidationDecisionResult> {
+  return recordValidationDecision(initiativeId, formData, {
+    decision: "on-hold",
+    newStatus: "on-hold",
+    toStage: null,
+    action: "validation_on_hold",
+    permissionError: "Only leadership admins can put items on hold.",
+  });
+}
+
+/** Saves updated validation data AND resubmits for leadership review. */
+export async function resubmitValidation(
+  initiativeId: number,
+  _prev: ValidationResult,
+  formData: FormData,
+): Promise<ValidationResult> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "You must be logged in." };
+
+  const [existing] = await db
+    .select({
+      submitterId: initiatives.submitterId,
+      currentStage: initiatives.currentStage,
+      status: initiatives.status,
+    })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
+  if (!existing) return { error: "Initiative not found." };
+  if (existing.currentStage !== "validation") {
+    return { error: "This initiative is no longer in the Validation stage." };
+  }
+
+  const isOwner = existing.submitterId === user.id;
+  const isLeadership = canApprove(user);
+
+  if (existing.status === "rejected") {
+    if (!isOwner) {
+      return { error: "Only the initiative owner can resubmit a rejected business case." };
+    }
+  } else if (existing.status === "draft" || existing.status === "on-hold") {
+    if (!isOwner && !isLeadership) {
+      return { error: "Only the creator or leadership can resubmit." };
+    }
+  } else {
+    return { error: "Only feedback, on-hold, or rejected items can be resubmitted." };
+  }
+
+  const data = parseValidationFormData(formData);
+
+  await db
+    .update(initiatives)
+    .set({
+      validationData: data,
+      status: "submitted",
+      updatedAt: new Date(),
+    })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: "validation_resubmitted",
+    details: { resubmittedBy: user.name },
+  });
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/validation");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
 export type ValidationResult = {
   error?: string;
   success?: boolean;
@@ -615,13 +699,26 @@ export async function saveValidationData(
     return { error: "You must be logged in." };
   }
 
+  const [existing] = await db
+    .select({ status: initiatives.status })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
   const data = parseValidationFormData(formData);
+
+  // Only transition from "approved" to "draft" on first save;
+  // preserve on-hold / rejected status until explicit resubmission.
+  const statusUpdate =
+    existing?.status === "approved"
+      ? { status: "draft" as const }
+      : {};
 
   await db
     .update(initiatives)
     .set({
       validationData: data,
-      status: "draft",
+      ...statusUpdate,
       updatedAt: new Date(),
     })
     .where(eq(initiatives.id, initiativeId));
@@ -634,6 +731,7 @@ export async function saveValidationData(
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/initiatives");
   revalidatePath("/pipeline/validation");
   return { success: true };
 }
@@ -684,6 +782,7 @@ export async function submitValidationForApproval(
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/validation");
   revalidatePath("/dashboard");
   return { success: true };
 }
