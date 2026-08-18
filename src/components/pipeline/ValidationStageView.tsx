@@ -68,7 +68,7 @@ const PRIORITY_FILTERS = ["Now", "Near", "Later", "Backlog"] as const;
 type TShirtFilter = (typeof TSHIRT_FILTERS)[number];
 type PriorityFilter = (typeof PRIORITY_FILTERS)[number];
 
-const VALIDATION_FIELD_TOTAL = 6;
+const VALIDATION_FIELD_TOTAL = 5;
 
 /**
  * Card status for items still in the Validation stage.
@@ -179,7 +179,6 @@ function ValidationCard({ item }: { item: InitiativeWithUsers }) {
         vd.tShirtSize,
         vd.priority,
         vd.leadProductionParty,
-        vd.dependencies,
       ].filter(Boolean).length
     : 0;
   const progressPct = Math.round(

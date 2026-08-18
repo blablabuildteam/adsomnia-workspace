@@ -19,6 +19,7 @@ import {
   Flag,
   Building2,
   Link2,
+  Paperclip,
   PenLine,
   StickyNote,
   type LucideIcon,
@@ -43,7 +44,7 @@ import {
 } from "@/lib/validation-data";
 import { PARTIES } from "@/data/workflow";
 import type { ValidationDecision } from "./ValidationApprovalPanel";
-import { ImpactSlider } from "./ImpactSlider";
+import { BusinessValueTypeButton, ImpactSlider } from "./ImpactSlider";
 
 const initial: ValidationResult = {};
 
@@ -131,9 +132,11 @@ const FIELD_HELP: Record<string, string> = {
   leadProductionParty:
     "Which party will most likely lead Production for this initiative? Choose Other if it is someone outside the listed parties.",
   dependencies:
-    "List upstream blockers, required access, or parallel workstreams. Include ticket refs if known.",
+    "Optional — call out risks if we proceed, plus upstream blockers, required access, or parallel workstreams. Include ticket refs if known.",
   risks:
     "Optional notes that do not fit elsewhere — leftover context, open questions, or anything leadership should see.",
+  attachments:
+    "Attach files from your computer or paste links to Google Docs, Sheets, Slides, or any URL. These are saved with the business case.",
 };
 
 const FIELD_ICONS: Record<keyof typeof FIELD_HELP, LucideIcon> = {
@@ -144,6 +147,7 @@ const FIELD_ICONS: Record<keyof typeof FIELD_HELP, LucideIcon> = {
   leadProductionParty: Building2,
   dependencies: Link2,
   risks: StickyNote,
+  attachments: Paperclip,
 };
 
 function FieldInfoIcon({ field }: { field: keyof typeof FIELD_HELP }) {
@@ -331,6 +335,7 @@ export function ValidationPhaseSection({
   );
   const [dependencies, setDependencies] = useState(data?.dependencies ?? "");
   const [risks, setRisks] = useState(data?.risks ?? "");
+  const [attachments, setAttachments] = useState<Attachment[]>(data?.attachments ?? []);
 
   const isOtherLead = leadPartySelect === OTHER_PARTY_VALUE;
 
@@ -412,28 +417,15 @@ export function ValidationPhaseSection({
               Expected Business Value
             </FieldLabel>
             <div className="flex flex-wrap gap-2">
-              {BUSINESS_VALUE_TYPES.map((type) => {
-                const selected = businessValueTypes.includes(type.id);
-                return (
-                  <button
-                    key={type.id}
-                    type="button"
-                    onClick={() => toggleBusinessValueType(type.id)}
-                    aria-pressed={selected}
-                    className={[
-                      "flex items-center gap-1.5 border px-3 py-2 font-display text-[10px] font-bold uppercase tracking-wide transition-colors",
-                      selected
-                        ? "border-foreground bg-foreground/[0.06] text-foreground"
-                        : "border-border text-muted hover:border-foreground hover:text-foreground",
-                    ].join(" ")}
-                  >
-                    {selected && (
-                      <Check className="animate-check-pop size-3.5 shrink-0" />
-                    )}
-                    {type.label}
-                  </button>
-                );
-              })}
+              {BUSINESS_VALUE_TYPES.map((type) => (
+                <BusinessValueTypeButton
+                  key={type.id}
+                  id={type.id}
+                  label={type.label}
+                  selected={businessValueTypes.includes(type.id)}
+                  onClick={() => toggleBusinessValueType(type.id)}
+                />
+              ))}
             </div>
             {businessValueTypes.map((type) => (
               <input
@@ -611,14 +603,12 @@ export function ValidationPhaseSection({
           <label className="block py-5 first:pt-0 last:pb-0">
             <FieldLabel
               field="dependencies"
-              required
               complete={dependencies.trim().length > 0}
             >
-              Dependencies & Blockers
+              Risks, Dependencies & Blockers
             </FieldLabel>
             <textarea
               name="dependencies"
-              required
               rows={2}
               value={dependencies}
               onChange={(e) => {
@@ -626,7 +616,7 @@ export function ValidationPhaseSection({
                 setDependencies(e.target.value);
               }}
               className={`${inputClass} mt-1`}
-              placeholder="e.g. Depends on CMS API access; blocked until redirects are fixed (WS-1098)."
+              placeholder="Optional — risks, blockers, or required access (include ticket refs if known)."
             />
           </label>
 
@@ -742,7 +732,7 @@ function ValidationReadOnly({ data }: { data: ValidationData | null }) {
     },
     {
       field: "dependencies",
-      label: "Dependencies & Blockers",
+      label: "Risks, Dependencies & Blockers",
       value: data?.dependencies,
     },
     { field: "risks", label: "Other Notes", value: data?.risks },

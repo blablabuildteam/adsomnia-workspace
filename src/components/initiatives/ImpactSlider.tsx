@@ -1,12 +1,53 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, PiggyBank, TrendingUp, Zap, type LucideIcon } from "lucide-react";
 import type { CSSProperties } from "react";
 import {
   IMPACT_MAX,
   IMPACT_MIN,
   impactScoreLabel,
+  type BusinessValueType,
 } from "@/lib/validation-data";
+
+export const BUSINESS_VALUE_ICONS: Record<BusinessValueType, LucideIcon> = {
+  speed: Zap,
+  "cost-efficiency": PiggyBank,
+  growth: TrendingUp,
+};
+
+export function BusinessValueTypeButton({
+  id,
+  label,
+  selected,
+  onClick,
+}: {
+  id: BusinessValueType;
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const TypeIcon = BUSINESS_VALUE_ICONS[id];
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={[
+        "flex items-center gap-1.5 border px-3 py-2 font-display text-[10px] font-bold uppercase tracking-wide transition-colors",
+        selected
+          ? "border-foreground bg-foreground/[0.06] text-foreground"
+          : "border-border text-muted hover:border-foreground hover:text-foreground",
+      ].join(" ")}
+    >
+      {selected ? (
+        <Check className="animate-check-pop size-3.5 shrink-0" />
+      ) : (
+        <TypeIcon className="size-3.5 shrink-0" />
+      )}
+      {label}
+    </button>
+  );
+}
 
 export function ImpactSlider({
   name,

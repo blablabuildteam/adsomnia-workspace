@@ -503,7 +503,6 @@ export async function submitValidationForApproval(
     "tShirtSize",
     "priority",
     "leadProductionParty",
-    "dependencies",
   ];
   const missing = required.filter((k) => !data[k]);
   if (missing.length > 0 || !isBusinessValueComplete(data.businessValue)) {

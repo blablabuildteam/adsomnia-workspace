@@ -57,7 +57,7 @@ import {
   resolveBusinessValueState,
 } from "@/lib/validation-data";
 import { PARTIES } from "@/data/workflow";
-import { ImpactSlider } from "./ImpactSlider";
+import { BusinessValueTypeButton, ImpactSlider } from "./ImpactSlider";
 
 const initial: ScopingResult = {};
 
@@ -1587,28 +1587,15 @@ export function ScopingPhaseSection({
             </p>
 
             <div className="flex flex-wrap gap-2">
-              {BUSINESS_VALUE_TYPES.map((type) => {
-                const selected = impactTypes.includes(type.id);
-                return (
-                  <button
-                    key={type.id}
-                    type="button"
-                    onClick={() => toggleImpactType(type.id)}
-                    aria-pressed={selected}
-                    className={[
-                      "flex items-center gap-1.5 border px-3 py-2 font-display text-[10px] font-bold uppercase tracking-wide transition-colors",
-                      selected
-                        ? "border-foreground bg-foreground/[0.06] text-foreground"
-                        : "border-border text-muted hover:border-foreground hover:text-foreground",
-                    ].join(" ")}
-                  >
-                    {selected && (
-                      <Check className="animate-check-pop size-3.5 shrink-0" />
-                    )}
-                    {type.label}
-                  </button>
-                );
-              })}
+              {BUSINESS_VALUE_TYPES.map((type) => (
+                <BusinessValueTypeButton
+                  key={type.id}
+                  id={type.id}
+                  label={type.label}
+                  selected={impactTypes.includes(type.id)}
+                  onClick={() => toggleImpactType(type.id)}
+                />
+              ))}
             </div>
 
             {impactTypes.length === 0 ? (
