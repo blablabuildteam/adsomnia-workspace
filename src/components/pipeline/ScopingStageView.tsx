@@ -26,6 +26,7 @@ import {
   isScopingComplete,
   type ScopingData,
 } from "@/lib/validation-data";
+import { formatEuro, summarizeTeamCost } from "@/data/role-rates";
 
 const hoverTicks =
   "opacity-0 transition-opacity duration-300 group-hover:opacity-100";
@@ -109,6 +110,21 @@ function getScopingSectionCount(data: ScopingData | null): number {
 function getTotalHours(data: ScopingData | null): number {
   if (!data?.team) return 0;
   return data.team.reduce((sum, t) => sum + (t.totalHours || 0), 0);
+}
+
+function getTeamCostLabel(data: ScopingData | null): {
+  amount: string | null;
+  hint: string;
+} {
+  if (!data?.team?.length) return { amount: null, hint: "" };
+  const summary = summarizeTeamCost(data.team);
+  if (summary.total == null) {
+    return { amount: null, hint: "Est. pending" };
+  }
+  return {
+    amount: formatEuro(summary.total),
+    hint: summary.usesAssumedRates ? "Assumed rates" : "Estimated",
+  };
 }
 
 function getDateRange(data: ScopingData | null): string | null {
@@ -261,6 +277,7 @@ function ScopingCard({ item }: { item: InitiativeWithUsers }) {
   const milestonesCount = sd?.milestones?.length ?? 0;
   const teamCount = sd?.team?.length ?? 0;
   const totalHours = getTotalHours(sd);
+  const teamCost = getTeamCostLabel(sd);
   const dateRange = getDateRange(sd);
   const complete = isScopingComplete(sd);
 
@@ -374,7 +391,7 @@ function ScopingCard({ item }: { item: InitiativeWithUsers }) {
             )}
           </div>
 
-          {/* Costs (placeholder) */}
+          {/* Costs */}
           <div className="flex flex-col bg-surface p-2.5">
             <div className="mb-1 flex items-center gap-1.5">
               <span className="text-[10px] text-muted/50">€</span>
@@ -384,11 +401,16 @@ function ScopingCard({ item }: { item: InitiativeWithUsers }) {
             </div>
             {totalHours > 0 ? (
               <>
-                <span className="font-display text-sm font-bold tabular-nums text-muted/40">
-                  €—
+                <span
+                  className={[
+                    "font-display text-sm font-bold tabular-nums",
+                    teamCost.amount ? "text-foreground" : "text-muted/40",
+                  ].join(" ")}
+                >
+                  {teamCost.amount ?? "€—"}
                 </span>
                 <span className="mt-0.5 text-[9px] text-muted/40">
-                  Est. pending
+                  {teamCost.hint}
                 </span>
               </>
             ) : (

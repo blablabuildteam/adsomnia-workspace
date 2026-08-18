@@ -240,6 +240,10 @@ export type ScopingMilestone = {
 export type ScopingTeamMember = {
   id: string;
   role: string;
+  /** Catalog role id from `ROLE_CATALOG` — optional on older drafts. */
+  roleId?: string;
+  /** Snapshotted €/h at selection time so later catalog updates don't rewrite history. */
+  hourlyRate?: number;
   name: string;
   totalHours: number;
   hoursPerDay: number;

@@ -58,9 +58,12 @@ import {
   resolveBusinessValueState,
 } from "@/lib/validation-data";
 import { PARTIES } from "@/data/workflow";
+import { formatEuro, getRoleById } from "@/data/role-rates";
 import { BusinessValueTypeButton, ImpactSlider } from "./ImpactSlider";
 import { AttachmentZone, AttachmentChip } from "./AttachmentZone";
 import { PhaseSectionCard, PhaseSectionStack } from "./PhaseSectionCard";
+import { RoleCombobox } from "./RoleCombobox";
+import { ScopeCostBreakdown } from "./ScopeCostBreakdown";
 import type { Attachment } from "@/lib/validation-data";
 
 const initial: ScopingResult = {};
@@ -73,7 +76,7 @@ const FIELD_HELP: Record<string, string> = {
   milestones:
     "Break delivery into Epics and Milestones with target date windows. These feed directly into the Jira structure and capacity booking.",
   team:
-    "For each role: who, how many hours total, and which period. This drives resource booking and Go/No-Go cost analysis.",
+    "Pick a company and catalog role (or search all roles), then add who, hours, and period. Hours × rate feed the cost estimate below.",
   impact:
     "Carried forward from Validation. Refine the impact scores if scoping changes the picture.",
   scope:
@@ -132,6 +135,8 @@ function emptyTeamMember(): ScopingTeamMember {
   return {
     id: uid(),
     role: "",
+    roleId: "",
+    hourlyRate: undefined,
     name: "",
     totalHours: 0,
     hoursPerDay: 0,
@@ -178,6 +183,8 @@ const DEV_PREFILL: ScopingData = {
     {
       id: uid(),
       role: "Senior Frontend Engineer",
+      roleId: "hn-senior-frontend-engineer",
+      hourlyRate: 165,
       name: "Alex V.",
       totalHours: 120,
       hoursPerDay: 6,
@@ -187,7 +194,9 @@ const DEV_PREFILL: ScopingData = {
     },
     {
       id: uid(),
-      role: "UX Designer",
+      role: "Designer",
+      roleId: "btr-designer",
+      hourlyRate: 125,
       name: "Sophie K.",
       totalHours: 40,
       hoursPerDay: 4,
@@ -989,6 +998,26 @@ function TeamMemberCard({
   const partyLogo = selectedParty?.logo;
   const partyLabel =
     PARTIES.find((p) => p.id === member.party)?.label ?? selectedParty?.label;
+  const catalogRole = getRoleById(member.roleId);
+
+  function selectParty(partyId: string) {
+    if (member.party === partyId) {
+      if (catalogRole) return;
+      onChange({ ...member, party: "" });
+      return;
+    }
+    if (catalogRole && catalogRole.party !== partyId) {
+      onChange({
+        ...member,
+        party: partyId,
+        role: "",
+        roleId: "",
+        hourlyRate: undefined,
+      });
+      return;
+    }
+    onChange({ ...member, party: partyId });
+  }
 
   return (
     <div
@@ -1037,38 +1066,53 @@ function TeamMemberCard({
       </div>
 
       <div className="space-y-2 p-3">
-        <input
-          type="text"
-          value={member.role}
-          onChange={(e) => onChange({ ...member, role: e.target.value })}
-          placeholder="Role description (e.g. Senior Frontend Engineer)…"
-          className="w-full border-b border-border bg-transparent px-0 py-1 text-xs text-foreground placeholder:text-muted/40 focus:border-muted focus:outline-none"
-        />
-
-        {/* Party selector — small inline pill buttons */}
-        <div className="flex flex-wrap gap-1">
-          {PARTY_OPTIONS.map((p) => (
-            <button
-              key={p.value}
-              type="button"
-              onClick={() =>
-                onChange({
-                  ...member,
-                  party: member.party === p.value ? "" : p.value,
-                })
-              }
-              className={[
-                "border px-2 py-0.5 font-display text-[9px] font-bold uppercase tracking-wider transition-colors",
-                member.party === p.value
-                  ? "border-current"
-                  : "border-border text-muted/50 hover:text-muted",
-              ].join(" ")}
-              style={member.party === p.value ? { color: p.color } : undefined}
-            >
-              {p.label}
-            </button>
-          ))}
+        <div className="grid grid-cols-4 gap-1">
+          {PARTY_OPTIONS.map((p) => {
+            const selected = member.party === p.value;
+            return (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => selectParty(p.value)}
+                aria-pressed={selected}
+                title={p.label}
+                className={[
+                  "flex items-center justify-center border px-1 py-1.5 transition-colors",
+                  selected
+                    ? "bg-foreground/[0.04]"
+                    : "border-border hover:border-muted",
+                ].join(" ")}
+                style={{
+                  color: p.color,
+                  borderColor: selected ? p.color : undefined,
+                }}
+              >
+                <span className="text-center font-display text-[10px] font-bold uppercase leading-tight tracking-wide">
+                  {p.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
+
+        <RoleCombobox
+          partyFilter={member.party}
+          roleId={member.roleId}
+          roleLabel={
+            member.role && member.hourlyRate
+              ? `${member.role} · €${member.hourlyRate}/h`
+              : member.role
+          }
+          onSelect={(role) =>
+            onChange({
+              ...member,
+              role: role.name,
+              roleId: role.id,
+              hourlyRate: role.hourlyRate,
+              party: role.party,
+            })
+          }
+        />
 
         <div className="flex gap-2">
           <div className="w-[5.5rem] shrink-0">
@@ -1120,6 +1164,14 @@ function TeamMemberCard({
           />
         </div>
         <HoursBar hours={member.totalHours} max={maxHours} />
+        {typeof member.hourlyRate === "number" &&
+          member.hourlyRate > 0 &&
+          member.totalHours > 0 && (
+            <p className="text-[10px] tabular-nums text-muted/60">
+              {member.totalHours}h × {formatEuro(member.hourlyRate)}/h ={" "}
+              {formatEuro(member.totalHours * member.hourlyRate)}
+            </p>
+          )}
       </div>
     </div>
   );
@@ -1775,63 +1827,20 @@ export function ScopingPhaseSection({
             </div>
           </PhaseSectionCard>
 
-          {/* ─── 6. Costs (placeholder) ────────────────────── */}
+          {/* ─── 6. Costs ──────────────────────────────────── */}
           <PhaseSectionCard
             header={
-              <div className="flex items-center gap-2 font-display text-xs font-bold uppercase tracking-wide text-muted">
+              <div className="flex items-center gap-2 font-display text-xs font-bold uppercase tracking-wide text-foreground">
                 <DollarSign className="size-3.5" />
                 Costs
                 <span className="ml-2 border border-border px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-muted/60">
-                  Coming Soon
+                  Assumed rates
                 </span>
               </div>
             }
             bodyClassName="p-4"
           >
-            <div className="border border-dashed border-border bg-surface p-4">
-              <div className="flex flex-col items-center gap-3 py-4 text-center">
-                <div className="flex size-10 items-center justify-center border border-border bg-surface-elevated">
-                  <DollarSign className="size-5 text-muted/40" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted">
-                    Cost estimation based on team roles
-                  </p>
-                  <p className="mx-auto mt-1 max-w-sm text-[11px] leading-relaxed text-muted/60">
-                    Internal cost rates will be linked to party roles — costs will auto-calculate from the team hours defined above.
-                  </p>
-                </div>
-                {team.length > 0 && (
-                  <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
-                    {team
-                      .filter((t) => t.role.trim() && t.totalHours > 0)
-                      .map((t) => (
-                        <span
-                          key={t.id}
-                          className="inline-flex items-center gap-1.5 border border-border px-2 py-1 text-[10px] text-muted"
-                        >
-                          <span className="font-medium text-foreground/80">
-                            {t.role}
-                          </span>
-                          <span className="tabular-nums text-muted/60">
-                            {t.totalHours}h
-                          </span>
-                          <span className="text-muted/30">&times;</span>
-                          <span className="tabular-nums text-muted/50">
-                            &euro;—/h
-                          </span>
-                        </span>
-                      ))}
-                    {team.filter((t) => t.role.trim() && t.totalHours > 0)
-                      .length > 0 && (
-                      <span className="inline-flex items-center gap-1 border border-border bg-foreground/[0.04] px-2 py-1 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                        Total: &euro;—
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
+            <ScopeCostBreakdown team={team} />
           </PhaseSectionCard>
         </PhaseSectionStack>
 
@@ -2014,10 +2023,15 @@ function ScopingReadOnly({
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-muted">{t.role}</p>
-                  <div className="mt-1.5">
+                  <div className="mt-1.5 flex items-baseline gap-2">
                     <span className="font-display text-[10px] font-bold tabular-nums text-foreground">
                       {t.totalHours}h
                     </span>
+                    {typeof t.hourlyRate === "number" && t.hourlyRate > 0 && (
+                      <span className="text-[10px] tabular-nums text-muted/60">
+                        × {formatEuro(t.hourlyRate)}/h
+                      </span>
+                    )}
                   </div>
                   <HoursBar hours={t.totalHours} max={maxHours} />
                 </div>
@@ -2174,7 +2188,7 @@ function ScopingReadOnly({
         )}
       </PhaseSectionCard>
 
-      {/* Costs (placeholder) */}
+      {/* Costs */}
       <PhaseSectionCard
         header={
           <div className="flex items-center gap-2 text-muted">
@@ -2183,40 +2197,13 @@ function ScopingReadOnly({
               Costs
             </p>
             <span className="ml-1 border border-border px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-muted/60">
-              Coming Soon
+              Assumed rates
             </span>
           </div>
         }
         bodyClassName="p-4"
       >
-        <div className="border border-dashed border-border bg-surface p-3">
-          <p className="text-xs text-muted/60">
-            Cost estimation will auto-calculate from team roles and internal rates.
-          </p>
-          {team.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {team
-                .filter((t) => t.role.trim() && t.totalHours > 0)
-                .map((t, i) => (
-                  <span
-                    key={t.id ?? i}
-                    className="inline-flex items-center gap-1.5 border border-border px-2 py-0.5 text-[10px] text-muted"
-                  >
-                    <span className="font-medium text-foreground/80">
-                      {t.role}
-                    </span>
-                    <span className="tabular-nums text-muted/60">
-                      {t.totalHours}h
-                    </span>
-                    <span className="text-muted/30">&times;</span>
-                    <span className="tabular-nums text-muted/50">
-                      &euro;—/h
-                    </span>
-                  </span>
-                ))}
-            </div>
-          )}
-        </div>
+        <ScopeCostBreakdown team={team} />
       </PhaseSectionCard>
       </PhaseSectionStack>
     </div>

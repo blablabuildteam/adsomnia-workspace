@@ -193,7 +193,9 @@ export function summarizeTeamCost(
   let usesAssumedRates = false;
 
   for (const member of team) {
-    if (!member.role.trim() || member.totalHours <= 0) continue;
+    if (!(member.role ?? "").trim() || !member.totalHours || member.totalHours <= 0) {
+      continue;
+    }
     const cost = estimateMemberCost(member);
     if (cost == null) {
       unpricedCount += 1;
@@ -202,11 +204,7 @@ export function summarizeTeamCost(
     pricedCount += 1;
     total += cost;
     const role = getRoleById(member.roleId);
-    if (role?.assumed || member.hourlyRate !== role?.hourlyRate) {
-      usesAssumedRates = usesAssumedRates || (role?.assumed ?? true);
-    } else if (role && !role.assumed) {
-      // confirmed catalog rate
-    } else {
+    if (role ? role.assumed : true) {
       usesAssumedRates = true;
     }
   }
