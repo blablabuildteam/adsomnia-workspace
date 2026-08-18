@@ -60,6 +60,7 @@ import {
 import { PARTIES } from "@/data/workflow";
 import { BusinessValueTypeButton, ImpactSlider } from "./ImpactSlider";
 import { AttachmentZone, AttachmentChip } from "./AttachmentZone";
+import { PhaseSectionCard, PhaseSectionStack } from "./PhaseSectionCard";
 import type { Attachment } from "@/lib/validation-data";
 
 const initial: ScopingResult = {};
@@ -236,6 +237,7 @@ function ScopingFieldLabel({
   required?: boolean;
   complete?: boolean;
 }) {
+  const Icon = FIELD_ICONS[field];
   return (
     <span
       className={[
@@ -243,6 +245,7 @@ function ScopingFieldLabel({
         complete ? "text-foreground" : "text-muted",
       ].join(" ")}
     >
+      {Icon && <Icon className="size-3.5 shrink-0 text-muted/60" />}
       {children}
       {required && !complete && <span className="text-btr">*</span>}
       {complete && (
@@ -1506,25 +1509,28 @@ export function ScopingPhaseSection({
           </div>
         )}
 
-        <div className="divide-y divide-border">
+        <PhaseSectionStack>
           {/* ─── 1. Milestone Timeline ──────────────────────── */}
-          <div className="space-y-3 py-5 first:pt-0 last:pb-0">
-            <div className="flex items-center justify-between">
-              <ScopingFieldLabel field="milestones" required complete={milestonesReady}>
-                Epic & Milestone Timeline
-              </ScopingFieldLabel>
-              <div className="flex items-center gap-2">
-                <CountBadge count={milestones.length} label="milestones" />
-                <button
-                  type="button"
-                  onClick={addMilestone}
-                  className="inline-flex items-center gap-1 border border-dashed border-border px-2 py-1 text-[10px] text-muted transition-colors hover:border-bbb/50 hover:text-bbb"
-                >
-                  <Plus className="size-3" />
-                  Add
-                </button>
-              </div>
-            </div>
+          <PhaseSectionCard
+            header={
+              <>
+                <ScopingFieldLabel field="milestones" required complete={milestonesReady}>
+                  Epic & Milestone Timeline
+                </ScopingFieldLabel>
+                <div className="flex items-center gap-2">
+                  <CountBadge count={milestones.length} label="milestones" />
+                  <button
+                    type="button"
+                    onClick={addMilestone}
+                    className="inline-flex items-center gap-1 border border-dashed border-border px-2 py-1 text-[10px] text-muted transition-colors hover:border-bbb/50 hover:text-bbb"
+                  >
+                    <Plus className="size-3" />
+                    Add
+                  </button>
+                </div>
+              </>
+            }
+          >
             <MilestoneDragGrid
               milestones={milestones}
               onReorder={(reordered) => { markDirty(); setMilestones(reordered); }}
@@ -1538,29 +1544,32 @@ export function ScopingPhaseSection({
               onMilestoneDates={updateMilestoneDates}
               onTeamDates={updateTeamDates}
             />
-          </div>
+          </PhaseSectionCard>
 
           {/* ─── 2. Team & Hour Estimates ───────────────────── */}
-          <div className="space-y-3 py-5 first:pt-0 last:pb-0">
-            <div className="flex items-center justify-between">
-              <ScopingFieldLabel field="team" required complete={teamReady}>
-                Role-Based Team & Hours
-              </ScopingFieldLabel>
-              <div className="flex items-center gap-2">
-                <span className="font-display text-[10px] font-bold tabular-nums text-muted">
-                  {totalHours}h total
-                </span>
-                <CountBadge count={team.length} label="members" />
-                <button
-                  type="button"
-                  onClick={addTeamMember}
-                  className="inline-flex items-center gap-1 border border-dashed border-border px-2 py-1 text-[10px] text-muted transition-colors hover:border-bbb/50 hover:text-bbb"
-                >
-                  <Plus className="size-3" />
-                  Add
-                </button>
-              </div>
-            </div>
+          <PhaseSectionCard
+            header={
+              <>
+                <ScopingFieldLabel field="team" required complete={teamReady}>
+                  Role-Based Team & Hours
+                </ScopingFieldLabel>
+                <div className="flex items-center gap-2">
+                  <span className="font-display text-[10px] font-bold tabular-nums text-muted">
+                    {totalHours}h total
+                  </span>
+                  <CountBadge count={team.length} label="members" />
+                  <button
+                    type="button"
+                    onClick={addTeamMember}
+                    className="inline-flex items-center gap-1 border border-dashed border-border px-2 py-1 text-[10px] text-muted transition-colors hover:border-bbb/50 hover:text-bbb"
+                  >
+                    <Plus className="size-3" />
+                    Add
+                  </button>
+                </div>
+              </>
+            }
+          >
             <div className="grid gap-3 sm:grid-cols-2">
               {team.map((m, i) => (
                 <TeamMemberCard
@@ -1572,25 +1581,28 @@ export function ScopingPhaseSection({
                 />
               ))}
             </div>
-          </div>
+          </PhaseSectionCard>
 
           {/* ─── 3. Impact ─────────────────────────────────── */}
-          <div className="space-y-3 py-5 first:pt-0 last:pb-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <ScopingFieldLabel field="impact" required complete={valueReady}>
-                Impact
-              </ScopingFieldLabel>
-              {fromValidation && (
-                <span className="border border-border px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-muted">
-                  From Validation
-                </span>
-              )}
-              {!fromValidation && priorImpact.types.length > 0 && (
-                <span className="border border-bbb/40 px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-bbb">
-                  Updated in Scoping
-                </span>
-              )}
-            </div>
+          <PhaseSectionCard
+            header={
+              <div className="flex flex-wrap items-center gap-2">
+                <ScopingFieldLabel field="impact" required complete={valueReady}>
+                  Impact
+                </ScopingFieldLabel>
+                {fromValidation && (
+                  <span className="border border-border px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-muted">
+                    From Validation
+                  </span>
+                )}
+                {!fromValidation && priorImpact.types.length > 0 && (
+                  <span className="border border-bbb/40 px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-bbb">
+                    Updated in Scoping
+                  </span>
+                )}
+              </div>
+            }
+          >
             <p className="text-[11px] leading-relaxed text-muted">
               Values from Validation are carried forward. Adjust them if the scoped delivery changes the picture.
             </p>
@@ -1636,13 +1648,16 @@ export function ScopingPhaseSection({
                 })}
               </div>
             )}
-          </div>
+          </PhaseSectionCard>
 
           {/* ─── 4. Scope Boundaries (toggle chips) ────────── */}
-          <div className="space-y-3 py-5 first:pt-0 last:pb-0">
-            <ScopingFieldLabel field="scope" required complete={scopeReady}>
-              Scope Boundaries
-            </ScopingFieldLabel>
+          <PhaseSectionCard
+            header={
+              <ScopingFieldLabel field="scope" required complete={scopeReady}>
+                Scope Boundaries
+              </ScopingFieldLabel>
+            }
+          >
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
@@ -1705,52 +1720,75 @@ export function ScopingPhaseSection({
                 </button>
               </div>
             </div>
-          </div>
+          </PhaseSectionCard>
 
-          {/* ─── 5. Other Notes ────────────────────────────── */}
-          <label className="block py-5 first:pt-0 last:pb-0">
-            <ScopingFieldLabel field="notes" complete={notesReady}>
-              Other Notes
-            </ScopingFieldLabel>
-            <textarea
-              name="scopeDependencies"
-              rows={3}
-              value={dependencies}
-              onChange={(e) => {
-                markDirty();
-                setDependencies(e.target.value);
-              }}
-              className={`${inputClass} mt-1`}
-              placeholder="Optional — leftover context, open questions, or anything reviewers should see."
-            />
-          </label>
-
-          {/* ─── 6. Attachments ──────────────────────────────── */}
-          <div className="py-5 first:pt-0 last:pb-0">
-            <ScopingFieldLabel field="attachments" complete={attachments.length > 0}>
-              Attachments
-            </ScopingFieldLabel>
-            <div className="mt-2">
-              <AttachmentZone
-                attachments={attachments}
-                onChange={(next) => {
-                  markDirty();
-                  setAttachments(next);
-                }}
-              />
-            </div>
-          </div>
-
-          {/* ─── 7. Costs (placeholder) ────────────────────── */}
-          <div className="py-5 first:pt-0 last:pb-0">
-            <div className="flex items-center gap-2 font-display text-xs font-bold uppercase tracking-wide text-muted">
-              <DollarSign className="size-3.5" />
-              Costs
-              <span className="ml-2 border border-border px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-muted/60">
-                Coming Soon
+          {/* ─── 5. Other Notes & Attachments ──────────────── */}
+          <PhaseSectionCard
+            header={
+              <span
+                className={[
+                  "flex items-center gap-2 font-display text-xs font-bold uppercase tracking-wide",
+                  notesReady || attachments.length > 0
+                    ? "text-foreground"
+                    : "text-muted",
+                ].join(" ")}
+              >
+                <StickyNote className="size-3.5 shrink-0 text-muted/60" />
+                Other Notes &amp; Attachments
+                {(notesReady || attachments.length > 0) && (
+                  <Check className="animate-check-pop size-3.5 shrink-0 text-success" />
+                )}
               </span>
+            }
+            bodyClassName="space-y-4 p-4"
+          >
+            <label className="block">
+              <ScopingFieldLabel field="notes" complete={notesReady}>
+                Other Notes
+              </ScopingFieldLabel>
+              <textarea
+                name="scopeDependencies"
+                rows={3}
+                value={dependencies}
+                onChange={(e) => {
+                  markDirty();
+                  setDependencies(e.target.value);
+                }}
+                className={`${inputClass} mt-1`}
+                placeholder="Optional — leftover context, open questions, or anything reviewers should see."
+              />
+            </label>
+
+            <div>
+              <ScopingFieldLabel field="attachments" complete={attachments.length > 0}>
+                Attachments
+              </ScopingFieldLabel>
+              <div className="mt-2">
+                <AttachmentZone
+                  attachments={attachments}
+                  onChange={(next) => {
+                    markDirty();
+                    setAttachments(next);
+                  }}
+                />
+              </div>
             </div>
-            <div className="mt-3 border border-dashed border-border bg-surface p-4">
+          </PhaseSectionCard>
+
+          {/* ─── 6. Costs (placeholder) ────────────────────── */}
+          <PhaseSectionCard
+            header={
+              <div className="flex items-center gap-2 font-display text-xs font-bold uppercase tracking-wide text-muted">
+                <DollarSign className="size-3.5" />
+                Costs
+                <span className="ml-2 border border-border px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-muted/60">
+                  Coming Soon
+                </span>
+              </div>
+            }
+            bodyClassName="p-4"
+          >
+            <div className="border border-dashed border-border bg-surface p-4">
               <div className="flex flex-col items-center gap-3 py-4 text-center">
                 <div className="flex size-10 items-center justify-center border border-border bg-surface-elevated">
                   <DollarSign className="size-5 text-muted/40" />
@@ -1794,8 +1832,8 @@ export function ScopingPhaseSection({
                 )}
               </div>
             </div>
-          </div>
-        </div>
+          </PhaseSectionCard>
+        </PhaseSectionStack>
 
         {/* ─── Actions ─────────────────────────────────────── */}
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
@@ -1883,16 +1921,21 @@ function ScopingReadOnly({
         : null;
 
   return (
-    <div className="divide-y divide-border">
+    <div className="p-4">
+      <PhaseSectionStack>
       {/* Milestones */}
-      <div className="p-4">
-        <div className="mb-2 flex items-center gap-2 text-muted">
-          <Calendar className="size-3.5 shrink-0" />
-          <p className="font-display text-[10px] font-bold uppercase tracking-wide">
-            Epic & Milestone Timeline
-          </p>
-          <CountBadge count={milestones.length} label="milestones" />
-        </div>
+      <PhaseSectionCard
+        header={
+          <div className="flex items-center gap-2 text-muted">
+            <Calendar className="size-3.5 shrink-0" />
+            <p className="font-display text-[10px] font-bold uppercase tracking-wide">
+              Epic & Milestone Timeline
+            </p>
+            <CountBadge count={milestones.length} label="milestones" />
+          </div>
+        }
+        bodyClassName="p-4"
+      >
         {milestones.length > 0 ? (
           <>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -1916,19 +1959,23 @@ function ScopingReadOnly({
         ) : (
           <p className="text-sm text-foreground/90">—</p>
         )}
-      </div>
+      </PhaseSectionCard>
 
       {/* Team */}
-      <div className="p-4">
-        <div className="mb-2 flex items-center gap-2 text-muted">
-          <Users className="size-3.5 shrink-0" />
-          <p className="font-display text-[10px] font-bold uppercase tracking-wide">
-            Team & Hours
-          </p>
-          <span className="ml-auto font-display text-[10px] font-bold tabular-nums">
-            {team.reduce((s, t) => s + t.totalHours, 0)}h total
-          </span>
-        </div>
+      <PhaseSectionCard
+        header={
+          <div className="flex w-full items-center gap-2 text-muted">
+            <Users className="size-3.5 shrink-0" />
+            <p className="font-display text-[10px] font-bold uppercase tracking-wide">
+              Team & Hours
+            </p>
+            <span className="ml-auto font-display text-[10px] font-bold tabular-nums">
+              {team.reduce((s, t) => s + t.totalHours, 0)}h total
+            </span>
+          </div>
+        }
+        bodyClassName="p-4"
+      >
         {team.length > 0 ? (
           <div className="grid gap-2 sm:grid-cols-2">
             {team.map((t, i) => {
@@ -1980,16 +2027,20 @@ function ScopingReadOnly({
         ) : (
           <p className="text-sm text-foreground/90">—</p>
         )}
-      </div>
+      </PhaseSectionCard>
 
       {/* Impact */}
-      <div className="p-4">
-        <div className="mb-2 flex items-center gap-2 text-muted">
-          <TrendingUp className="size-3.5 shrink-0" />
-          <p className="font-display text-[10px] font-bold uppercase tracking-wide">
-            Impact
-          </p>
-        </div>
+      <PhaseSectionCard
+        header={
+          <div className="flex items-center gap-2 text-muted">
+            <TrendingUp className="size-3.5 shrink-0" />
+            <p className="font-display text-[10px] font-bold uppercase tracking-wide">
+              Impact
+            </p>
+          </div>
+        }
+        bodyClassName="p-4"
+      >
         {impact && impact.types.length > 0 ? (
           <div className="space-y-3">
             {impact.types.map((type) => {
@@ -2038,16 +2089,20 @@ function ScopingReadOnly({
         ) : (
           <p className="text-sm text-foreground/90">—</p>
         )}
-      </div>
+      </PhaseSectionCard>
 
       {/* Scope */}
-      <div className="p-4">
-        <div className="mb-2 flex items-center gap-2 text-muted">
-          <SplitSquareVertical className="size-3.5 shrink-0" />
-          <p className="font-display text-[10px] font-bold uppercase tracking-wide">
-            Scope Boundaries
-          </p>
-        </div>
+      <PhaseSectionCard
+        header={
+          <div className="flex items-center gap-2 text-muted">
+            <SplitSquareVertical className="size-3.5 shrink-0" />
+            <p className="font-display text-[10px] font-bold uppercase tracking-wide">
+              Scope Boundaries
+            </p>
+          </div>
+        }
+        bodyClassName="p-4"
+      >
         {scopeItems.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
@@ -2085,49 +2140,55 @@ function ScopingReadOnly({
         ) : (
           <p className="text-sm text-foreground/90">—</p>
         )}
-      </div>
+      </PhaseSectionCard>
 
-      {/* Other Notes */}
-      <div className="p-4">
-        <div className="mb-2 flex items-center gap-2 text-muted">
-          <StickyNote className="size-3.5 shrink-0" />
-          <p className="font-display text-[10px] font-bold uppercase tracking-wide">
-            Other Notes
-          </p>
-        </div>
+      {/* Other Notes & Attachments */}
+      <PhaseSectionCard
+        header={
+          <div className="flex items-center gap-2 text-muted">
+            <StickyNote className="size-3.5 shrink-0" />
+            <p className="font-display text-[10px] font-bold uppercase tracking-wide">
+              Other Notes &amp; Attachments
+            </p>
+          </div>
+        }
+        bodyClassName="space-y-4 p-4"
+      >
         <p className="text-sm leading-relaxed text-foreground/90">
           {data?.dependencies || "—"}
         </p>
-      </div>
-
-      {/* Attachments */}
-      {data?.attachments && data.attachments.length > 0 && (
-        <div className="p-4">
-          <div className="mb-2 flex items-center gap-2 text-muted">
-            <Paperclip className="size-3.5 shrink-0" />
-            <p className="font-display text-[10px] font-bold uppercase tracking-wide">
-              Attachments ({data.attachments.length})
-            </p>
+        {data?.attachments && data.attachments.length > 0 && (
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-muted">
+              <Paperclip className="size-3.5 shrink-0" />
+              <p className="font-display text-[10px] font-bold uppercase tracking-wide">
+                Attachments ({data.attachments.length})
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              {data.attachments.map((a) => (
+                <AttachmentChip key={a.id} attachment={a} readOnly />
+              ))}
+            </div>
           </div>
-          <div className="space-y-1.5">
-            {data.attachments.map((a) => (
-              <AttachmentChip key={a.id} attachment={a} readOnly />
-            ))}
-          </div>
-        </div>
-      )}
+        )}
+      </PhaseSectionCard>
 
       {/* Costs (placeholder) */}
-      <div className="p-4">
-        <div className="mb-2 flex items-center gap-2 text-muted">
-          <DollarSign className="size-3.5 shrink-0" />
-          <p className="font-display text-[10px] font-bold uppercase tracking-wide">
-            Costs
-          </p>
-          <span className="ml-1 border border-border px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-muted/60">
-            Coming Soon
-          </span>
-        </div>
+      <PhaseSectionCard
+        header={
+          <div className="flex items-center gap-2 text-muted">
+            <DollarSign className="size-3.5 shrink-0" />
+            <p className="font-display text-[10px] font-bold uppercase tracking-wide">
+              Costs
+            </p>
+            <span className="ml-1 border border-border px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-muted/60">
+              Coming Soon
+            </span>
+          </div>
+        }
+        bodyClassName="p-4"
+      >
         <div className="border border-dashed border-border bg-surface p-3">
           <p className="text-xs text-muted/60">
             Cost estimation will auto-calculate from team roles and internal rates.
@@ -2156,7 +2217,8 @@ function ScopingReadOnly({
             </div>
           )}
         </div>
-      </div>
+      </PhaseSectionCard>
+      </PhaseSectionStack>
     </div>
   );
 }

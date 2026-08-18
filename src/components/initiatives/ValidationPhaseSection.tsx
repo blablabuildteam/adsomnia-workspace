@@ -47,6 +47,7 @@ import type { ValidationDecision } from "./ValidationApprovalPanel";
 import { BusinessValueTypeButton, ImpactSlider } from "./ImpactSlider";
 import { BallparkSlider } from "./BallparkSlider";
 import { AttachmentZone, AttachmentChip } from "./AttachmentZone";
+import { PhaseSectionCard, PhaseSectionStack } from "./PhaseSectionCard";
 import type { Attachment } from "@/lib/validation-data";
 
 const initial: ValidationResult = {};
@@ -177,6 +178,7 @@ function FieldLabel({
   /** Shows a green check when the field is filled in. */
   complete?: boolean;
 }) {
+  const Icon = FIELD_ICONS[field];
   return (
     <span
       className={[
@@ -184,6 +186,7 @@ function FieldLabel({
         complete ? "text-foreground" : "text-muted",
       ].join(" ")}
     >
+      {Icon && <Icon className="size-3.5 shrink-0 text-muted/60" />}
       {children}
       {required && !complete && <span className="text-btr">*</span>}
       {complete && (
@@ -365,11 +368,14 @@ export function ValidationPhaseSection({
           </p>
         )}
 
-        <div className="divide-y divide-border">
-          <div className="space-y-3 py-5 first:pt-0 last:pb-0">
-            <FieldLabel field="businessValue" required complete={businessValueComplete}>
-              Expected Business Value
-            </FieldLabel>
+        <PhaseSectionStack>
+          <PhaseSectionCard
+            header={
+              <FieldLabel field="businessValue" required complete={businessValueComplete}>
+                Expected Business Value
+              </FieldLabel>
+            }
+          >
             <div className="flex flex-wrap gap-2">
               {BUSINESS_VALUE_TYPES.map((type) => (
                 <BusinessValueTypeButton
@@ -418,8 +424,10 @@ export function ValidationPhaseSection({
                 })}
               </div>
             )}
+          </PhaseSectionCard>
 
-            <div className="border-t border-border pt-4">
+          <PhaseSectionCard
+            header={
               <FieldLabel
                 field="leadProductionParty"
                 required
@@ -427,83 +435,87 @@ export function ValidationPhaseSection({
               >
                 Lead Production Party
               </FieldLabel>
-              <div className="mt-1 space-y-2">
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                  {PARTY_BUTTONS.map((party) => {
-                    const selected = leadPartySelect === party.value;
-                    return (
-                      <button
-                        key={party.value}
-                        type="button"
-                        onClick={() => {
-                          markFormDirty();
-                          setLeadPartySelect(selected ? "" : party.value);
-                        }}
-                        aria-pressed={selected}
-                        title={party.label}
-                        className={[
-                          "flex flex-col items-center justify-center gap-2 border px-3 py-3 transition-colors",
-                          selected
-                            ? "border-foreground bg-foreground/[0.06] text-foreground"
-                            : "border-border text-muted hover:border-foreground hover:text-foreground",
-                        ].join(" ")}
-                      >
-                        {party.logo ? (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img
-                            src={party.logo}
-                            alt={party.label}
-                            className="h-6 w-auto max-w-full object-contain"
-                          />
-                        ) : (
-                          <span className="flex h-6 items-center text-muted">
-                            <PenLine className="size-4" />
-                          </span>
-                        )}
-                        <span className="font-display flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide">
-                          {selected && (
-                            <Check className="animate-check-pop size-3 shrink-0" />
-                          )}
-                          {party.label}
+            }
+          >
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                {PARTY_BUTTONS.map((party) => {
+                  const selected = leadPartySelect === party.value;
+                  return (
+                    <button
+                      key={party.value}
+                      type="button"
+                      onClick={() => {
+                        markFormDirty();
+                        setLeadPartySelect(selected ? "" : party.value);
+                      }}
+                      aria-pressed={selected}
+                      title={party.label}
+                      className={[
+                        "flex flex-col items-center justify-center gap-2 border px-3 py-3 transition-colors",
+                        selected
+                          ? "border-foreground bg-foreground/[0.06] text-foreground"
+                          : "border-border text-muted hover:border-foreground hover:text-foreground",
+                      ].join(" ")}
+                    >
+                      {party.logo ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={party.logo}
+                          alt={party.label}
+                          className="h-6 w-auto max-w-full object-contain"
+                        />
+                      ) : (
+                        <span className="flex h-6 items-center text-muted">
+                          <PenLine className="size-4" />
                         </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                {!isOtherLead && (
-                  <input
-                    type="hidden"
-                    name="leadProductionParty"
-                    value={leadPartySelect}
-                    required={!leadPartySelect}
-                  />
-                )}
-                {isOtherLead && (
-                  <input
-                    type="text"
-                    name="leadProductionParty"
-                    required
-                    value={leadPartyOther}
-                    onChange={(e) => {
-                      markFormDirty();
-                      setLeadPartyOther(e.target.value);
-                    }}
-                    className={inputClass}
-                    placeholder="Enter the lead party or team name…"
-                  />
-                )}
+                      )}
+                      <span className="font-display flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide">
+                        {selected && (
+                          <Check className="animate-check-pop size-3 shrink-0" />
+                        )}
+                        {party.label}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
+              {!isOtherLead && (
+                <input
+                  type="hidden"
+                  name="leadProductionParty"
+                  value={leadPartySelect}
+                  required={!leadPartySelect}
+                />
+              )}
+              {isOtherLead && (
+                <input
+                  type="text"
+                  name="leadProductionParty"
+                  required
+                  value={leadPartyOther}
+                  onChange={(e) => {
+                    markFormDirty();
+                    setLeadPartyOther(e.target.value);
+                  }}
+                  className={inputClass}
+                  placeholder="Enter the lead party or team name…"
+                />
+              )}
             </div>
-          </div>
+          </PhaseSectionCard>
 
-          <label className="block py-5 first:pt-0 last:pb-0">
-            <FieldLabel
-              field="solutionDirection"
-              required
-              complete={solutionDirection.trim().length > 0}
-            >
-              High-Level Approach of the Solution
-            </FieldLabel>
+          <PhaseSectionCard
+            header={
+              <FieldLabel
+                field="solutionDirection"
+                required
+                complete={solutionDirection.trim().length > 0}
+              >
+                High-Level Approach of the Solution
+              </FieldLabel>
+            }
+          >
             <textarea
               name="solutionDirection"
               required
@@ -513,19 +525,22 @@ export function ValidationPhaseSection({
                 markFormDirty();
                 setSolutionDirection(e.target.value);
               }}
-              className={`${inputClass} mt-1`}
+              className={inputClass}
               placeholder="e.g. Shared config service + templates; push via CMS API; HN owns build."
             />
-          </label>
+          </PhaseSectionCard>
 
-          <div className="py-5 first:pt-0 last:pb-0">
-            <FieldLabel
-              field="tShirtSize"
-              required
-              complete={tShirtSize.length > 0}
-            >
-              Investment Estimate (T-Shirt)
-            </FieldLabel>
+          <PhaseSectionCard
+            header={
+              <FieldLabel
+                field="tShirtSize"
+                required
+                complete={tShirtSize.length > 0}
+              >
+                Investment Estimate (T-Shirt)
+              </FieldLabel>
+            }
+          >
             <BallparkSlider
               name="tShirtSize"
               value={tShirtSize}
@@ -536,12 +551,15 @@ export function ValidationPhaseSection({
               options={TSHIRT_OPTIONS}
               required
             />
-          </div>
+          </PhaseSectionCard>
 
-          <div className="py-5 first:pt-0 last:pb-0">
-            <FieldLabel field="priority" required complete={priority.length > 0}>
-              Priority
-            </FieldLabel>
+          <PhaseSectionCard
+            header={
+              <FieldLabel field="priority" required complete={priority.length > 0}>
+                Priority
+              </FieldLabel>
+            }
+          >
             <BallparkSlider
               name="priority"
               value={priority}
@@ -552,15 +570,18 @@ export function ValidationPhaseSection({
               options={PRIORITY_OPTIONS}
               required
             />
-          </div>
+          </PhaseSectionCard>
 
-          <label className="block py-5 first:pt-0 last:pb-0">
-            <FieldLabel
-              field="dependencies"
-              complete={dependencies.trim().length > 0}
-            >
-              Risks, Dependencies & Blockers
-            </FieldLabel>
+          <PhaseSectionCard
+            header={
+              <FieldLabel
+                field="dependencies"
+                complete={dependencies.trim().length > 0}
+              >
+                Risks, Dependencies & Blockers
+              </FieldLabel>
+            }
+          >
             <textarea
               name="dependencies"
               rows={2}
@@ -569,48 +590,67 @@ export function ValidationPhaseSection({
                 markFormDirty();
                 setDependencies(e.target.value);
               }}
-              className={`${inputClass} mt-1`}
+              className={inputClass}
               placeholder="Optional — risks, blockers, or required access (include ticket refs if known)."
             />
-          </label>
+          </PhaseSectionCard>
 
-          <label className="block py-5 first:pt-0 last:pb-0">
-            <FieldLabel field="risks" complete={risks.trim().length > 0}>
-              Other Notes
-            </FieldLabel>
-            <textarea
-              name="risks"
-              rows={2}
-              value={risks}
-              onChange={(e) => {
-                markFormDirty();
-                setRisks(e.target.value);
-              }}
-              className={`${inputClass} mt-1`}
-              placeholder="Optional — leftover context, open questions, or anything leadership should see."
-            />
-          </label>
-
-          <div className="py-5 first:pt-0 last:pb-0">
-            <FieldLabel field="attachments" complete={attachments.length > 0}>
-              Attachments
-            </FieldLabel>
-            <input
-              type="hidden"
-              name="attachments"
-              value={JSON.stringify(attachments)}
-            />
-            <div className="mt-2">
-              <AttachmentZone
-                attachments={attachments}
-                onChange={(next) => {
+          <PhaseSectionCard
+            header={
+              <span
+                className={[
+                  "flex items-center gap-2 font-display text-xs font-bold uppercase tracking-wide",
+                  risks.trim().length > 0 || attachments.length > 0
+                    ? "text-foreground"
+                    : "text-muted",
+                ].join(" ")}
+              >
+                <StickyNote className="size-3.5 shrink-0 text-muted/60" />
+                Other Notes &amp; Attachments
+                {(risks.trim().length > 0 || attachments.length > 0) && (
+                  <Check className="animate-check-pop size-3.5 shrink-0 text-success" />
+                )}
+              </span>
+            }
+            bodyClassName="space-y-4 p-4"
+          >
+            <label className="block">
+              <FieldLabel field="risks" complete={risks.trim().length > 0}>
+                Other Notes
+              </FieldLabel>
+              <textarea
+                name="risks"
+                rows={2}
+                value={risks}
+                onChange={(e) => {
                   markFormDirty();
-                  setAttachments(next);
+                  setRisks(e.target.value);
                 }}
+                className={`${inputClass} mt-1`}
+                placeholder="Optional — leftover context, open questions, or anything leadership should see."
               />
+            </label>
+            <div>
+              <FieldLabel field="attachments" complete={attachments.length > 0}>
+                Attachments
+              </FieldLabel>
+              <input
+                type="hidden"
+                name="attachments"
+                value={JSON.stringify(attachments)}
+              />
+              <div className="mt-2">
+                <AttachmentZone
+                  attachments={attachments}
+                  onChange={(next) => {
+                    markFormDirty();
+                    setAttachments(next);
+                  }}
+                />
+              </div>
             </div>
-          </div>
-        </div>
+          </PhaseSectionCard>
+        </PhaseSectionStack>
 
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
           {!resubmitting && (
@@ -695,92 +735,85 @@ function ValidationReadOnly({ data }: { data: ValidationData | null }) {
   const legacyBusinessValue =
     typeof businessValue === "string" ? businessValue : null;
 
-  const fields: {
-    field: keyof typeof FIELD_HELP;
-    label: string;
-    value: string | undefined;
-  }[] = [
-    {
-      field: "solutionDirection",
-      label: "High-Level Approach of the Solution",
-      value: data?.solutionDirection,
-    },
-    {
-      field: "dependencies",
-      label: "Risks, Dependencies & Blockers",
-      value: data?.dependencies,
-    },
-    { field: "risks", label: "Other Notes", value: data?.risks },
-  ];
-
   return (
-    <div className="grid gap-px bg-border sm:grid-cols-2">
-      <div className="bg-surface p-4 sm:col-span-2">
-        <div className="mb-2 flex items-center gap-2 text-muted">
-          <BarChart3 className="size-3.5 shrink-0" />
-          <p className="font-display text-[10px] font-bold uppercase tracking-wide">
-            Expected Business Value
-          </p>
-        </div>
-        {structuredBusinessValue && structuredBusinessValue.types.length > 0 ? (
-          <div className="space-y-3">
-            {structuredBusinessValue.types.map((type) => {
-              const label =
-                BUSINESS_VALUE_TYPES.find((item) => item.id === type)?.label ??
-                type;
-              const score = parseImpactScore(
-                structuredBusinessValue.expectations[type],
-              );
-              const pct =
-                score !== null
-                  ? ((score - IMPACT_MIN) / (IMPACT_MAX - IMPACT_MIN)) * 100
-                  : 0;
-              return (
-                <div key={type}>
-                  <div className="mb-1.5 flex items-center justify-between gap-3">
-                    <span className="border border-border px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide text-foreground">
-                      {label}
-                    </span>
-                    <span className="flex items-baseline gap-2">
-                      <span className="font-display text-xs font-bold tabular-nums text-foreground">
-                        {score !== null ? (
-                          <>
-                            {score}
-                            <span className="text-muted">/10</span>
-                          </>
-                        ) : (
-                          "—"
+    <div className="p-4">
+      <PhaseSectionStack>
+        <PhaseSectionCard
+          header={
+            <div className="flex items-center gap-2 text-muted">
+              <BarChart3 className="size-3.5 shrink-0" />
+              <p className="font-display text-[10px] font-bold uppercase tracking-wide">
+                Expected Business Value
+              </p>
+            </div>
+          }
+          bodyClassName="p-4"
+        >
+          {structuredBusinessValue && structuredBusinessValue.types.length > 0 ? (
+            <div className="space-y-3">
+              {structuredBusinessValue.types.map((type) => {
+                const label =
+                  BUSINESS_VALUE_TYPES.find((item) => item.id === type)?.label ??
+                  type;
+                const score = parseImpactScore(
+                  structuredBusinessValue.expectations[type],
+                );
+                const pct =
+                  score !== null
+                    ? ((score - IMPACT_MIN) / (IMPACT_MAX - IMPACT_MIN)) * 100
+                    : 0;
+                return (
+                  <div key={type}>
+                    <div className="mb-1.5 flex items-center justify-between gap-3">
+                      <span className="border border-border px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide text-foreground">
+                        {label}
+                      </span>
+                      <span className="flex items-baseline gap-2">
+                        <span className="font-display text-xs font-bold tabular-nums text-foreground">
+                          {score !== null ? (
+                            <>
+                              {score}
+                              <span className="text-muted">/10</span>
+                            </>
+                          ) : (
+                            "—"
+                          )}
+                        </span>
+                        {score !== null && (
+                          <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+                            {impactScoreLabel(score)}
+                          </span>
                         )}
                       </span>
-                      {score !== null && (
-                        <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                          {impactScoreLabel(score)}
-                        </span>
-                      )}
-                    </span>
+                    </div>
+                    <div className="h-1.5 w-full bg-border">
+                      <div
+                        className="h-full bg-muted transition-[width]"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-1.5 w-full bg-border">
-                    <div
-                      className="h-full bg-muted transition-[width]"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-sm leading-relaxed text-foreground/90">
-            {legacyBusinessValue || "—"}
-          </p>
-        )}
-        <div className="mt-4 border-t border-border pt-4">
-          <div className="mb-2 flex items-center gap-2 text-muted">
-            <Building2 className="size-3.5 shrink-0" />
-            <p className="font-display text-[10px] font-bold uppercase tracking-wide">
-              Lead Production Party
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm leading-relaxed text-foreground/90">
+              {legacyBusinessValue || "—"}
             </p>
-          </div>
+          )}
+        </PhaseSectionCard>
+
+        <PhaseSectionCard
+          header={
+            <div className="flex items-center gap-2 text-muted">
+              <Building2 className="size-3.5 shrink-0" />
+              <p className="font-display text-[10px] font-bold uppercase tracking-wide">
+                Lead Production Party
+              </p>
+            </div>
+          }
+          bodyClassName="p-4"
+        >
           {(partyLabel ?? data?.leadProductionParty) ? (
             <span className="inline-flex items-center gap-2 border border-foreground/40 bg-foreground/[0.06] px-2.5 py-1.5">
               {partyLogo && (
@@ -798,74 +831,107 @@ function ValidationReadOnly({ data }: { data: ValidationData | null }) {
           ) : (
             <p className="text-sm leading-relaxed text-foreground/90">—</p>
           )}
-        </div>
-      </div>
-      <div className="bg-surface p-4">
-        <div className="flex items-center gap-2 text-muted">
-          <Shirt className="size-3.5 shrink-0" />
-          <p className="font-display text-[10px] font-bold uppercase tracking-wide">
-            Investment Estimate
+        </PhaseSectionCard>
+
+        <PhaseSectionCard
+          header={
+            <div className="flex items-center gap-2 text-muted">
+              <Compass className="size-3.5 shrink-0" />
+              <p className="font-display text-[10px] font-bold uppercase tracking-wide">
+                High-Level Approach of the Solution
+              </p>
+            </div>
+          }
+          bodyClassName="p-4"
+        >
+          <p className="text-sm leading-relaxed text-foreground/90">
+            {data?.solutionDirection || "—"}
           </p>
-        </div>
-        <div className="mt-1.5">
+        </PhaseSectionCard>
+
+        <PhaseSectionCard
+          header={
+            <div className="flex items-center gap-2 text-muted">
+              <Shirt className="size-3.5 shrink-0" />
+              <p className="font-display text-[10px] font-bold uppercase tracking-wide">
+                Investment Estimate
+              </p>
+            </div>
+          }
+          bodyClassName="p-4"
+        >
           {data?.tShirtSize ? (
             <ReadOnlyChip value={data.tShirtSize} hint={tShirtHint} />
           ) : (
             <p className="text-sm text-foreground/90">—</p>
           )}
-        </div>
-      </div>
-      <div className="bg-surface p-4">
-        <div className="flex items-center gap-2 text-muted">
-          <Flag className="size-3.5 shrink-0" />
-          <p className="font-display text-[10px] font-bold uppercase tracking-wide">
-            Priority
-          </p>
-        </div>
-        <div className="mt-1.5">
+        </PhaseSectionCard>
+
+        <PhaseSectionCard
+          header={
+            <div className="flex items-center gap-2 text-muted">
+              <Flag className="size-3.5 shrink-0" />
+              <p className="font-display text-[10px] font-bold uppercase tracking-wide">
+                Priority
+              </p>
+            </div>
+          }
+          bodyClassName="p-4"
+        >
           {data?.priority ? (
             <ReadOnlyChip value={data.priority.toUpperCase()} hint={priorityHint} />
           ) : (
             <p className="text-sm text-foreground/90">—</p>
           )}
-        </div>
-      </div>
-      {fields.map((f) => {
-        const Icon = FIELD_ICONS[f.field];
-        return (
-          <div
-            key={f.label}
-            className={`bg-surface p-4 ${
-              f.field === "solutionDirection" ? "sm:col-span-2" : ""
-            }`}
-          >
+        </PhaseSectionCard>
+
+        <PhaseSectionCard
+          header={
             <div className="flex items-center gap-2 text-muted">
-              <Icon className="size-3.5 shrink-0" />
+              <Link2 className="size-3.5 shrink-0" />
               <p className="font-display text-[10px] font-bold uppercase tracking-wide">
-                {f.label}
+                Risks, Dependencies & Blockers
               </p>
             </div>
-            <p className="mt-1.5 text-sm leading-relaxed text-foreground/90">
-              {f.value || "—"}
-            </p>
-          </div>
-        );
-      })}
-      {data?.attachments && data.attachments.length > 0 && (
-        <div className="bg-surface p-4 sm:col-span-2">
-          <div className="mb-2 flex items-center gap-2 text-muted">
-            <Paperclip className="size-3.5 shrink-0" />
-            <p className="font-display text-[10px] font-bold uppercase tracking-wide">
-              Attachments ({data.attachments.length})
-            </p>
-          </div>
-          <div className="space-y-1.5">
-            {data.attachments.map((a) => (
-              <AttachmentChip key={a.id} attachment={a} readOnly />
-            ))}
-          </div>
-        </div>
-      )}
+          }
+          bodyClassName="p-4"
+        >
+          <p className="text-sm leading-relaxed text-foreground/90">
+            {data?.dependencies || "—"}
+          </p>
+        </PhaseSectionCard>
+
+        <PhaseSectionCard
+          header={
+            <div className="flex items-center gap-2 text-muted">
+              <StickyNote className="size-3.5 shrink-0" />
+              <p className="font-display text-[10px] font-bold uppercase tracking-wide">
+                Other Notes &amp; Attachments
+              </p>
+            </div>
+          }
+          bodyClassName="space-y-4 p-4"
+        >
+          <p className="text-sm leading-relaxed text-foreground/90">
+            {data?.risks || "—"}
+          </p>
+          {data?.attachments && data.attachments.length > 0 && (
+            <div>
+              <div className="mb-2 flex items-center gap-2 text-muted">
+                <Paperclip className="size-3.5 shrink-0" />
+                <p className="font-display text-[10px] font-bold uppercase tracking-wide">
+                  Attachments ({data.attachments.length})
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                {data.attachments.map((a) => (
+                  <AttachmentChip key={a.id} attachment={a} readOnly />
+                ))}
+              </div>
+            </div>
+          )}
+        </PhaseSectionCard>
+      </PhaseSectionStack>
     </div>
   );
 }
