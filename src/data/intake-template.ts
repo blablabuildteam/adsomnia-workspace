@@ -185,11 +185,11 @@ export const INTAKE_SECTIONS: IntakeStageSection[] = [
       },
       {
         id: "dependencies",
-        label: "Dependencies & Blockers",
+        label: "Risks, Dependencies & Blockers",
         expectation:
-          "List other initiatives, teams, vendors, or systems this depends on. Call out anything that could block start or delivery.",
+          "Optional — call out risks if we proceed, plus other initiatives, teams, vendors, or systems this depends on. Include anything that could block start or delivery.",
         type: "textarea",
-        required: true,
+        required: false,
         placeholder:
           "e.g. Depends on CMS API access from Partner Success; blocked until DE offer-page redirects are fixed (WS-1098).",
       },

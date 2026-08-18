@@ -98,7 +98,7 @@ export const STAGES: WorkflowStage[] = [
       "High-Level Approach of the Solution — outline the preferred approach and main building blocks (systems, integrations, build vs buy) without detailed design",
       "Investment Estimate — T-shirt size S / M / L / XL for overall effort, with a one-line rationale for the chosen size",
       "Strategic Fit & Priority — explain why this belongs in the portfolio now, and propose Now / Next / Later / Rollout placement",
-      "Dependencies & Blockers — list other initiatives, teams, vendors, or systems this depends on, and anything that could block start",
+      "Risks, Dependencies & Blockers (optional) — risks if we proceed, plus other initiatives, teams, vendors, or systems this depends on",
       "Other Notes (optional) — leftover context, open questions, or anything leadership should see",
     ],
     outputs: [

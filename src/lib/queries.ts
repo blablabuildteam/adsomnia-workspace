@@ -10,6 +10,7 @@ import { eq, desc, count, inArray } from "drizzle-orm";
 import type { ValidationData, ScopingData } from "@/lib/validation-data";
 
 export type {
+  Attachment,
   BusinessValueType,
   BusinessValueData,
   ValidationData,

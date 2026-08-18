@@ -45,6 +45,9 @@ import {
 import { PARTIES } from "@/data/workflow";
 import type { ValidationDecision } from "./ValidationApprovalPanel";
 import { BusinessValueTypeButton, ImpactSlider } from "./ImpactSlider";
+import { BallparkSlider } from "./BallparkSlider";
+import { AttachmentZone, AttachmentChip } from "./AttachmentZone";
+import type { Attachment } from "@/lib/validation-data";
 
 const initial: ValidationResult = {};
 
@@ -159,63 +162,6 @@ function FieldInfoIcon({ field }: { field: keyof typeof FIELD_HELP }) {
         {helpText}
       </span>
     </span>
-  );
-}
-
-function ChoiceButtons({
-  name,
-  value,
-  onChange,
-  options,
-  required,
-}: {
-  name: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: readonly { value: string; label: string; hint?: string }[];
-  required?: boolean;
-}) {
-  return (
-    <div className="mt-1">
-      <input
-        type="hidden"
-        name={name}
-        value={value}
-        required={required && !value}
-      />
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {options.map((option) => {
-          const selected = value === option.value;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => onChange(selected ? "" : option.value)}
-              aria-pressed={selected}
-              title={option.hint}
-              className={[
-                "border px-3 py-2.5 text-left transition-colors",
-                selected
-                  ? "border-foreground bg-foreground/[0.06] text-foreground"
-                  : "border-border text-muted hover:border-foreground hover:text-foreground",
-              ].join(" ")}
-            >
-              <span className="font-display flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide">
-                {selected && (
-                  <Check className="animate-check-pop size-3.5 shrink-0" />
-                )}
-                {option.label}
-              </span>
-              {option.hint && (
-                <span className="mt-0.5 block text-[10px] normal-case tracking-normal text-muted/70">
-                  {option.hint}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 
@@ -345,6 +291,14 @@ export function ValidationPhaseSection({
   const leadPartyComplete = isOtherLead
     ? leadPartyOther.trim().length > 0
     : leadPartySelect.length > 0;
+  const canSubmit =
+    businessValueComplete &&
+    leadPartyComplete &&
+    solutionDirection.trim().length > 0 &&
+    tShirtSize.length > 0 &&
+    priority.length > 0 &&
+    dependencies.trim().length > 0 &&
+    risks.trim().length > 0;
 
   function toggleBusinessValueType(type: BusinessValueType) {
     markFormDirty();
@@ -572,7 +526,7 @@ export function ValidationPhaseSection({
             >
               Investment Estimate (T-Shirt)
             </FieldLabel>
-            <ChoiceButtons
+            <BallparkSlider
               name="tShirtSize"
               value={tShirtSize}
               onChange={(value) => {
@@ -588,7 +542,7 @@ export function ValidationPhaseSection({
             <FieldLabel field="priority" required complete={priority.length > 0}>
               Priority
             </FieldLabel>
-            <ChoiceButtons
+            <BallparkSlider
               name="priority"
               value={priority}
               onChange={(value) => {
@@ -636,6 +590,26 @@ export function ValidationPhaseSection({
               placeholder="Optional — leftover context, open questions, or anything leadership should see."
             />
           </label>
+
+          <div className="py-5 first:pt-0 last:pb-0">
+            <FieldLabel field="attachments" complete={attachments.length > 0}>
+              Attachments
+            </FieldLabel>
+            <input
+              type="hidden"
+              name="attachments"
+              value={JSON.stringify(attachments)}
+            />
+            <div className="mt-2">
+              <AttachmentZone
+                attachments={attachments}
+                onChange={(next) => {
+                  markFormDirty();
+                  setAttachments(next);
+                }}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
@@ -661,8 +635,9 @@ export function ValidationPhaseSection({
             <button
               type="submit"
               formAction={submitAction}
-              disabled={pending}
-              className="group relative inline-flex items-center gap-2 overflow-hidden border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors disabled:opacity-50"
+              disabled={pending || !canSubmit}
+              title={!canSubmit ? "Fill in all required fields to submit" : undefined}
+              className="group relative inline-flex items-center gap-2 overflow-hidden border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />
               <SendHorizonal className="relative size-3.5" />
@@ -876,6 +851,21 @@ function ValidationReadOnly({ data }: { data: ValidationData | null }) {
           </div>
         );
       })}
+      {data?.attachments && data.attachments.length > 0 && (
+        <div className="bg-surface p-4 sm:col-span-2">
+          <div className="mb-2 flex items-center gap-2 text-muted">
+            <Paperclip className="size-3.5 shrink-0" />
+            <p className="font-display text-[10px] font-bold uppercase tracking-wide">
+              Attachments ({data.attachments.length})
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            {data.attachments.map((a) => (
+              <AttachmentChip key={a.id} attachment={a} readOnly />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

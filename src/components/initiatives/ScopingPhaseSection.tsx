@@ -28,6 +28,7 @@ import {
   UserPlus,
   GripVertical,
   DollarSign,
+  Paperclip,
   TrendingUp,
   type LucideIcon,
 } from "lucide-react";
@@ -58,6 +59,8 @@ import {
 } from "@/lib/validation-data";
 import { PARTIES } from "@/data/workflow";
 import { BusinessValueTypeButton, ImpactSlider } from "./ImpactSlider";
+import { AttachmentZone, AttachmentChip } from "./AttachmentZone";
+import type { Attachment } from "@/lib/validation-data";
 
 const initial: ScopingResult = {};
 
@@ -76,6 +79,8 @@ const FIELD_HELP: Record<string, string> = {
     "Define what's in scope for the first delivery slice, and what's explicitly out. Flip items between in and out.",
   notes:
     "Optional notes that do not fit elsewhere — leftover context, open questions, or anything the Go/No-Go reviewers should see.",
+  attachments:
+    "Attach files or paste links to Google Docs, Sheets, Slides, or any URL. These are saved with the scoping proposal.",
 };
 
 const FIELD_ICONS: Record<string, LucideIcon> = {
@@ -84,6 +89,7 @@ const FIELD_ICONS: Record<string, LucideIcon> = {
   impact: TrendingUp,
   scope: SplitSquareVertical,
   notes: StickyNote,
+  attachments: Paperclip,
 };
 
 /* ─── ID generator ─────────────────────────────────────── */
@@ -1428,6 +1434,7 @@ export function ScopingPhaseSection({
 
   // ── Dependencies state
   const [dependencies, setDependencies] = useState(data?.dependencies ?? "");
+  const [attachments, setAttachments] = useState<Attachment[]>(data?.attachments ?? []);
 
   // ── Completeness checks
   const milestonesReady =
@@ -1442,6 +1449,7 @@ export function ScopingPhaseSection({
   const scopeReady =
     scopeItems.length > 0 && scopeItems.every((s) => s.label.trim());
   const notesReady = dependencies.trim().length > 0;
+  const canSubmit = milestonesReady && teamReady && valueReady && scopeReady;
 
   const sections = [
     { done: milestonesReady, label: "Milestones" },
@@ -1488,6 +1496,7 @@ export function ScopingPhaseSection({
       <input type="hidden" name="team" value={JSON.stringify(team)} />
       <input type="hidden" name="impact" value={JSON.stringify(impactData)} />
       <input type="hidden" name="scopeItems" value={JSON.stringify(scopeItems)} />
+      <input type="hidden" name="attachments" value={JSON.stringify(attachments)} />
 
       <div className="space-y-4 p-4">
         {error && (
@@ -1716,7 +1725,23 @@ export function ScopingPhaseSection({
             />
           </label>
 
-          {/* ─── 6. Costs (placeholder) ────────────────────── */}
+          {/* ─── 6. Attachments ──────────────────────────────── */}
+          <div className="py-5 first:pt-0 last:pb-0">
+            <ScopingFieldLabel field="attachments" complete={attachments.length > 0}>
+              Attachments
+            </ScopingFieldLabel>
+            <div className="mt-2">
+              <AttachmentZone
+                attachments={attachments}
+                onChange={(next) => {
+                  markDirty();
+                  setAttachments(next);
+                }}
+              />
+            </div>
+          </div>
+
+          {/* ─── 7. Costs (placeholder) ────────────────────── */}
           <div className="py-5 first:pt-0 last:pb-0">
             <div className="flex items-center gap-2 font-display text-xs font-bold uppercase tracking-wide text-muted">
               <DollarSign className="size-3.5" />
@@ -1814,8 +1839,9 @@ export function ScopingPhaseSection({
             <button
               type="submit"
               formAction={submitAction}
-              disabled={pending}
-              className="group relative inline-flex items-center gap-2 overflow-hidden border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors disabled:opacity-50"
+              disabled={pending || !canSubmit}
+              title={!canSubmit ? "Fill in all required fields to submit" : undefined}
+              className="group relative inline-flex items-center gap-2 overflow-hidden border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />
               <SendHorizonal className="relative size-3.5" />
@@ -2073,6 +2099,23 @@ function ScopingReadOnly({
           {data?.dependencies || "—"}
         </p>
       </div>
+
+      {/* Attachments */}
+      {data?.attachments && data.attachments.length > 0 && (
+        <div className="p-4">
+          <div className="mb-2 flex items-center gap-2 text-muted">
+            <Paperclip className="size-3.5 shrink-0" />
+            <p className="font-display text-[10px] font-bold uppercase tracking-wide">
+              Attachments ({data.attachments.length})
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            {data.attachments.map((a) => (
+              <AttachmentChip key={a.id} attachment={a} readOnly />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Costs (placeholder) */}
       <div className="p-4">

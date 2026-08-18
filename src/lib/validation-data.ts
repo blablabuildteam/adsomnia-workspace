@@ -138,6 +138,8 @@ export type Attachment = {
   kind: AttachmentKind;
   title: string;
   url?: string;
+  /** Fetched HTML <title> / og:title, shown under the chip for links. */
+  pageTitle?: string;
   fileName?: string;
   fileSize?: number;
   mimeType?: string;
@@ -171,6 +173,38 @@ export function attachmentKindLabel(kind: AttachmentKind): string {
 }
 
 /**
+ * Accepts bare domains (`google.nl`), `www.` hosts, or full URLs.
+ * Returns a normalized `https://…` href, or null if it is not a usable link.
+ */
+export function normalizeUrl(raw: string): string | null {
+  const input = raw.trim().replace(/^['"]|['"]$/g, "");
+  if (!input) return null;
+
+  if (/^[a-z][a-z0-9+.-]*:/i.test(input) && !/^https?:\/\//i.test(input)) {
+    return null;
+  }
+
+  const candidate = /^https?:\/\//i.test(input) ? input : `https://${input}`;
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    if (!parsed.hostname.includes(".")) return null;
+    return parsed.href;
+  } catch {
+    return null;
+  }
+}
+
+/** Hostname used as the chip title for generic links (`google.nl`). */
+export function hostFromUrl(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url.slice(0, 60);
+  }
+}
+
+/**
  * Extract a human-readable title from a Google URL.
  * Falls back to the domain + path tail.
  */
@@ -186,7 +220,7 @@ export function titleFromUrl(url: string): string {
       return decodeURIComponent(last).replace(/[-_]/g, " ");
     }
     const path = u.pathname === "/" ? "" : u.pathname;
-    return `${u.hostname}${path}`.slice(0, 60);
+    return `${u.hostname.replace(/^www\./, "")}${path}`.slice(0, 60);
   } catch {
     return url.slice(0, 60);
   }

@@ -255,6 +255,16 @@ export function IdeaFormView({ submitterName }: { submitterName: string }) {
   };
 
   const formProgress = getFormProgress(values);
+  const canSubmit = (
+    [
+      values.title,
+      values.problemStatement,
+      values.opportunitySolution,
+      values.expectedImpact,
+      values.targetAudience,
+      values.sponsor,
+    ] as const
+  ).every(isFieldComplete);
 
   const handlePreSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     if (bypassAnalysis) {
@@ -536,8 +546,9 @@ export function IdeaFormView({ submitterName }: { submitterName: string }) {
           </p>
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="group inline-flex items-center justify-center gap-2 border border-foreground bg-foreground px-6 py-3 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90 disabled:opacity-50"
+            disabled={isSubmitting || !canSubmit}
+            title={!canSubmit ? "Fill in all required fields to submit" : undefined}
+            className="group inline-flex items-center justify-center gap-2 border border-foreground bg-foreground px-6 py-3 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {analyzing ? (
               <>

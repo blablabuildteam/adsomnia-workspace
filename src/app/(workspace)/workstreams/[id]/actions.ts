@@ -8,6 +8,7 @@ import { getCurrentUser, canApprove } from "@/lib/session";
 import {
   isBusinessValueComplete,
   isScopingComplete,
+  type Attachment,
   type BusinessValueData,
   type BusinessValueType,
   type ValidationData,
@@ -47,6 +48,17 @@ function parseBusinessValue(formData: FormData): BusinessValueData | undefined {
   return { types, expectations };
 }
 
+function parseAttachments(formData: FormData): Attachment[] | undefined {
+  const raw = formData.get("attachments") as string | null;
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function parseValidationFormData(formData: FormData): ValidationData {
   return {
     businessValue: parseBusinessValue(formData),
@@ -58,6 +70,7 @@ function parseValidationFormData(formData: FormData): ValidationData {
       (formData.get("leadProductionParty") as string)?.trim() || undefined,
     dependencies: (formData.get("dependencies") as string)?.trim() || undefined,
     risks: (formData.get("risks") as string)?.trim() || undefined,
+    attachments: parseAttachments(formData),
   };
 }
 
@@ -560,7 +573,7 @@ function parseScopingFormData(formData: FormData): ScopingData {
   try { scopeItems = scopeRaw ? JSON.parse(scopeRaw) : undefined; } catch { /* skip */ }
   try { impact = impactRaw ? JSON.parse(impactRaw) : undefined; } catch { /* skip */ }
 
-  return { milestones, team, impact, scopeItems, dependencies };
+  return { milestones, team, impact, scopeItems, dependencies, attachments: parseAttachments(formData) };
 }
 
 export async function saveScopingData(
