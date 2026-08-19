@@ -51,19 +51,23 @@ function normalizeEntries(entries: AbsenceEntry[]): AbsenceEntry[] {
   }));
 }
 
-function completedSummary(data: AbsenceLogData): string {
-  if (data.noneReported) return "No planned time off reported";
-  const days = (data.entries ?? []).filter(
-    (entry) => absenceKind(entry) === "day",
-  ).length;
-  const periods = (data.entries ?? []).length - days;
+function AbsenceList({ entries }: { entries: AbsenceEntry[] }) {
+  if (entries.length === 0) {
+    return (
+      <p className="text-xs text-muted">No planned time off reported.</p>
+    );
+  }
   return (
-    [
-      periods > 0 ? `${periods} OOO period${periods === 1 ? "" : "s"}` : null,
-      days > 0 ? `${days} weekly day${days === 1 ? "" : "s"} off` : null,
-    ]
-      .filter(Boolean)
-      .join(" · ") || "Time off logged"
+    <ul className="space-y-1">
+      {entries.map((entry) => (
+        <li key={entry.id} className="text-xs text-muted">
+          <span className="text-foreground">{entry.name}</span>
+          {" · "}
+          {formatEntry(entry)}
+          {entry.note ? ` · ${entry.note}` : ""}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -346,20 +350,10 @@ export function AbsenceLogTask({
     if (data.status === "completed") {
       return (
         <div className="space-y-2">
-          <CompletedLine completedAt={data.completedAt}>
-            {completedSummary(data)}
-          </CompletedLine>
-          {!data.noneReported && (data.entries?.length ?? 0) > 0 && (
-            <ul className="space-y-1">
-              {data.entries.map((entry) => (
-                <li key={entry.id} className="text-xs text-muted">
-                  <span className="text-foreground">{entry.name}</span> ·{" "}
-                  {formatEntry(entry)}
-                  {entry.note ? ` · ${entry.note}` : ""}
-                </li>
-              ))}
-            </ul>
-          )}
+          <CompletedLine>Time off logged</CompletedLine>
+          <AbsenceList
+            entries={data.noneReported ? [] : (data.entries ?? [])}
+          />
         </div>
       );
     }
@@ -384,11 +378,6 @@ export function AbsenceLogTask({
 
   return (
     <div className="space-y-4">
-      {isDone && (
-        <CompletedLine completedAt={data.completedAt}>
-          {completedSummary({ ...data, entries, noneReported: entries.length === 0 })}
-        </CompletedLine>
-      )}
       <p className="text-xs text-muted">
         Log OOO periods and recurring days off — for example every Friday —
         so planning reflects real availability. Pick a name from the team, or
