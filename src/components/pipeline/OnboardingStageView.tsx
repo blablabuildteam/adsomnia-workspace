@@ -12,7 +12,7 @@ import {
   Presentation,
   Users,
 } from "lucide-react";
-import { getStageColor, PARTIES } from "@/data/workflow";
+import { getPhaseProgressFill, getStageColor, PARTIES } from "@/data/workflow";
 import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStrip } from "@/components/pipeline/PipelineStrip";
@@ -116,9 +116,13 @@ function OnboardingCard({ item }: { item: InitiativeWithUsers }) {
           <div className="flex-1">
             <div className="h-1.5 w-full bg-white/[0.04]">
               <div
-                className="h-full bg-success transition-all"
+                className="h-full transition-all"
                 style={{
                   width: `${(progress.completed / progress.total) * 100}%`,
+                  backgroundColor: getPhaseProgressFill(
+                    stageColor,
+                    progress.allDone,
+                  ),
                 }}
               />
             </div>

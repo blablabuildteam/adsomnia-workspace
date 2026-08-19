@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { ArrowRight, Rocket } from "lucide-react";
+import { getPhaseProgressFill, getStageColor } from "@/data/workflow";
 import {
   SETUP_TASKS,
   getSetupProgress,
@@ -30,6 +31,7 @@ import {
 } from "@/app/(workspace)/workstreams/[id]/actions";
 
 const advanceInitial: { error?: string; success?: boolean } = {};
+const ACCENT = getStageColor("setup");
 
 type Props = {
   initiativeId: number;
@@ -155,9 +157,13 @@ export function SetupPhaseSection({
         <div className="flex-1">
           <div className="h-1.5 w-full bg-white/[0.04]">
             <div
-              className="h-full bg-success transition-all duration-500"
+              className="h-full transition-all duration-500"
               style={{
                 width: `${(progress.completed / progress.total) * 100}%`,
+                backgroundColor: getPhaseProgressFill(
+                  ACCENT,
+                  progress.allDone,
+                ),
               }}
             />
           </div>

@@ -322,6 +322,12 @@ export function getStageColor(stageId: string): string {
   return "#FFFFFF";
 }
 
+/** In-progress fill: phase accent at ~60% strength. Complete: success green. */
+export function getPhaseProgressFill(stageColor: string, complete: boolean): string {
+  if (complete) return STAGE_COLORS.production;
+  return `${stageColor}99`;
+}
+
 export function isStageId(value: string): value is StageId {
   return value in STAGE_COLORS;
 }

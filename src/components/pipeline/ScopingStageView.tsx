@@ -16,7 +16,7 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
-import { STAGES, getStageColor, PARTIES } from "@/data/workflow";
+import { STAGES, getPhaseProgressFill, getStageColor, PARTIES } from "@/data/workflow";
 import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStrip } from "@/components/pipeline/PipelineStrip";
@@ -305,10 +305,10 @@ function ScopingCard({ item }: { item: InitiativeWithUsers }) {
               aria-label={`Scoping progress: ${filledSections} of ${SCOPING_SECTION_TOTAL} sections`}
             >
               <div
-                className="h-full transition-[width] duration-300"
+                className="h-full transition-[width,background-color] duration-300"
                 style={{
                   width: `${progressPct}%`,
-                  backgroundColor: complete ? "#22C55E" : "#CEFF00",
+                  backgroundColor: getPhaseProgressFill(stageColor, complete),
                 }}
               />
             </div>

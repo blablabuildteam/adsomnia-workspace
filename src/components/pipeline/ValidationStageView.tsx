@@ -21,7 +21,7 @@ import {
   User,
   XCircle,
 } from "lucide-react";
-import { STAGES, getStageColor, PARTIES } from "@/data/workflow";
+import { STAGES, getPhaseProgressFill, getStageColor, PARTIES } from "@/data/workflow";
 import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStrip } from "@/components/pipeline/PipelineStrip";
@@ -218,8 +218,14 @@ function ValidationCard({ item, hasFeedback }: { item: InitiativeWithUsers; hasF
               aria-label={`Business case progress: ${filledFields} of ${VALIDATION_FIELD_TOTAL} fields`}
             >
               <div
-                className="h-full bg-hn transition-[width] duration-300"
-                style={{ width: `${progressPct}%` }}
+                className="h-full transition-[width,background-color] duration-300"
+                style={{
+                  width: `${progressPct}%`,
+                  backgroundColor: getPhaseProgressFill(
+                    stageColor,
+                    filledFields === VALIDATION_FIELD_TOTAL,
+                  ),
+                }}
               />
             </div>
             <span className="shrink-0 font-display text-[10px] font-bold uppercase tracking-wide tabular-nums text-muted">

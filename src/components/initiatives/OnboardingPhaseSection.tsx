@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { ArrowRight, ListChecks, Rocket } from "lucide-react";
-import { getStageColor } from "@/data/workflow";
+import { getPhaseProgressFill, getStageColor } from "@/data/workflow";
 import type { InitiativeWithUsers } from "@/lib/queries";
 import {
   ONBOARDING_ACTION_TASKS,
@@ -129,9 +129,13 @@ export function OnboardingPhaseSection({
         <div className="flex-1">
           <div className="h-1.5 w-full bg-white/[0.04]">
             <div
-              className="h-full bg-success transition-all duration-500"
+              className="h-full transition-all duration-500"
               style={{
                 width: `${(progress.completed / progress.total) * 100}%`,
+                backgroundColor: getPhaseProgressFill(
+                  ACCENT,
+                  progress.allDone,
+                ),
               }}
             />
           </div>
