@@ -5,8 +5,9 @@ import {
   ChevronDown,
   ExternalLink,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { PARTIES, getStageColor } from "@/data/workflow";
+import { MilestoneGantt } from "./MilestoneGantt";
 import { formatEuro, summarizeTeamCost } from "@/data/role-rates";
 import type { InitiativeWithUsers } from "@/lib/queries";
 import {
@@ -46,7 +47,9 @@ const STAGE_NUM: Record<string, number> = {
 };
 
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, {
+  const date = new Date(iso.includes("T") ? iso : `${iso}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString(undefined, {
     day: "numeric",
     month: "short",
   });
@@ -65,7 +68,7 @@ function Hero({
   accent?: string;
 }) {
   return (
-    <div className="flex flex-col justify-between gap-2 px-5 py-4">
+    <div className="flex flex-col justify-between gap-2 py-4 first:pl-0 last:pr-0 sm:px-5">
       <span className="font-display text-[9px] font-bold uppercase tracking-[0.25em] text-foreground/30">
         {label}
       </span>
@@ -94,7 +97,7 @@ function Narrative({
 }) {
   if (!text) return null;
   return (
-    <div className="min-w-0 px-5 py-4">
+    <div className="min-w-0 py-4 first:pl-0 last:pr-0 sm:px-5">
       <span className="font-display text-[9px] font-bold uppercase tracking-[0.25em] text-foreground/30">
         {label}
       </span>
@@ -118,7 +121,7 @@ function BusinessValueVisual({
   if (!isBusinessValueData(value) || value.types.length === 0) return null;
 
   return (
-    <div className="min-w-0 px-5 py-4">
+    <div className="min-w-0 py-4 first:pl-0 last:pr-0 sm:px-5">
       <span className="font-display text-[9px] font-bold uppercase tracking-[0.25em] text-foreground/30">
         Business Value
       </span>
@@ -200,14 +203,14 @@ function ToolChip({
     </>
   );
   const cls =
-    "group/chip inline-flex items-center gap-2 border border-foreground/10 bg-foreground/[0.03] px-3 py-1.5 text-xs text-foreground/80";
+    "group/chip inline-flex items-center gap-2 text-xs text-foreground/80";
   if (href) {
     return (
       <a
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className={`${cls} transition-colors hover:border-foreground/30 hover:bg-foreground/[0.06] hover:text-foreground`}
+        className={`${cls} transition-colors hover:text-foreground`}
       >
         {inner}
       </a>
@@ -221,6 +224,8 @@ type Props = {
   stageName: string;
   goDate?: Date | null;
   goApprover?: string | null;
+  className?: string;
+  style?: CSSProperties;
 };
 
 export function DetailsQuickView({
@@ -228,6 +233,8 @@ export function DetailsQuickView({
   stageName,
   goDate,
   goApprover,
+  className,
+  style,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const currentNum = STAGE_NUM[initiative.currentStage] ?? 1;
@@ -258,8 +265,12 @@ export function DetailsQuickView({
 
   const businessValueSummary = formatBusinessValueSummary(vd?.businessValue);
 
+  // Progressive visibility gates
+  const hasValidation = currentNum >= 2;
   const hasScoping = currentNum >= 3;
   const pastScoping = currentNum > 3;
+  const hasGoNoGo = currentNum >= 4;
+  const hasSetup = currentNum >= 5 && !!setup;
   const priorityMeta = priority ? PRIORITY_META[priority] : undefined;
 
   const slackName = setup?.slack.channelName;
@@ -267,24 +278,26 @@ export function DetailsQuickView({
   const jiraUrl = setup?.jira.boardUrl || setup?.jira.projectUrl;
   const driveName = setup?.drive.driveName;
   const driveUrl = setup?.drive.driveUrl;
-  const hasTools = !!(slackName || jiraUrl || driveUrl);
+  const hasTools = hasSetup && !!(slackName || jiraUrl || driveUrl);
 
-  const hasExpandableContent = !!(
-    (vd?.businessValue &&
-      isBusinessValueData(vd.businessValue) &&
-      vd.businessValue.types.length > 0) ||
+  const hasTimeline =
+    hasScoping &&
+    (milestones.some((m) => m.startDate && m.endDate) ||
+    (sd?.team ?? []).some((t) => t.startDate && t.endDate));
+  const hasExpandableContent = hasScoping && !!(
+    hasTimeline ||
     (sd?.scopeItems && sd.scopeItems.length > 0) ||
     sd?.dependencies ||
     vd?.dependencies
   );
 
   return (
-    <div className="mb-8 bg-[#0D0D0D]">
-      {/* Stage accent */}
-      <div className="h-[2px]" style={{ backgroundColor: stageColor }} />
-
+    <div
+      className={["mb-10", className].filter(Boolean).join(" ")}
+      style={style}
+    >
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-foreground/10 py-3">
         <div className="flex items-center gap-3">
           <h3 className="font-display text-[11px] font-bold uppercase tracking-[0.2em] text-foreground/50">
             Current Phase:
@@ -296,7 +309,7 @@ export function DetailsQuickView({
             {stageName}
           </span>
         </div>
-        {goDate && (
+        {hasGoNoGo && goDate && (
           <span className="inline-flex items-center gap-1.5 text-[10px] text-muted/50">
             <Calendar className="size-3" />
             GO {goDate.toLocaleDateString("en-US", { dateStyle: "medium" })}
@@ -340,8 +353,8 @@ export function DetailsQuickView({
         </div>
       )}
 
-      {/* Narrative — problem, solution, value */}
-      {(initiative.problemStatement ||
+      {/* Narrative — from Validation onward */}
+      {hasValidation && (initiative.problemStatement ||
         vd?.solutionDirection ||
         businessValueSummary) && (
         <div className="grid divide-y divide-foreground/[0.06] border-t border-foreground/[0.06] md:grid-cols-3 md:divide-y-0 md:divide-x">
@@ -355,7 +368,7 @@ export function DetailsQuickView({
         </div>
       )}
 
-      {/* Tools — from Setup onward */}
+      {/* Workspace links — from Setup onward */}
       {hasTools && (
         <div className="flex flex-wrap items-center gap-2 border-t border-foreground/[0.06] px-5 py-3">
           <span className="mr-1 font-display text-[9px] font-bold uppercase tracking-[0.25em] text-foreground/30">
@@ -446,43 +459,12 @@ export function DetailsQuickView({
                   expanded ? "opacity-100" : "opacity-0",
                 ].join(" ")}
               >
-                {vd?.businessValue &&
-                  isBusinessValueData(vd.businessValue) &&
-                  vd.businessValue.types.length > 0 && (
-                    <div>
-                      <h4 className="font-display text-[10px] font-bold uppercase tracking-[0.25em] text-foreground/30">
-                        Impact Breakdown
-                      </h4>
-                      <div className="mt-2 flex flex-wrap gap-3">
-                        {vd.businessValue.types.map((type) => {
-                          const label =
-                            BUSINESS_VALUE_TYPES.find((t) => t.id === type)
-                              ?.label ?? type;
-                          const score = parseImpactScore(
-                            vd.businessValue &&
-                              isBusinessValueData(vd.businessValue)
-                              ? vd.businessValue.expectations[type]
-                              : undefined,
-                          );
-                          return (
-                            <div
-                              key={type}
-                              className="border border-foreground/[0.08] bg-foreground/[0.03] px-3 py-2"
-                            >
-                              <span className="text-xs font-medium">
-                                {label}
-                              </span>
-                              {score != null && (
-                                <span className="ml-2 font-display text-sm font-bold tabular-nums text-foreground">
-                                  {score}/10
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+                {hasTimeline && (
+                  <MilestoneGantt
+                    milestones={milestones}
+                    team={sd?.team ?? []}
+                  />
+                )}
 
                 {sd?.scopeItems && sd.scopeItems.length > 0 && (
                   <div>

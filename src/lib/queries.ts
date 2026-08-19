@@ -7,7 +7,12 @@ import {
   comments,
 } from "@/db/schema";
 import { eq, desc, count, inArray } from "drizzle-orm";
-import type { ValidationData, ScopingData, SetupData } from "@/lib/validation-data";
+import type {
+  ValidationData,
+  ScopingData,
+  SetupData,
+  OnboardingData,
+} from "@/lib/validation-data";
 
 export type {
   Attachment,
@@ -22,6 +27,8 @@ export type {
   SetupData,
   SetupTaskId,
   SetupTaskStatus,
+  OnboardingData,
+  OnboardingTaskId,
 } from "@/lib/validation-data";
 export {
   BUSINESS_VALUE_TYPES,
@@ -34,6 +41,13 @@ export {
   createDefaultSetupData,
   setupTaskIdToDataKey,
   isSetupPhaseUnlocked,
+  ONBOARDING_TASKS,
+  getOnboardingProgress,
+  createDefaultOnboardingData,
+  onboardingTaskIdToDataKey,
+  isOnboardingPhaseUnlocked,
+  validateOnboardingTask,
+  normalizeUrl,
 } from "@/lib/validation-data";
 
 export type InitiativeWithUsers = {
@@ -48,6 +62,7 @@ export type InitiativeWithUsers = {
   validationData: ValidationData | null;
   scopingData: ScopingData | null;
   setupData: SetupData | null;
+  onboardingData: OnboardingData | null;
   currentStage: string;
   status: string;
   createdAt: Date;
@@ -70,6 +85,7 @@ export async function getAllInitiatives(): Promise<InitiativeWithUsers[]> {
       validationData: initiatives.validationData,
       scopingData: initiatives.scopingData,
       setupData: initiatives.setupData,
+      onboardingData: initiatives.onboardingData,
       currentStage: initiatives.currentStage,
       status: initiatives.status,
       createdAt: initiatives.createdAt,
@@ -104,6 +120,7 @@ export async function getAllInitiatives(): Promise<InitiativeWithUsers[]> {
     validationData: (r.validationData as ValidationData) ?? null,
     scopingData: (r.scopingData as ScopingData) ?? null,
     setupData: (r.setupData as SetupData) ?? null,
+    onboardingData: (r.onboardingData as OnboardingData) ?? null,
     currentStage: r.currentStage,
     status: r.status,
     createdAt: r.createdAt,
@@ -129,6 +146,7 @@ export async function getInitiativeById(
       validationData: initiatives.validationData,
       scopingData: initiatives.scopingData,
       setupData: initiatives.setupData,
+      onboardingData: initiatives.onboardingData,
       currentStage: initiatives.currentStage,
       status: initiatives.status,
       createdAt: initiatives.createdAt,
@@ -155,6 +173,7 @@ export async function getInitiativeById(
     validationData: (row.validationData as ValidationData) ?? null,
     scopingData: (row.scopingData as ScopingData) ?? null,
     setupData: (row.setupData as SetupData) ?? null,
+    onboardingData: (row.onboardingData as OnboardingData) ?? null,
     submitter: userMap.get(row.submitterId) ?? {
       id: row.submitterId,
       name: "Unknown",

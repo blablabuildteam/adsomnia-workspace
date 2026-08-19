@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { Check, ChevronDown, Eye } from "lucide-react";
 import { getStageColor } from "@/data/workflow";
 import { CornerTicks } from "@/components/ui/CornerTicks";
@@ -16,7 +16,7 @@ const STATUS_COLORS = {
  * - "complete": collapsed by default, dimmed body
  * - "current": open by default, yellow "In Progress" badge
  * - "review": like current, but badged "Review" in blue
- * - "ready": like current, but badged "Ready for Onboarding" in green
+ * - "ready": like current, but badged with `readyLabel` in green
  * Closed cards show a left accent in the stage color; open cards swap that
  * for corner ticks in the same color.
  * All use the same summary layout (status badge + chevron) so labels align.
@@ -26,12 +26,19 @@ export function PhaseCard({
   number,
   name,
   status,
+  readyLabel = "Ready for Onboarding",
+  className,
+  style,
   children,
 }: {
   stageId: string;
   number: number;
   name: string;
   status: "complete" | "current" | "review" | "ready";
+  /** Badge text for the "ready" state — the next stage this hands off to. */
+  readyLabel?: string;
+  className?: string;
+  style?: CSSProperties;
   children: ReactNode;
 }) {
   const color = getStageColor(stageId);
@@ -40,8 +47,21 @@ export function PhaseCard({
     status === "current" || status === "review" || status === "ready";
   const [open, setOpen] = useState(isCurrent);
 
+  // Follow the phase as it advances: collapse once it completes, reopen when it
+  // becomes active again. Adjusted during render so no extra commit is needed.
+  const [trackedStatus, setTrackedStatus] = useState(status);
+  if (trackedStatus !== status) {
+    setTrackedStatus(status);
+    setOpen(isCurrent);
+  }
+
   return (
-    <div className="relative border border-border">
+    <div
+      className={["relative border border-border", className]
+        .filter(Boolean)
+        .join(" ")}
+      style={style}
+    >
       <div
         aria-hidden
         className={`pointer-events-none absolute inset-y-0 left-0 z-[1] w-[3px] transition-opacity duration-300 ${
@@ -106,7 +126,7 @@ export function PhaseCard({
               }}
             >
               <Check className="size-3" />
-              Ready for Onboarding
+              {readyLabel}
             </span>
           ) : isCurrent ? (
             <span

@@ -76,3 +76,8 @@ export function canApprove(user: SessionUser): boolean {
 export function canManageSetup(user: SessionUser): boolean {
   return user.role === "leadership" || user.name === "Coen";
 }
+
+/** Head of Production + leadership — runs the Onboarding & Kickoff session. */
+export function canManageOnboarding(user: SessionUser): boolean {
+  return user.role === "leadership" || user.name === "Coen";
+}

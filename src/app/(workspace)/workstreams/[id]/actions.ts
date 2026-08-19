@@ -13,6 +13,13 @@ import {
   setupTaskIdToDataKey,
   isSetupPhaseUnlocked,
   SETUP_TASKS,
+  ONBOARDING_TASKS,
+  createDefaultOnboardingData,
+  getOnboardingProgress,
+  onboardingTaskIdToDataKey,
+  isOnboardingPhaseUnlocked,
+  validateOnboardingTask,
+  normalizeUrl,
   type Attachment,
   type BusinessValueData,
   type BusinessValueType,
@@ -23,8 +30,11 @@ import {
   type ScopingScopeItem,
   type SetupData,
   type SetupTaskId,
+  type SetupTaskStatus,
+  type OnboardingData,
+  type OnboardingTaskId,
 } from "@/lib/queries";
-import { canManageSetup } from "@/lib/session";
+import { canManageSetup, canManageOnboarding } from "@/lib/session";
 
 const BUSINESS_VALUE_TYPE_IDS: BusinessValueType[] = [
   "speed",
@@ -1359,6 +1369,7 @@ export async function advanceToOnboarding(
     .select({
       currentStage: initiatives.currentStage,
       setupData: initiatives.setupData,
+      onboardingData: initiatives.onboardingData,
     })
     .from(initiatives)
     .where(eq(initiatives.id, initiativeId))
@@ -1381,6 +1392,9 @@ export async function advanceToOnboarding(
     .set({
       currentStage: "onboarding",
       status: "approved",
+      onboardingData:
+        (row.onboardingData as OnboardingData | null) ??
+        createDefaultOnboardingData(),
       updatedAt: new Date(),
     })
     .where(eq(initiatives.id, initiativeId));
@@ -1395,6 +1409,270 @@ export async function advanceToOnboarding(
   revalidatePath(`/workstreams/${initiativeId}`);
   revalidatePath("/pipeline/setup");
   revalidatePath("/pipeline/onboarding");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+/* ─── Onboarding & Kickoff (Phase 6) ───────────────────── */
+
+export type OnboardingResult = {
+  error?: string;
+  success?: boolean;
+};
+
+const VALID_ONBOARDING_TASK_IDS: OnboardingTaskId[] = ONBOARDING_TASKS.map(
+  (task) => task.id,
+);
+
+const ONBOARDING_PERMISSION_ERROR =
+  "Only the Head of Production can manage Onboarding & Kickoff.";
+
+/** Loads the initiative and guarantees an onboarding blob to write into. */
+async function loadOnboarding(initiativeId: number): Promise<
+  | { error: string }
+  | { data: OnboardingData }
+> {
+  const [row] = await db
+    .select({
+      onboardingData: initiatives.onboardingData,
+      currentStage: initiatives.currentStage,
+    })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
+  if (!row) return { error: "Initiative not found." };
+  if (row.currentStage !== "onboarding") {
+    return { error: "Initiative is not in the Onboarding & Kickoff stage." };
+  }
+
+  return {
+    data:
+      (row.onboardingData as OnboardingData | null) ??
+      createDefaultOnboardingData(),
+  };
+}
+
+/** Completes (or partially saves) a single onboarding task. */
+export async function completeOnboardingTask(
+  initiativeId: number,
+  formData: FormData,
+): Promise<OnboardingResult> {
+  "use server";
+
+  const user = await getCurrentUser();
+  if (!user || !canManageOnboarding(user)) {
+    return { error: ONBOARDING_PERMISSION_ERROR };
+  }
+
+  const taskId = formData.get("taskId") as OnboardingTaskId;
+  if (!VALID_ONBOARDING_TASK_IDS.includes(taskId)) {
+    return { error: `Invalid task ID: ${taskId}` };
+  }
+
+  const dataRaw = formData.get("data") as string;
+  let taskData: Record<string, unknown> = {};
+  try {
+    taskData = dataRaw ? JSON.parse(dataRaw) : {};
+  } catch {
+    return { error: "Invalid task data." };
+  }
+
+  const loaded = await loadOnboarding(initiativeId);
+  if ("error" in loaded) return { error: loaded.error };
+  const onboarding = loaded.data;
+
+  const taskDef = ONBOARDING_TASKS.find((t) => t.id === taskId);
+  if (taskDef && !isOnboardingPhaseUnlocked(onboarding, taskDef.phase)) {
+    return {
+      error: "Walk through the kickoff briefing before the action items.",
+    };
+  }
+
+  const markComplete = formData.get("complete") !== "0";
+  const dataKey = onboardingTaskIdToDataKey(taskId);
+  const existingTask = onboarding[dataKey] as Record<string, unknown> | undefined;
+  const merged = { ...(existingTask ?? {}), ...taskData };
+
+  if (markComplete) {
+    const problem = validateOnboardingTask(taskId, merged);
+    if (problem) return { error: problem };
+  }
+
+  const now = new Date().toISOString();
+  const updated: OnboardingData = {
+    ...onboarding,
+    [dataKey]: {
+      ...merged,
+      status: markComplete
+        ? ("completed" as const)
+        : ((existingTask?.status as SetupTaskStatus) ?? "pending"),
+      completedAt: markComplete
+        ? now
+        : ((existingTask?.completedAt as string | undefined) ?? undefined),
+    },
+  };
+
+  await db
+    .update(initiatives)
+    .set({ onboardingData: updated, updatedAt: new Date() })
+    .where(eq(initiatives.id, initiativeId));
+
+  if (markComplete) {
+    await db.insert(activityLog).values({
+      initiativeId,
+      userId: user.id,
+      action: "onboarding_task_completed",
+      details: { taskId, completedBy: user.name },
+    });
+  }
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/onboarding");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+/** Resets a completed onboarding task back to pending. */
+export async function resetOnboardingTask(
+  initiativeId: number,
+  formData: FormData,
+): Promise<OnboardingResult> {
+  "use server";
+
+  const user = await getCurrentUser();
+  if (!user || !canManageOnboarding(user)) {
+    return { error: ONBOARDING_PERMISSION_ERROR };
+  }
+
+  const taskId = formData.get("taskId") as OnboardingTaskId;
+  if (!VALID_ONBOARDING_TASK_IDS.includes(taskId)) {
+    return { error: `Invalid task ID: ${taskId}` };
+  }
+
+  const loaded = await loadOnboarding(initiativeId);
+  if ("error" in loaded) return { error: loaded.error };
+
+  const dataKey = onboardingTaskIdToDataKey(taskId);
+  const existingTask = loaded.data[dataKey] as
+    | Record<string, unknown>
+    | undefined;
+
+  const updated: OnboardingData = {
+    ...loaded.data,
+    [dataKey]: {
+      ...(existingTask ?? {}),
+      status: "pending" as const,
+      completedAt: null,
+    },
+  };
+
+  await db
+    .update(initiatives)
+    .set({ onboardingData: updated, updatedAt: new Date() })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: "onboarding_task_reset",
+    details: { taskId, resetBy: user.name },
+  });
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/onboarding");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+/** Saves the onboarding-only links (Slack channel deep link, kickoff notes). */
+export async function saveOnboardingLinks(
+  initiativeId: number,
+  _prev: OnboardingResult,
+  formData: FormData,
+): Promise<OnboardingResult> {
+  "use server";
+
+  const user = await getCurrentUser();
+  if (!user || !canManageOnboarding(user)) {
+    return { error: ONBOARDING_PERMISSION_ERROR };
+  }
+
+  const loaded = await loadOnboarding(initiativeId);
+  if ("error" in loaded) return { error: loaded.error };
+
+  const rawSlack = ((formData.get("slackChannelUrl") as string) ?? "").trim();
+  const rawNotes = ((formData.get("notesUrl") as string) ?? "").trim();
+
+  const slackChannelUrl = rawSlack ? normalizeUrl(rawSlack) : null;
+  const notesUrl = rawNotes ? normalizeUrl(rawNotes) : null;
+
+  if (rawSlack && !slackChannelUrl) {
+    return { error: "That Slack channel link is not a valid URL." };
+  }
+  if (rawNotes && !notesUrl) {
+    return { error: "That kickoff notes link is not a valid URL." };
+  }
+
+  const updated: OnboardingData = {
+    ...loaded.data,
+    links: {
+      ...(loaded.data.links ?? {}),
+      slackChannelUrl: slackChannelUrl ?? undefined,
+      notesUrl: notesUrl ?? undefined,
+    },
+  };
+
+  await db
+    .update(initiatives)
+    .set({ onboardingData: updated, updatedAt: new Date() })
+    .where(eq(initiatives.id, initiativeId));
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  return { success: true };
+}
+
+/** Advances the initiative from Onboarding & Kickoff to Production. */
+export async function advanceToProduction(
+  initiativeId: number,
+  _prev: OnboardingResult,
+): Promise<OnboardingResult> {
+  "use server";
+
+  const user = await getCurrentUser();
+  if (!user || !canManageOnboarding(user)) {
+    return { error: "Only the Head of Production can advance to Production." };
+  }
+
+  const loaded = await loadOnboarding(initiativeId);
+  if ("error" in loaded) return { error: loaded.error };
+
+  const progress = getOnboardingProgress(loaded.data);
+  if (!progress.allDone) {
+    return {
+      error: `Complete all onboarding items before advancing (${progress.completed}/${progress.total} done).`,
+    };
+  }
+
+  await db
+    .update(initiatives)
+    .set({
+      currentStage: "production",
+      status: "approved",
+      updatedAt: new Date(),
+    })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: "onboarding_completed",
+    details: { advancedBy: user.name, toStage: "Production & Reporting" },
+  });
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/onboarding");
+  revalidatePath("/pipeline/production");
   revalidatePath("/dashboard");
   return { success: true };
 }

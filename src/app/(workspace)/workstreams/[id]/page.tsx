@@ -6,7 +6,12 @@ import {
   getCommentsForInitiative,
   getApprovalHistory,
 } from "@/lib/queries";
-import { getCurrentUser, canApprove, canManageSetup } from "@/lib/session";
+import {
+  getCurrentUser,
+  canApprove,
+  canManageSetup,
+  canManageOnboarding,
+} from "@/lib/session";
 import { createSharePath } from "@/lib/share";
 import type { ApprovalDecision } from "@/components/initiatives/ApprovalPanel";
 import type { ValidationDecision } from "@/components/initiatives/ValidationApprovalPanel";
@@ -49,6 +54,7 @@ export default async function InitiativePage({ params }: Props) {
   ]);
   const canUserApprove = user ? canApprove(user) : false;
   const canUserManageSetup = user ? canManageSetup(user) : false;
+  const canUserManageOnboarding = user ? canManageOnboarding(user) : false;
   const isCreator = user?.id === initiative.submitter.id;
 
   const latestIdea = approvals.find((a) => a.fromStage === "idea");
@@ -98,6 +104,7 @@ export default async function InitiativePage({ params }: Props) {
       isCreator={isCreator}
       sharePath={createSharePath(initiative.id)}
       canUserManageSetup={canUserManageSetup}
+      canUserManageOnboarding={canUserManageOnboarding}
     />
   );
 }

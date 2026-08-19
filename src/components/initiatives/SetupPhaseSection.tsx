@@ -39,6 +39,8 @@ type Props = {
   projectTitle: string;
   leadParty?: string;
   readOnly?: boolean;
+  /** False once the initiative has moved past Project Setup. */
+  isCurrentStage?: boolean;
 };
 
 export function SetupPhaseSection({
@@ -48,6 +50,7 @@ export function SetupPhaseSection({
   ticketId,
   projectTitle,
   readOnly,
+  isCurrentStage = true,
 }: Props) {
   const progress = getSetupProgress(setupData);
   const [taskError, setTaskError] = useState<string | null>(null);
@@ -238,7 +241,7 @@ export function SetupPhaseSection({
       })}
 
       {/* Advance button */}
-      {!readOnly && progress.allDone && (
+      {!readOnly && isCurrentStage && progress.allDone && (
         <form action={advanceAction} className="pt-4 text-center">
           {advanceState.error && (
             <p className="mb-3 text-sm text-btr">{advanceState.error}</p>
@@ -258,7 +261,7 @@ export function SetupPhaseSection({
         </form>
       )}
 
-      {readOnly && progress.allDone && (
+      {readOnly && isCurrentStage && progress.allDone && (
         <div className="border border-success/30 bg-success/10 px-4 py-3 text-center">
           <p className="font-display text-xs font-bold uppercase tracking-wide text-success">
             All setup tasks complete — ready for onboarding

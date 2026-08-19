@@ -50,6 +50,13 @@
       "when": 1787130818097,
       "tag": "0006_superb_sleeper",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787148105748,
+      "tag": "0007_lean_solo",
+      "breakpoints": true
     }
   ]
 }

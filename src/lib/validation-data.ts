@@ -563,6 +563,283 @@ export function getSetupProgress(data: SetupData | null | undefined): {
   };
 }
 
+/* ─── Onboarding & Kickoff Data (Phase 6) ──────────────── */
+
+export type OnboardingTaskId =
+  | "briefing-initiative"
+  | "briefing-validation"
+  | "briefing-scoping"
+  | "tool-access"
+  | "meeting-cadence"
+  | "absences"
+  | "scope-signoff"
+  | "backlog";
+
+/** Briefing blocks Coen walks the team through before the action items. */
+export type BriefingReviewData = {
+  status: SetupTaskStatus;
+  completedAt?: string;
+};
+
+export type ToolAccessData = {
+  status: SetupTaskStatus;
+  completedAt?: string;
+};
+
+export type MeetingCadenceItem = {
+  id: string;
+  label: string;
+  /** Free-format cadence, e.g. "Mondays 10:00". */
+  schedule?: string;
+  booked?: boolean;
+};
+
+export type MeetingCadenceData = {
+  status: SetupTaskStatus;
+  meetings: MeetingCadenceItem[];
+  completedAt?: string;
+};
+
+export type AbsenceEntry = {
+  id: string;
+  name: string;
+  startDate?: string;
+  endDate?: string;
+  note?: string;
+};
+
+export type AbsenceLogData = {
+  status: SetupTaskStatus;
+  entries: AbsenceEntry[];
+  /** Set when the team reported no planned absences at all. */
+  noneReported?: boolean;
+  completedAt?: string;
+};
+
+export type ScopeSignoffData = {
+  status: SetupTaskStatus;
+  /** Definition of Done as agreed with the team during kickoff. */
+  definitionOfDone?: string;
+  /** Questions raised during the Q&A that still need an answer. */
+  openQuestions?: string;
+  completedAt?: string;
+};
+
+export type BacklogData = {
+  status: SetupTaskStatus;
+  completedAt?: string;
+};
+
+/** Links captured during onboarding itself, not during Project Setup. */
+export type OnboardingLinks = {
+  slackChannelUrl?: string;
+  notesUrl?: string;
+};
+
+export type OnboardingData = {
+  briefingInitiative: BriefingReviewData;
+  briefingValidation: BriefingReviewData;
+  briefingScoping: BriefingReviewData;
+  toolAccess: ToolAccessData;
+  meetingCadence: MeetingCadenceData;
+  absences: AbsenceLogData;
+  scopeSignoff: ScopeSignoffData;
+  backlog: BacklogData;
+  links?: OnboardingLinks;
+};
+
+export type OnboardingPhase = "briefing" | "actions";
+
+export const ONBOARDING_TASKS: {
+  id: OnboardingTaskId;
+  dataKey: keyof OnboardingData;
+  label: string;
+  phase: OnboardingPhase;
+  logo?: string;
+}[] = [
+  {
+    id: "briefing-initiative",
+    dataKey: "briefingInitiative",
+    label: "The Initiative",
+    phase: "briefing",
+  },
+  {
+    id: "briefing-validation",
+    dataKey: "briefingValidation",
+    label: "Validation & Business Case",
+    phase: "briefing",
+  },
+  {
+    id: "briefing-scoping",
+    dataKey: "briefingScoping",
+    label: "Scope, Timeline & Team",
+    phase: "briefing",
+  },
+  {
+    id: "tool-access",
+    dataKey: "toolAccess",
+    label: "Confirm Team Tool Access",
+    phase: "actions",
+  },
+  {
+    id: "meeting-cadence",
+    dataKey: "meetingCadence",
+    label: "Book Recurring Team Meetings",
+    phase: "actions",
+    logo: "/logos/google-calendar.png",
+  },
+  {
+    id: "absences",
+    dataKey: "absences",
+    label: "Log Holidays & Absences",
+    phase: "actions",
+  },
+  {
+    id: "scope-signoff",
+    dataKey: "scopeSignoff",
+    label: "Confirm Scope & Definition of Done",
+    phase: "actions",
+  },
+  {
+    id: "backlog",
+    dataKey: "backlog",
+    label: "Prioritize First-Phase Backlog",
+    phase: "actions",
+    logo: "/logos/jira.png",
+  },
+];
+
+export const ONBOARDING_BRIEFING_TASKS = ONBOARDING_TASKS.filter(
+  (task) => task.phase === "briefing",
+);
+
+export const ONBOARDING_ACTION_TASKS = ONBOARDING_TASKS.filter(
+  (task) => task.phase === "actions",
+);
+
+export function onboardingTaskIdToDataKey(
+  taskId: OnboardingTaskId,
+): keyof OnboardingData {
+  const found = ONBOARDING_TASKS.find((t) => t.id === taskId);
+  return found?.dataKey ?? (taskId as keyof OnboardingData);
+}
+
+export const DEFAULT_MEETING_CADENCE: { id: string; label: string }[] = [
+  { id: "weekly-sync", label: "Weekly status sync with Head of Production" },
+  { id: "demo", label: "Demo / delivery review" },
+  { id: "escalation", label: "Escalation session" },
+];
+
+export function createDefaultOnboardingData(): OnboardingData {
+  return {
+    briefingInitiative: { status: "pending" },
+    briefingValidation: { status: "pending" },
+    briefingScoping: { status: "pending" },
+    toolAccess: { status: "pending" },
+    meetingCadence: {
+      status: "pending",
+      meetings: DEFAULT_MEETING_CADENCE.map((m) => ({ ...m, booked: false })),
+    },
+    absences: { status: "pending", entries: [] },
+    scopeSignoff: { status: "pending" },
+    backlog: { status: "pending" },
+    links: {},
+  };
+}
+
+export function isOnboardingTaskDone(
+  data: OnboardingData | null | undefined,
+  taskId: OnboardingTaskId,
+): boolean {
+  const task = ONBOARDING_TASKS.find((t) => t.id === taskId);
+  if (!task || !data) return false;
+  const taskData = data[task.dataKey] as { status?: SetupTaskStatus } | undefined;
+  return taskData?.status === "completed" || taskData?.status === "skipped";
+}
+
+export function isOnboardingPhaseComplete(
+  data: OnboardingData | null | undefined,
+  phase: OnboardingPhase,
+): boolean {
+  return ONBOARDING_TASKS.filter((task) => task.phase === phase).every((task) =>
+    isOnboardingTaskDone(data, task.id),
+  );
+}
+
+/** Action items unlock once the whole kickoff briefing has been walked through. */
+export function isOnboardingPhaseUnlocked(
+  data: OnboardingData | null | undefined,
+  phase: OnboardingPhase,
+): boolean {
+  if (phase === "briefing") return true;
+  return isOnboardingPhaseComplete(data, "briefing");
+}
+
+export function getOnboardingPhaseUnlockHint(
+  phase: OnboardingPhase,
+): string | null {
+  if (phase === "briefing") return null;
+  return "Walk through the briefing first";
+}
+
+export function getOnboardingProgress(
+  data: OnboardingData | null | undefined,
+  phase?: OnboardingPhase,
+): { completed: number; total: number; allDone: boolean } {
+  const tasks = phase
+    ? ONBOARDING_TASKS.filter((task) => task.phase === phase)
+    : ONBOARDING_TASKS;
+  if (!data) return { completed: 0, total: tasks.length, allDone: false };
+  let completed = 0;
+  for (const task of tasks) {
+    if (isOnboardingTaskDone(data, task.id)) completed++;
+  }
+  return {
+    completed,
+    total: tasks.length,
+    allDone: completed === tasks.length,
+  };
+}
+
+/**
+ * Server-side completion rules for the onboarding action items.
+ * Returns an error message when the task cannot be marked complete yet.
+ */
+export function validateOnboardingTask(
+  taskId: OnboardingTaskId,
+  data: Record<string, unknown>,
+): string | null {
+  if (taskId === "meeting-cadence") {
+    const meetings = Array.isArray(data.meetings)
+      ? (data.meetings as MeetingCadenceItem[])
+      : [];
+    if (meetings.length === 0) {
+      return "Add at least one recurring meeting before confirming.";
+    }
+    if (meetings.some((m) => !m.label?.trim())) {
+      return "Every meeting needs a name.";
+    }
+    if (meetings.some((m) => !m.booked)) {
+      return "Mark every meeting as booked before confirming.";
+    }
+  }
+
+  if (taskId === "absences") {
+    const entries = Array.isArray(data.entries)
+      ? (data.entries as AbsenceEntry[])
+      : [];
+    if (data.noneReported === true) return null;
+    if (entries.length === 0) {
+      return "Log at least one absence, or confirm there are none planned.";
+    }
+    if (entries.some((e) => !e.name?.trim() || !e.startDate || !e.endDate)) {
+      return "Every absence needs a name, a start date, and an end date.";
+    }
+  }
+
+  return null;
+}
+
 /* ─── Business Value helpers ────────────────────────────── */
 
 export function formatBusinessValueSummary(

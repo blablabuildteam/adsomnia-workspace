@@ -74,42 +74,53 @@ export function CardGridSkeleton({ cards = 4 }: { cards?: number }) {
   );
 }
 
-/** Workstream detail page: title header + details bar + phase cards. */
+/** Workstream detail page: title header + quick view + phase cards. */
 export function DetailViewSkeleton() {
   return (
     <div
-      className="mx-auto w-full max-w-[1200px] px-4 pt-4 sm:px-6 sm:pt-6"
+      className="mx-auto w-full max-w-[1200px] px-4 pb-40 pt-4 sm:px-6 sm:pt-6"
       role="status"
       aria-label="Loading"
     >
-      <header className="mb-6">
+      <header
+        className="mb-6 animate-card-enter"
+        style={{ "--enter-delay": "0ms" } as React.CSSProperties}
+      >
         <div className="flex items-center gap-3">
-          <SkeletonBlock className="h-4 w-20" />
+          <SkeletonBlock className="h-3 w-20" />
           <SkeletonBlock className="h-5 w-24" />
         </div>
         <SkeletonBlock className="mt-3 h-10 w-2/3" />
       </header>
 
-      <div className="mb-8 border border-border">
-        <div className="border-b border-border px-4 py-3">
-          <SkeletonBlock className="h-4 w-16" />
+      <div
+        className="mb-8 animate-card-enter bg-[#0D0D0D]"
+        style={{ "--enter-delay": "70ms" } as React.CSSProperties}
+      >
+        <SkeletonBlock className="h-[2px] w-full" />
+        <div className="flex items-center gap-3 px-5 py-3">
+          <SkeletonBlock className="h-3 w-28" />
+          <SkeletonBlock className="h-3 w-24" />
         </div>
-        <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid divide-y divide-foreground/[0.06] border-t border-foreground/[0.06] sm:grid-cols-2 sm:divide-y-0 sm:divide-x lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="space-y-2 bg-surface px-4 py-3">
-              <SkeletonBlock className="h-3 w-16" />
-              <SkeletonBlock className="h-4 w-28" />
+            <div key={i} className="space-y-3 px-5 py-4">
+              <SkeletonBlock className="h-2.5 w-16" />
+              <SkeletonBlock className="h-7 w-24" />
+              <SkeletonBlock className="h-2.5 w-20" />
             </div>
           ))}
         </div>
       </div>
 
       <div className="space-y-6">
-        {Array.from({ length: 2 }).map((_, i) => (
+        {Array.from({ length: 3 }).map((_, i) => (
           <div
             key={i}
             className="animate-card-enter border border-border"
-            style={{ "--enter-delay": `${i * 90}ms` } as React.CSSProperties}
+            style={
+              { "--enter-delay": `${140 + i * 70}ms` } as React.CSSProperties
+            }
           >
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <div className="space-y-2">

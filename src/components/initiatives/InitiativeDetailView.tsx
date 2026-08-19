@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { Check } from "lucide-react";
 import { STAGES, getStageColor, type WorkflowStage } from "@/data/workflow";
 import type {
@@ -18,13 +19,18 @@ import { CommentSection } from "./CommentSection";
 import { ValidationPhaseSection } from "./ValidationPhaseSection";
 import { ScopingPhaseSection } from "./ScopingPhaseSection";
 import { SetupPhaseSection } from "./SetupPhaseSection";
+import { OnboardingPhaseSection } from "./OnboardingPhaseSection";
 import { DetailsQuickView } from "./DetailsQuickView";
 import { PhaseCard } from "./PhaseCard";
 import { IdeaDetailsSection } from "./IdeaDetailsSection";
 import { DownloadPdfButton } from "./DownloadPdfButton";
 import { ShareButton } from "./ShareButton";
 import { FloatingDetailBar } from "./FloatingDetailBar";
-import { getSetupProgress } from "@/lib/validation-data";
+import {
+  createDefaultOnboardingData,
+  getOnboardingProgress,
+  getSetupProgress,
+} from "@/lib/validation-data";
 
 const STAGE_INDEX: Record<string, number> = {};
 for (const s of STAGES) STAGE_INDEX[s.id] = s.number;
@@ -34,6 +40,12 @@ const SHOW_COMMENT_SECTION = false;
 
 /** Re-enable when the pipeline stepper returns to the detail view. */
 const SHOW_PIPELINE_STEPPER = false;
+
+const ENTER_CLASS = "animate-card-enter";
+
+function enterStyle(delayMs: number): CSSProperties {
+  return { "--enter-delay": `${delayMs}ms` } as CSSProperties;
+}
 
 /** Dark fill → light label; light fill (white / volt / teal) → black label. */
 function stageLabelOnFill(hex: string): string {
@@ -117,6 +129,7 @@ const STATUS_BADGE_STYLES: Record<string, string> = {
   "on-hold": "border-hn bg-hn/10 text-hn",
   feedback: "border-feedback bg-feedback/10 text-feedback",
   ready: "border-success bg-success/10 text-success",
+  "ready-production": "border-success bg-success/10 text-success",
   draft: "border-border bg-surface text-muted",
 };
 
@@ -127,6 +140,7 @@ const STATUS_LABELS: Record<string, string> = {
   "on-hold": "On Hold",
   feedback: "Feedback",
   ready: "Ready for Onboarding",
+  "ready-production": "Ready for Production",
   draft: "Draft",
 };
 
@@ -145,6 +159,8 @@ type Props = {
   sharePath?: string;
   /** Whether the current user can manage setup tasks (Head of Production). */
   canUserManageSetup?: boolean;
+  /** Whether the current user runs the onboarding session (Head of Production). */
+  canUserManageOnboarding?: boolean;
 };
 
 export function InitiativeDetailView({
@@ -160,6 +176,7 @@ export function InitiativeDetailView({
   isCreator = false,
   sharePath,
   canUserManageSetup = false,
+  canUserManageOnboarding = false,
 }: Props) {
   const stage = STAGES.find(
     (s) => s.id === initiative.currentStage,
@@ -318,16 +335,31 @@ export function InitiativeDetailView({
   const setupStage = STAGES.find((s) => s.id === "setup")!;
   const showSetup = currentNum >= 5;
   const setupIsCurrent = initiative.currentStage === "setup";
-  const setupIsReadOnly = !canUserManageSetup;
+  // Past stages are locked — the server rejects writes outside the live stage.
+  const setupIsReadOnly = !canUserManageSetup || !setupIsCurrent;
   const setupReady =
     setupIsCurrent && getSetupProgress(initiative.setupData).allDone;
+
+  // ── Phase 6: Onboarding & Kickoff
+  const onboardingStage = STAGES.find((s) => s.id === "onboarding")!;
+  const showOnboarding = currentNum >= 6;
+  const onboardingIsCurrent = initiative.currentStage === "onboarding";
+  const onboardingIsReadOnly =
+    !canUserManageOnboarding || !onboardingIsCurrent;
+  // Initiatives that reached onboarding before this phase existed have no blob.
+  const onboardingData =
+    initiative.onboardingData ?? createDefaultOnboardingData();
+  const onboardingReady =
+    onboardingIsCurrent && getOnboardingProgress(onboardingData).allDone;
 
   const statusKey =
     ideaHasFeedback || validationHasFeedback || goNoGoHasFeedback
       ? "feedback"
-      : setupReady
-        ? "ready"
-        : initiative.status;
+      : onboardingReady
+        ? "ready-production"
+        : setupReady
+          ? "ready"
+          : initiative.status;
   const statusStyle =
     STATUS_BADGE_STYLES[statusKey] ?? STATUS_BADGE_STYLES.draft;
   const statusLabel = STATUS_LABELS[statusKey] ?? initiative.status;
@@ -342,7 +374,7 @@ export function InitiativeDetailView({
       />
       <div className="mx-auto w-full max-w-[1200px] px-4 pb-40 pt-4 sm:px-6 sm:pt-6 lg:pb-48">
         {/* Header */}
-        <header className="mb-6">
+        <header className={`mb-6 ${ENTER_CLASS}`} style={enterStyle(0)}>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-3">
@@ -368,6 +400,8 @@ export function InitiativeDetailView({
 
         {/* Quick View — grows as phases fill */}
         <DetailsQuickView
+          className={ENTER_CLASS}
+          style={enterStyle(70)}
           initiative={initiative}
           stageName={stage?.name ?? initiative.currentStage}
           goDate={
@@ -395,6 +429,8 @@ export function InitiativeDetailView({
               stageId="idea"
               number={ideaStage.number}
               name={ideaStage.name}
+              className={ENTER_CLASS}
+              style={enterStyle(140)}
               status={
                 initiative.currentStage !== "idea"
                   ? "complete"
@@ -434,6 +470,8 @@ export function InitiativeDetailView({
                 stageId="validation"
                 number={validationStage.number}
                 name={validationStage.name}
+                className={ENTER_CLASS}
+                style={enterStyle(210)}
                 status={validationStatus}
               >
                 <div className="bg-surface">
@@ -474,6 +512,8 @@ export function InitiativeDetailView({
                 stageId="scoping"
                 number={scopingStage.number}
                 name={scopingStage.name}
+                className={ENTER_CLASS}
+                style={enterStyle(280)}
                 status={scopingStatus}
               >
                 <div className="bg-surface">
@@ -507,6 +547,8 @@ export function InitiativeDetailView({
                 stageId="go-nogo"
                 number={goNoGoStage.number}
                 name={goNoGoStage.name}
+                className={ENTER_CLASS}
+                style={enterStyle(350)}
                 status={goNoGoStatus}
               >
                 <div className="bg-surface px-4 py-5 sm:px-5">
@@ -533,6 +575,8 @@ export function InitiativeDetailView({
                 stageId="setup"
                 number={setupStage.number}
                 name={setupStage.name}
+                className={ENTER_CLASS}
+                style={enterStyle(420)}
                 status={
                   currentNum > 5
                     ? "complete"
@@ -550,6 +594,34 @@ export function InitiativeDetailView({
                     projectTitle={initiative.title}
                     leadParty={initiative.validationData?.leadProductionParty}
                     readOnly={setupIsReadOnly}
+                    isCurrentStage={setupIsCurrent}
+                  />
+                </div>
+              </PhaseCard>
+            )}
+
+            {showOnboarding && (
+              <PhaseCard
+                stageId="onboarding"
+                number={onboardingStage.number}
+                name={onboardingStage.name}
+                className={ENTER_CLASS}
+                style={enterStyle(490)}
+                status={
+                  currentNum > 6
+                    ? "complete"
+                    : onboardingReady
+                      ? "ready"
+                      : "current"
+                }
+                readyLabel="Ready for Production"
+              >
+                <div className="bg-surface p-4 sm:p-5">
+                  <OnboardingPhaseSection
+                    initiative={initiative}
+                    onboardingData={onboardingData}
+                    readOnly={onboardingIsReadOnly}
+                    isCurrentStage={onboardingIsCurrent}
                   />
                 </div>
               </PhaseCard>
