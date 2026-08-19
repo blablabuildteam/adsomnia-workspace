@@ -841,7 +841,8 @@ export async function saveScopingData(
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
-  revalidatePath("/pipeline/validation");
+  revalidatePath("/pipeline/scoping");
+  revalidatePath("/pipeline/go-nogo");
   return { success: true };
 }
 
@@ -876,6 +877,72 @@ export async function submitScopingForApproval(
     userId: user.id,
     action: "scoping_submitted",
     details: { submittedBy: user.name, fromStage: "Scoping" },
+  });
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/scoping");
+  revalidatePath("/pipeline/go-nogo");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+/** Saves updated scoping data AND resubmits for Go/No-Go review. */
+export async function resubmitScoping(
+  initiativeId: number,
+  _prev: ScopingResult,
+  formData: FormData,
+): Promise<ScopingResult> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "You must be logged in." };
+
+  const [existing] = await db
+    .select({
+      submitterId: initiatives.submitterId,
+      currentStage: initiatives.currentStage,
+      status: initiatives.status,
+    })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
+  if (!existing) return { error: "Initiative not found." };
+  if (existing.currentStage !== "go-nogo" && existing.currentStage !== "scoping") {
+    return { error: "This initiative is no longer in Scoping or Go/No-Go." };
+  }
+
+  const isOwner = existing.submitterId === user.id;
+  const isLeadership = canApprove(user);
+
+  if (existing.status !== "draft" && existing.status !== "on-hold") {
+    return { error: "Only feedback or on-hold items can be resubmitted." };
+  }
+  if (!isOwner && !isLeadership) {
+    return { error: "Only the creator or leadership can resubmit." };
+  }
+
+  const data = parseScopingFormData(formData);
+  if (!isScopingComplete(data)) {
+    return {
+      error:
+        "All scoping fields must be completed before resubmitting. Ensure impact, milestones, team, and scope items are all provided.",
+    };
+  }
+
+  await db
+    .update(initiatives)
+    .set({
+      scopingData: data,
+      currentStage: "go-nogo",
+      status: "submitted",
+      updatedAt: new Date(),
+    })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: "scoping_resubmitted",
+    details: { resubmittedBy: user.name },
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
@@ -943,6 +1010,7 @@ async function recordGoNoGoDecision(
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/scoping");
   revalidatePath("/pipeline/go-nogo");
   revalidatePath("/dashboard");
   return {

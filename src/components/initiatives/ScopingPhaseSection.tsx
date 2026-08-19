@@ -13,6 +13,7 @@ import {
 } from "react";
 import {
   Save,
+  Send,
   SendHorizonal,
   AlertCircle,
   Check,
@@ -35,8 +36,10 @@ import {
 import {
   saveScopingData,
   submitScopingForApproval,
+  resubmitScoping,
   type ScopingResult,
 } from "@/app/(workspace)/workstreams/[id]/actions";
+import type { GoNoGoDecision } from "./GoNoGoApprovalPanel";
 import { inputClass } from "@/lib/form-styles";
 import type {
   ScopingData,
@@ -1315,6 +1318,10 @@ type Props = {
   validationData?: ValidationData | null;
   readOnly?: boolean;
   resubmitting?: boolean;
+  /** Show Save Changes + Resubmit after Go/No-Go feedback. */
+  canResubmit?: boolean;
+  /** Leadership feedback shown above the form when the scope was bounced back. */
+  feedback?: GoNoGoDecision | null;
 };
 
 function sameImpactState(
@@ -1333,18 +1340,25 @@ export function ScopingPhaseSection({
   validationData,
   readOnly = false,
   resubmitting = false,
+  canResubmit = false,
+  feedback = null,
 }: Props) {
   const boundSave = saveScopingData.bind(null, initiativeId);
   const boundSubmit = submitScopingForApproval.bind(null, initiativeId);
+  const boundResubmit = resubmitScoping.bind(null, initiativeId);
 
   const [saveState, saveAction, savePending] = useActionState(boundSave, initial);
   const [submitState, submitAction, submitPending] = useActionState(
     boundSubmit,
     initial,
   );
+  const [resubmitState, resubmitAction, resubmitPending] = useActionState(
+    boundResubmit,
+    initial,
+  );
 
-  const pending = savePending || submitPending;
-  const error = saveState.error || submitState.error;
+  const pending = savePending || submitPending || resubmitPending;
+  const error = saveState.error || submitState.error || resubmitState.error;
   const saved = saveState.success;
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [submissionUpdated, setSubmissionUpdated] = useState(false);
@@ -1554,6 +1568,18 @@ export function ScopingPhaseSection({
       <input type="hidden" name="attachments" value={JSON.stringify(attachments)} />
 
       <div className="space-y-4 p-4">
+        {feedback?.decision === "feedback" && (
+          <div className="border border-feedback/50 bg-feedback/10 px-3 py-2.5">
+            <p className="font-display text-[10px] font-bold uppercase tracking-wide text-feedback">
+              Feedback from Go / No-Go — revise Phase 3 and resubmit
+            </p>
+            {feedback.comment && (
+              <p className="mt-1 text-xs leading-relaxed text-foreground/90">
+                “{feedback.comment}” — {feedback.approverName}
+              </p>
+            )}
+          </div>
+        )}
         {error && (
           <div className="flex items-center gap-2 border border-btr/40 bg-btr/10 px-3 py-2 text-xs text-btr">
             <AlertCircle className="size-3.5 shrink-0" />
@@ -1873,11 +1899,25 @@ export function ScopingPhaseSection({
               <span className="absolute inset-0 origin-left scale-x-0 bg-foreground/[0.06] transition-transform duration-300 ease-out group-hover:scale-x-100" />
               <Save className="relative size-3.5" />
               <span className="relative">
-                {savePending ? "Saving…" : "Save Draft"}
+                {savePending ? "Saving…" : canResubmit ? "Save Changes" : "Save Draft"}
               </span>
             </button>
           )}
-          {submissionUpdated ? (
+          {canResubmit ? (
+            <button
+              type="submit"
+              formAction={resubmitAction}
+              disabled={pending || !canSubmit}
+              title={!canSubmit ? "Fill in all required fields to resubmit" : undefined}
+              className="group relative inline-flex items-center gap-2 overflow-hidden border border-success bg-success px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />
+              <Send className="relative size-3.5" />
+              <span className="relative">
+                {resubmitPending ? "Resubmitting…" : "Resubmit"}
+              </span>
+            </button>
+          ) : submissionUpdated ? (
             <span className="inline-flex items-center gap-2 border border-success bg-success/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-success">
               <Check className="animate-check-pop size-3.5" />
               Saved

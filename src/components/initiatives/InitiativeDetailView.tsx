@@ -196,11 +196,6 @@ export function InitiativeDetailView({
       (initiative.status === "on-hold" && (isCreator || canUserApprove)) ||
       (initiative.status === "rejected" && isCreator));
 
-  const statusKey = ideaHasFeedback ? "feedback" : initiative.status;
-  const statusStyle =
-    STATUS_BADGE_STYLES[statusKey] ?? STATUS_BADGE_STYLES.draft;
-  const statusLabel = STATUS_LABELS[statusKey] ?? initiative.status;
-
   const showValidation = currentNum >= 2;
   const validationIsCurrent = initiative.currentStage === "validation";
   // Business case has been submitted and is waiting on a leadership decision.
@@ -254,6 +249,13 @@ export function InitiativeDetailView({
         ? "review"
         : "current";
 
+  // ── Phase 4 flags needed before Phase 3 editability
+  const goNoGoIsCurrent = initiative.currentStage === "go-nogo";
+  const goNoGoHasFeedback =
+    goNoGoIsCurrent &&
+    initiative.status === "draft" &&
+    goNoGoDecision?.decision === "feedback";
+
   // ── Phase 3: Scoping
   const scopingStage = STAGES.find((s) => s.id === "scoping")!;
   const showScoping = currentNum >= 3;
@@ -261,14 +263,18 @@ export function InitiativeDetailView({
   const scopingAwaitingDecision =
     scopingIsCurrent && initiative.status === "submitted";
 
+  const scopingCanResubmit =
+    goNoGoHasFeedback && (isCreator || canUserApprove);
+
   const scopingIsEditable =
-    scopingIsCurrent &&
-    (initiative.status === "approved" ||
-      initiative.status === "draft" ||
-      (scopingAwaitingDecision && isCreator));
+    (scopingIsCurrent &&
+      (initiative.status === "approved" ||
+        initiative.status === "draft" ||
+        (scopingAwaitingDecision && isCreator))) ||
+    scopingCanResubmit;
 
   const scopingStatus: "complete" | "current" | "review" =
-    currentNum > 3
+    currentNum > 3 && !scopingCanResubmit
       ? "complete"
       : scopingAwaitingDecision
         ? "review"
@@ -277,7 +283,6 @@ export function InitiativeDetailView({
   // ── Phase 4: Go/No-Go
   const goNoGoStage = STAGES.find((s) => s.id === "go-nogo")!;
   const showGoNoGo = currentNum >= 4;
-  const goNoGoIsCurrent = initiative.currentStage === "go-nogo";
   const goNoGoAwaitingDecision =
     goNoGoIsCurrent && initiative.status === "submitted";
 
@@ -300,6 +305,14 @@ export function InitiativeDetailView({
       : goNoGoAwaitingDecision
         ? "review"
         : "current";
+
+  const statusKey =
+    ideaHasFeedback || validationHasFeedback || goNoGoHasFeedback
+      ? "feedback"
+      : initiative.status;
+  const statusStyle =
+    STATUS_BADGE_STYLES[statusKey] ?? STATUS_BADGE_STYLES.draft;
+  const statusLabel = STATUS_LABELS[statusKey] ?? initiative.status;
 
   return (
     <div className="relative w-full flex-1">
@@ -476,6 +489,10 @@ export function InitiativeDetailView({
                         data={initiative.scopingData}
                         validationData={initiative.validationData}
                         resubmitting={scopingAwaitingDecision}
+                        canResubmit={scopingCanResubmit}
+                        feedback={
+                          scopingCanResubmit ? displayedGoNoGoDecision : null
+                        }
                       />
                     </form>
                   ) : (
@@ -504,7 +521,8 @@ export function InitiativeDetailView({
                   </p>
                 </div>
 
-                {(goNoGoAwaitingDecision || displayedGoNoGoDecision) && (
+                {(goNoGoAwaitingDecision || displayedGoNoGoDecision) &&
+                  !scopingCanResubmit && (
                   <GoNoGoApprovalPanel
                     initiativeId={initiative.id}
                     decision={displayedGoNoGoDecision}

@@ -8,7 +8,7 @@ import {
   User,
   Calendar,
   MessageSquare,
-  Undo2,
+  MessageCircle,
   Hourglass,
   Rocket,
   Ban,
@@ -47,9 +47,9 @@ const DECISION_META: Record<
     icon: Ban,
   },
   feedback: {
-    label: "Feedback — Returned to Scoping",
-    badge: "border-hn bg-hn/10 text-hn",
-    icon: Undo2,
+    label: "Feedback",
+    badge: "border-feedback bg-feedback/10 text-feedback",
+    icon: MessageCircle,
   },
 };
 
@@ -201,10 +201,10 @@ export function GoNoGoApprovalPanel({
           <button
             type="button"
             onClick={() => setSelectedAction("feedback")}
-            className="inline-flex items-center gap-2 border border-hn bg-hn/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-hn transition-colors hover:bg-hn/20"
+            className="inline-flex items-center gap-2 border border-feedback bg-feedback/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-feedback transition-colors hover:bg-feedback/20"
           >
-            <Undo2 className="size-3.5" />
-            Send Feedback
+            <MessageCircle className="size-3.5" />
+            Feedback
           </button>
           <button
             type="button"
@@ -256,7 +256,7 @@ export function GoNoGoApprovalPanel({
                   ? "border-success bg-success text-background"
                   : selectedAction === "no-go"
                     ? "border-btr bg-btr text-background"
-                    : "border-hn bg-hn text-background",
+                    : "border-feedback bg-feedback text-background",
               ].join(" ")}
             >
               <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />

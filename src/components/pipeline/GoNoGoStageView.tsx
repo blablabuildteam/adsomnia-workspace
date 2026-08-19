@@ -9,11 +9,10 @@ import {
   Clock,
   Eye,
   Filter,
-  Loader2,
+  MessageCircle,
   PauseCircle,
   Rocket,
   Users,
-  XCircle,
   Ban,
 } from "lucide-react";
 import { STAGES, getStageColor, PARTIES } from "@/data/workflow";
@@ -21,11 +20,7 @@ import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStrip } from "@/components/pipeline/PipelineStrip";
 import type { InitiativeWithUsers } from "@/lib/queries";
-import {
-  isBusinessValueComplete,
-  isScopingComplete,
-  type ScopingData,
-} from "@/lib/validation-data";
+import { type ScopingData } from "@/lib/validation-data";
 import { formatEuro, summarizeTeamCost } from "@/data/role-rates";
 
 const hoverTicks =
@@ -34,22 +29,25 @@ const hoverTicks =
 const stage = STAGES.find((s) => s.id === "go-nogo")!;
 const stageColor = getStageColor("go-nogo");
 
-type FilterKey = "all" | "awaiting" | "approved" | "rejected";
+type FilterKey = "all" | "awaiting" | "feedback" | "approved" | "rejected";
 
 const FILTERS: { key: FilterKey; label: string; color: string }[] = [
   { key: "all", label: "All", color: "#FFFFFF" },
   { key: "awaiting", label: "Awaiting Decision", color: "#38BDF8" },
+  { key: "feedback", label: "Feedback", color: "#A855F7" },
   { key: "approved", label: "GO", color: "#22C55E" },
   { key: "rejected", label: "NO-GO", color: "#FF3B1F" },
 ];
 
-function matchesGoNoGoFilter(
-  status: InitiativeWithUsers["status"],
-  filter: Exclude<FilterKey, "all">,
-): boolean {
-  if (filter === "awaiting") return status === "submitted" || status === "draft";
-  if (filter === "approved") return status === "approved";
-  return status === "rejected";
+function getEffectiveStatus(
+  status: string,
+  id: number,
+  feedbackSet: Set<number>,
+): Exclude<FilterKey, "all"> {
+  if (status === "rejected") return "rejected";
+  if (status === "approved") return "approved";
+  if (status === "draft" || feedbackSet.has(id)) return "feedback";
+  return "awaiting";
 }
 
 const LEAD_PARTY_FILTERS = ["btr", "hn", "bbb", "as"] as const;
@@ -70,15 +68,17 @@ const STATUS_META: Record<
     icon: React.ComponentType<{ className?: string }>;
   }
 > = {
-  draft: { label: "Feedback Sent", color: "#7E90A3", icon: Loader2 },
+  draft: { label: "Feedback", color: "#A855F7", icon: MessageCircle },
+  "feedback-received": { label: "Feedback", color: "#A855F7", icon: MessageCircle },
   submitted: { label: "Awaiting Decision", color: "#38BDF8", icon: Eye },
   approved: { label: "GO", color: "#22C55E", icon: Rocket },
   rejected: { label: "NO-GO", color: "#FF3B1F", icon: Ban },
   "on-hold": { label: "On Hold", color: "#7E90A3", icon: PauseCircle },
 };
 
-function StatusBadge({ status }: { status: string }) {
-  const meta = STATUS_META[status] ?? STATUS_META.submitted;
+function StatusBadge({ status, hasFeedback }: { status: string; hasFeedback?: boolean }) {
+  const key = hasFeedback && status === "draft" ? "feedback-received" : status;
+  const meta = STATUS_META[key] ?? STATUS_META.submitted;
   const Icon = meta.icon;
   return (
     <span
@@ -237,7 +237,7 @@ function MiniGantt({ data }: { data: ScopingData | null }) {
 }
 
 
-function GoNoGoCard({ item }: { item: InitiativeWithUsers }) {
+function GoNoGoCard({ item, hasFeedback }: { item: InitiativeWithUsers; hasFeedback?: boolean }) {
   const daysSinceUpdate = Math.floor(
     (Date.now() - item.updatedAt.getTime()) / (1000 * 60 * 60 * 24),
   );
@@ -268,7 +268,7 @@ function GoNoGoCard({ item }: { item: InitiativeWithUsers }) {
           <span className="font-display shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted">
             {item.ticketId}
           </span>
-          <StatusBadge status={item.status} />
+          <StatusBadge status={item.status} hasFeedback={hasFeedback} />
           {tShirtSize && (
             <span className="shrink-0 border border-border px-1.5 py-0.5 font-display text-[10px] font-bold text-muted">
               {tShirtSize}
@@ -406,30 +406,37 @@ function GoNoGoCard({ item }: { item: InitiativeWithUsers }) {
 
 type Props = {
   initiatives: InitiativeWithUsers[];
+  feedbackIds?: number[];
 };
 
-export function GoNoGoStageView({ initiatives }: Props) {
+export function GoNoGoStageView({ initiatives, feedbackIds = [] }: Props) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const [leadPartyFilter, setLeadPartyFilter] =
     useState<LeadPartyFilter | null>(null);
 
+  const feedbackSet = new Set(feedbackIds);
   const inStage = initiatives.filter((i) => i.currentStage === "go-nogo");
 
   const statusFiltered =
     activeFilter === "all"
       ? inStage
-      : inStage.filter((i) => matchesGoNoGoFilter(i.status, activeFilter));
+      : inStage.filter(
+          (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === activeFilter,
+        );
 
   const counts: Record<FilterKey, number> = {
     all: inStage.length,
-    awaiting: inStage.filter((i) =>
-      matchesGoNoGoFilter(i.status, "awaiting"),
+    awaiting: inStage.filter(
+      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "awaiting",
     ).length,
-    approved: inStage.filter((i) =>
-      matchesGoNoGoFilter(i.status, "approved"),
+    feedback: inStage.filter(
+      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "feedback",
     ).length,
-    rejected: inStage.filter((i) =>
-      matchesGoNoGoFilter(i.status, "rejected"),
+    approved: inStage.filter(
+      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "approved",
+    ).length,
+    rejected: inStage.filter(
+      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "rejected",
     ).length,
   };
 
@@ -591,7 +598,7 @@ export function GoNoGoStageView({ initiatives }: Props) {
                 } as React.CSSProperties
               }
             >
-              <GoNoGoCard item={item} />
+              <GoNoGoCard item={item} hasFeedback={feedbackSet.has(item.id)} />
             </div>
           ))}
         </div>
