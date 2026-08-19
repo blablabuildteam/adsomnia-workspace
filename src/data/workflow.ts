@@ -303,7 +303,7 @@ export const STAGE_COLORS: Record<StageId, string> = {
   idea: "#FFFFFF",
   validation: "#7E90A3",
   scoping: "#CEFF00",
-  "go-nogo": "#FF3B1F",
+  "go-nogo": "#A78BFA",
   setup: "#38BDF8",
   onboarding: "#2DD4BF",
   production: "#22C55E",

@@ -364,12 +364,9 @@ export function DetailsQuickView({
         </div>
       )}
 
-      {/* Workspace links — from Setup onward */}
+      {/* Tool links — from Setup onward */}
       {hasTools && (
         <div className="flex flex-wrap items-center gap-4 border-t border-foreground/10 py-3">
-          <span className="mr-1 font-display text-[9px] font-bold uppercase tracking-[0.25em] text-foreground/30">
-            Workspace
-          </span>
           {slackName && (
             <ToolChip logo="/logos/slack.png" name={`#${slackName}`} />
           )}
