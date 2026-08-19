@@ -358,9 +358,16 @@ export type TeamSetupData = {
   completedAt?: string;
 };
 
+export type DriveFolderLink = {
+  name: string;
+  id: string;
+  url: string;
+};
+
 export type DocsSetupData = {
   status: SetupTaskStatus;
   linkedDocs: Attachment[];
+  folders?: DriveFolderLink[];
   completedAt?: string;
 };
 
@@ -439,6 +446,24 @@ export function setupTaskIdToDataKey(taskId: SetupTaskId): keyof SetupData {
   return found?.dataKey ?? (taskId as keyof SetupData);
 }
 
+export function suggestedDriveName(title: string, ticketId: string): string {
+  return `${title} - ${ticketId}`;
+}
+
+export const RECOMMENDED_DRIVE_FOLDERS: {
+  name: string;
+  hint: string;
+}[] = [
+  { name: "01_Brief & Business Case", hint: "Initiative, validation, GO decision" },
+  { name: "02_Scope & Requirements", hint: "Scoping proposal, boundaries, acceptance" },
+  { name: "03_Planning", hint: "Timeline, milestones, capacity" },
+  { name: "04_Design & Assets", hint: "Creative, references, source files" },
+  { name: "05_Production", hint: "Working files, builds, delivery" },
+  { name: "06_Meetings & Kickoff", hint: "Agenda, notes, recordings" },
+  { name: "07_Reporting", hint: "Weekly updates, leadership decks" },
+  { name: "99_Archive", hint: "Superseded versions only" },
+];
+
 export function createDefaultSetupData(
   ticketId: string,
   title: string,
@@ -452,7 +477,7 @@ export function createDefaultSetupData(
 
   return {
     slack: { status: "pending", suggestedName: slug },
-    drive: { status: "pending", suggestedName: title },
+    drive: { status: "pending", suggestedName: suggestedDriveName(title, ticketId) },
     jira: { status: "pending" },
     jiraPlanning: { status: "pending" },
     documentation: {

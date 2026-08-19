@@ -8,6 +8,7 @@ import {
   getSetupPhaseUnlockHint,
   isSetupPhaseUnlocked,
   normalizeUrl,
+  suggestedDriveName,
   type SetupData,
   type SetupTaskId,
   type SetupTaskStatus,
@@ -49,6 +50,8 @@ export function SetupPhaseSection({
   initiativeId,
   setupData,
   scopingData,
+  ticketId,
+  projectTitle,
   readOnly,
 }: Props) {
   const progress = getSetupProgress(setupData);
@@ -62,6 +65,7 @@ export function SetupPhaseSection({
   const [jiraBoardUrl, setJiraBoardUrl] = useState(
     setupData.jira.boardUrl || setupData.jira.projectUrl || "",
   );
+  const [driveUrl, setDriveUrl] = useState(setupData.drive.driveUrl || "");
 
   const boundAdvance = advanceToOnboarding.bind(null, initiativeId);
   const [advanceState, advanceAction, advancePending] = useActionState(
@@ -72,6 +76,7 @@ export function SetupPhaseSection({
   const handleTaskComplete = async (
     taskId: SetupTaskId,
     data: Record<string, unknown>,
+    options?: { complete?: boolean },
   ) => {
     setTaskError(null);
     setPendingTask(taskId);
@@ -79,6 +84,7 @@ export function SetupPhaseSection({
       const formData = new FormData();
       formData.set("taskId", taskId);
       formData.set("data", JSON.stringify(data));
+      if (options?.complete === false) formData.set("complete", "0");
       const result = await completeSetupTask(initiativeId, formData);
       if (result.error) {
         setTaskError(result.error);
@@ -108,6 +114,8 @@ export function SetupPhaseSection({
       scopingData,
       slackChannelName,
       jiraBoardUrl,
+      driveUrl,
+      suggestedDriveName: suggestedDriveName(projectTitle, ticketId),
     });
     if ("error" in payload) {
       setTaskError(payload.error);
@@ -221,10 +229,13 @@ export function SetupPhaseSection({
                 setupData,
                 scopingData,
                 readOnly: readOnly || taskLocked,
+                suggestedDriveName: suggestedDriveName(projectTitle, ticketId),
                 slackChannelName,
                 onSlackChannelNameChange: setSlackChannelName,
                 jiraBoardUrl,
                 onJiraBoardUrlChange: setJiraBoardUrl,
+                driveUrl,
+                onDriveUrlChange: setDriveUrl,
                 onComplete: handleTaskComplete,
               })}
             </SetupTaskCard>
@@ -268,11 +279,18 @@ type TaskRenderContext = {
   setupData: SetupData;
   scopingData?: ScopingData | null;
   readOnly?: boolean;
+  suggestedDriveName: string;
   slackChannelName: string;
   onSlackChannelNameChange: (value: string) => void;
   jiraBoardUrl: string;
   onJiraBoardUrlChange: (value: string) => void;
-  onComplete: (taskId: SetupTaskId, data: Record<string, unknown>) => void;
+  driveUrl: string;
+  onDriveUrlChange: (value: string) => void;
+  onComplete: (
+    taskId: SetupTaskId,
+    data: Record<string, unknown>,
+    options?: { complete?: boolean },
+  ) => void;
 };
 
 function buildQuickCompletePayload(
@@ -282,6 +300,8 @@ function buildQuickCompletePayload(
     scopingData?: ScopingData | null;
     slackChannelName: string;
     jiraBoardUrl: string;
+    driveUrl: string;
+    suggestedDriveName: string;
   },
 ): { data: Record<string, unknown> } | { error: string } {
   const { setupData, scopingData } = ctx;
@@ -298,8 +318,8 @@ function buildQuickCompletePayload(
       return {
         data: {
           driveName:
-            setupData.drive.driveName || setupData.drive.suggestedName,
-          driveUrl: setupData.drive.driveUrl,
+            setupData.drive.driveName || ctx.suggestedDriveName,
+          driveUrl: ctx.driveUrl || setupData.drive.driveUrl,
         },
       };
     case "jira": {
@@ -375,9 +395,12 @@ function renderTaskContent(
       return (
         <DriveSetupTask
           data={setupData.drive}
+          suggestedName={ctx.suggestedDriveName}
+          driveUrl={ctx.driveUrl}
+          onDriveUrlChange={ctx.onDriveUrlChange}
           readOnly={readOnly}
-          onComplete={(driveName, driveUrl) =>
-            ctx.onComplete("drive", { driveName, driveUrl })
+          onComplete={(driveName, nextDriveUrl) =>
+            ctx.onComplete("drive", { driveName, driveUrl: nextDriveUrl })
           }
         />
       );
@@ -409,11 +432,23 @@ function renderTaskContent(
       return (
         <DocsSetupTask
           linkedDocs={setupData.documentation.linkedDocs}
-          driveUrl={setupData.drive.driveUrl}
+          folders={setupData.documentation.folders}
+          driveUrl={ctx.driveUrl || setupData.drive.driveUrl}
           readOnly={readOnly}
-          onComplete={(docs) =>
+          onFoldersCreated={(folders) =>
+            ctx.onComplete(
+              "documentation",
+              {
+                linkedDocs: setupData.documentation.linkedDocs,
+                folders,
+              },
+              { complete: false },
+            )
+          }
+          onComplete={(folders) =>
             ctx.onComplete("documentation", {
-              linkedDocs: docs,
+              linkedDocs: setupData.documentation.linkedDocs,
+              folders,
             })
           }
         />

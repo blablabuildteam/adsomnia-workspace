@@ -1,157 +1,94 @@
 "use client";
 
-import { useState } from "react";
-import { Check, FileText, Plus, X, ExternalLink } from "lucide-react";
-import type { Attachment } from "@/lib/validation-data";
-import { inputClass } from "@/lib/form-styles";
+import { Check, ExternalLink } from "lucide-react";
 import {
-  detectAttachmentKind,
-  attachmentKindLabel,
-  normalizeUrl,
-  titleFromUrl,
+  RECOMMENDED_DRIVE_FOLDERS,
+  type DriveFolderLink,
 } from "@/lib/validation-data";
+import { CreateDriveFoldersButton } from "./CreateDriveFoldersButton";
 
 type Props = {
-  linkedDocs: Attachment[];
+  linkedDocs?: unknown;
+  folders?: DriveFolderLink[];
   driveUrl?: string;
   readOnly?: boolean;
-  onComplete: (docs: Attachment[]) => void;
+  onFoldersCreated?: (folders: DriveFolderLink[]) => void;
+  onComplete: (folders: DriveFolderLink[]) => void;
 };
 
-export function DocsSetupTask({ linkedDocs, driveUrl, readOnly, onComplete }: Props) {
-  const [docs, setDocs] = useState<Attachment[]>(linkedDocs);
-  const [newUrl, setNewUrl] = useState("");
-  const [newTitle, setNewTitle] = useState("");
-
-  const addDoc = () => {
-    const url = normalizeUrl(newUrl);
-    if (!url) return;
-    const kind = detectAttachmentKind(url);
-    const title = newTitle.trim() || titleFromUrl(url);
-    setDocs((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), kind, title, url },
-    ]);
-    setNewUrl("");
-    setNewTitle("");
-  };
-
-  const removeDoc = (id: string) => {
-    setDocs((prev) => prev.filter((d) => d.id !== id));
-  };
-
-  if (readOnly) {
-    return (
-      <div className="space-y-2">
-        {docs.length === 0 && (
-          <p className="text-xs text-muted">No documentation linked yet.</p>
-        )}
-        {docs.map((doc) => (
-          <div key={doc.id} className="flex items-center gap-2 text-xs">
-            <FileText className="size-3.5 text-muted" />
-            {doc.url ? (
-              <a
-                href={doc.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#38BDF8] hover:underline"
-              >
-                {doc.title}
-              </a>
-            ) : (
-              <span>{doc.title}</span>
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  }
+export function DocsSetupTask({
+  folders = [],
+  driveUrl,
+  readOnly,
+  onFoldersCreated,
+  onComplete,
+}: Props) {
+  const folderByName = new Map(folders.map((folder) => [folder.name, folder]));
+  const allLinked = RECOMMENDED_DRIVE_FOLDERS.every((folder) =>
+    folderByName.has(folder.name),
+  );
 
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted">
-        Add the project documentation to the Google Drive (business case,
-        requirements, scoping proposal). Documents from scoping are pre-loaded.
+        Create the recommended folder structure in the project Drive, then
+        confirm once the folders are in place.
       </p>
 
-      {driveUrl && (
-        <a
-          href={driveUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 border border-[#38BDF8]/30 bg-[#38BDF8]/10 px-3 py-2 text-xs text-[#38BDF8] hover:bg-[#38BDF8]/20"
-        >
-          <ExternalLink className="size-3.5" />
-          Open Project Drive
-        </a>
-      )}
-
-      {docs.length > 0 && (
-        <div className="space-y-1.5">
-          {docs.map((doc) => (
-            <div
-              key={doc.id}
-              className="flex items-center justify-between gap-2 border border-border bg-surface px-3 py-2"
-            >
-              <div className="flex items-center gap-2 text-xs">
-                <FileText className="size-3.5 text-muted" />
-                <span>{doc.title}</span>
-                <span className="text-[9px] uppercase text-muted/50">
-                  {attachmentKindLabel(doc.kind)}
+      <div className="border border-border bg-surface-elevated px-3 py-3">
+        <p className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+          Recommended folder structure
+        </p>
+        <p className="mt-1 text-[11px] leading-relaxed text-muted">
+          {allLinked
+            ? "Folders are ready. Open any folder to add briefing, scope, and delivery files."
+            : "Create these folders in the project Drive so the team can find briefing, scope, and delivery files without hunting."}
+        </p>
+        <ol className="mt-3 space-y-2 font-mono text-[11px] text-foreground">
+          {RECOMMENDED_DRIVE_FOLDERS.map((folder) => {
+            const linked = folderByName.get(folder.name);
+            return (
+              <li key={folder.name} className="flex flex-wrap items-baseline gap-x-2">
+                {linked ? (
+                  <a
+                    href={linked.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[#38BDF8] hover:underline"
+                  >
+                    {folder.name}
+                    <ExternalLink className="size-2.5" />
+                  </a>
+                ) : (
+                  <span>{folder.name}</span>
+                )}
+                <span className="font-sans text-[10px] text-muted">
+                  {folder.hint}
                 </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => removeDoc(doc.id)}
-                className="text-muted hover:text-btr"
-              >
-                <X className="size-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
-        <input
-          type="url"
-          value={newUrl}
-          onChange={(e) => setNewUrl(e.target.value)}
-          className={inputClass}
-          placeholder="Paste document URL…"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              addDoc();
-            }
-          }}
-        />
-        <input
-          type="text"
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-          className={`${inputClass} sm:w-48`}
-          placeholder="Title (optional)"
-        />
-        <button
-          type="button"
-          onClick={addDoc}
-          disabled={!newUrl.trim()}
-          className="flex items-center gap-1.5 border border-border px-3 py-2.5 text-xs text-muted transition-colors hover:border-foreground hover:text-foreground disabled:opacity-50"
-        >
-          <Plus className="size-3.5" />
-          Add
-        </button>
+              </li>
+            );
+          })}
+        </ol>
+        {!readOnly && !allLinked && (
+          <div className="mt-4">
+            <CreateDriveFoldersButton
+              driveUrl={driveUrl}
+              onCreated={onFoldersCreated}
+            />
+          </div>
+        )}
       </div>
 
-      <button
-        type="button"
-        onClick={() => onComplete(docs)}
-        className="inline-flex items-center gap-2 border border-success bg-success/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-success transition-colors hover:bg-success/20"
-      >
-        <Check className="size-3.5" />
-        Confirm Documentation
-      </button>
+      {!readOnly && (
+        <button
+          type="button"
+          onClick={() => onComplete(folders)}
+          className="inline-flex items-center gap-2 border border-success bg-success/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-success transition-colors hover:bg-success/20"
+        >
+          <Check className="size-3.5" />
+          Confirm Documentation
+        </button>
+      )}
     </div>
   );
 }

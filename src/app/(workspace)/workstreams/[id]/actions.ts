@@ -1193,6 +1193,7 @@ export async function completeSetupTask(
   }
   const now = new Date().toISOString();
   const dataKey = setupTaskIdToDataKey(taskId);
+  const markComplete = formData.get("complete") !== "0";
 
   const existingTask = setup[dataKey] as Record<string, unknown> | undefined;
   const updated: SetupData = {
@@ -1200,8 +1201,13 @@ export async function completeSetupTask(
     [dataKey]: {
       ...(existingTask ?? {}),
       ...taskData,
-      status: "completed" as const,
-      completedAt: now,
+      status: markComplete
+        ? ("completed" as const)
+        : ((existingTask?.status as "pending" | "completed" | "skipped" | "in-progress" | "error") ??
+          "pending"),
+      completedAt: markComplete
+        ? now
+        : ((existingTask?.completedAt as string | undefined) ?? undefined),
     },
   };
 
@@ -1210,12 +1216,14 @@ export async function completeSetupTask(
     .set({ setupData: updated, updatedAt: new Date() })
     .where(eq(initiatives.id, initiativeId));
 
-  await db.insert(activityLog).values({
-    initiativeId,
-    userId: user.id,
-    action: `setup_task_completed`,
-    details: { taskId, completedBy: user.name },
-  });
+  if (markComplete) {
+    await db.insert(activityLog).values({
+      initiativeId,
+      userId: user.id,
+      action: `setup_task_completed`,
+      details: { taskId, completedBy: user.name },
+    });
+  }
 
   revalidatePath(`/workstreams/${initiativeId}`);
   revalidatePath("/pipeline/setup");

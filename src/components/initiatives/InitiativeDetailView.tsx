@@ -406,6 +406,24 @@ export function InitiativeDetailView({
           </div>
         )}
 
+        {showSetup && (
+          <div className="mb-6">
+            <ProjectBriefCard
+              initiative={initiative}
+              goDate={
+                goNoGoDecision?.decision === "approved"
+                  ? goNoGoDecision.createdAt
+                  : null
+              }
+              goApprover={
+                goNoGoDecision?.decision === "approved"
+                  ? goNoGoDecision.approverName
+                  : null
+              }
+            />
+          </div>
+        )}
+
         <div className="space-y-6">
             <PhaseCard
               stageId="idea"
@@ -542,23 +560,6 @@ export function InitiativeDetailView({
                   />
                 )}
               </PhaseCard>
-            )}
-
-            {/* Project Brief — shown between Go/No-Go and Setup */}
-            {showSetup && (
-              <ProjectBriefCard
-                initiative={initiative}
-                goDate={
-                  goNoGoDecision?.decision === "approved"
-                    ? goNoGoDecision.createdAt
-                    : null
-                }
-                goApprover={
-                  goNoGoDecision?.decision === "approved"
-                    ? goNoGoDecision.approverName
-                    : null
-                }
-              />
             )}
 
             {showSetup && initiative.setupData && (
