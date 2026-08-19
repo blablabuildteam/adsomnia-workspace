@@ -1527,9 +1527,11 @@ export async function completeOnboardingTask(
     });
   }
 
-  revalidatePath(`/workstreams/${initiativeId}`);
-  revalidatePath("/pipeline/onboarding");
-  revalidatePath("/dashboard");
+  if (markComplete) {
+    revalidatePath(`/workstreams/${initiativeId}`);
+    revalidatePath("/pipeline/onboarding");
+    revalidatePath("/dashboard");
+  }
   return { success: true };
 }
 

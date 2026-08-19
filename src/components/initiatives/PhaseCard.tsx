@@ -1,9 +1,15 @@
 "use client";
 
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Check, ChevronDown, Eye } from "lucide-react";
 import { getStageColor } from "@/data/workflow";
 import { CornerTicks } from "@/components/ui/CornerTicks";
+
+export function phaseCardDomId(stageId: string) {
+  return `phase-${stageId}`;
+}
+
+export const EXPAND_PHASE_EVENT = "adsomnia:expand-phase";
 
 const STATUS_COLORS = {
   progress: "#EAB308",
@@ -46,6 +52,7 @@ export function PhaseCard({
   const isCurrent =
     status === "current" || status === "review" || status === "ready";
   const [open, setOpen] = useState(isCurrent);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   // Follow the phase as it advances: collapse once it completes, reopen when it
   // becomes active again. Adjusted during render so no extra commit is needed.
@@ -55,9 +62,19 @@ export function PhaseCard({
     setOpen(isCurrent);
   }
 
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const expand = () => setOpen(true);
+    el.addEventListener(EXPAND_PHASE_EVENT, expand);
+    return () => el.removeEventListener(EXPAND_PHASE_EVENT, expand);
+  }, []);
+
   return (
     <div
-      className={["relative border border-border", className]
+      id={phaseCardDomId(stageId)}
+      ref={rootRef}
+      className={["relative scroll-mt-[68px] border border-border", className]
         .filter(Boolean)
         .join(" ")}
       style={style}

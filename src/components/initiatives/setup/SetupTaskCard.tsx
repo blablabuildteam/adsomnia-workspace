@@ -49,6 +49,8 @@ type Props = {
   lockHint?: string | null;
   readOnly?: boolean;
   completing?: boolean;
+  /** Keep the card expanded after it is marked complete. */
+  stayOpenOnComplete?: boolean;
   logo?: string;
   onMarkComplete?: () => void;
   onUndo?: () => void;
@@ -65,6 +67,7 @@ export function SetupTaskCard({
   lockHint,
   readOnly,
   completing,
+  stayOpenOnComplete,
   logo,
   onMarkComplete,
   onUndo,
@@ -73,7 +76,7 @@ export function SetupTaskCard({
   const isDone = status === "completed" || status === "skipped";
   const blocked = locked || readOnly;
   const canUndo = isDone && !blocked && !completing && !!onUndo;
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(Boolean(stayOpenOnComplete && isDone));
   const wasDone = useRef(isDone);
   const meta = STATUS_ICON[status];
   const Icon = completing ? Loader2 : locked ? Lock : meta.icon;
@@ -87,9 +90,9 @@ export function SetupTaskCard({
   }, [locked]);
 
   useEffect(() => {
-    if (isDone && !wasDone.current) setOpen(false);
+    if (isDone && !wasDone.current && !stayOpenOnComplete) setOpen(false);
     wasDone.current = isDone;
-  }, [isDone]);
+  }, [isDone, stayOpenOnComplete]);
 
   return (
     <div

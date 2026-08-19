@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  Coins,
+  Gauge,
   GitBranch,
   Lightbulb,
   ListChecks,
@@ -13,13 +15,16 @@ import {
   UsersRound,
   Zap,
 } from "lucide-react";
-import { PARTIES } from "@/data/workflow";
+import { PARTIES, getStageColor } from "@/data/workflow";
+import { MilestoneGantt } from "../MilestoneGantt";
 import type { InitiativeWithUsers } from "@/lib/queries";
 import {
   BUSINESS_VALUE_TYPES,
+  IMPACT_MAX,
   impactScoreLabel,
   isBusinessValueData,
   parseImpactScore,
+  type BusinessValueType,
 } from "@/lib/validation-data";
 
 /**
@@ -31,6 +36,10 @@ export type BriefingBodyProps = {
   initiative: InitiativeWithUsers;
   presenting?: boolean;
 };
+
+/** Staged reveal for fullscreen slides — see `.briefing-reveal` in globals.css. */
+const REVEAL_CLASS = "briefing-reveal";
+const VALIDATION_ACCENT = getStageColor("validation");
 
 function Field({
   label,
@@ -111,12 +120,100 @@ function SubHeading({
   );
 }
 
+const VALUE_ICONS: Record<
+  BusinessValueType,
+  React.ComponentType<{ className?: string; style?: React.CSSProperties }>
+> = {
+  speed: Gauge,
+  "cost-efficiency": Coins,
+  growth: TrendingUp,
+};
+
+/** Business value as a 10-segment meter — reads at presentation distance. */
+function ValueMeter({
+  type,
+  score,
+  presenting,
+}: {
+  type: BusinessValueType;
+  score: number | null;
+  presenting?: boolean;
+}) {
+  const label = BUSINESS_VALUE_TYPES.find((t) => t.id === type)?.label ?? type;
+  const Icon = VALUE_ICONS[type];
+  const filled = score ?? 0;
+
+  return (
+    <div className="border border-border bg-surface p-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <Icon
+            className={`shrink-0 ${presenting ? "size-4" : "size-3.5"}`}
+            style={{ color: VALIDATION_ACCENT }}
+          />
+          <span
+            className={`truncate font-display font-bold uppercase tracking-wide ${
+              presenting ? "text-xs" : "text-[10px]"
+            }`}
+          >
+            {label}
+          </span>
+        </span>
+        {score != null && (
+          <span
+            className={`shrink-0 font-display font-bold uppercase tracking-wide text-muted ${
+              presenting ? "text-[10px]" : "text-[9px]"
+            }`}
+          >
+            {impactScoreLabel(score)}
+          </span>
+        )}
+      </div>
+
+      <p className="mt-2 flex items-baseline gap-1">
+        <span
+          className={`font-display font-extrabold leading-none tabular-nums ${
+            presenting ? "text-4xl" : "text-2xl"
+          }`}
+        >
+          {score ?? "—"}
+        </span>
+        {score != null && (
+          <span
+            className={`font-display font-bold tabular-nums text-muted ${
+              presenting ? "text-sm" : "text-[10px]"
+            }`}
+          >
+            /{IMPACT_MAX}
+          </span>
+        )}
+      </p>
+
+      <span
+        aria-hidden
+        className={`mt-2.5 flex gap-[3px] ${presenting ? "h-2.5" : "h-1.5"}`}
+      >
+        {Array.from({ length: IMPACT_MAX }, (_, index) => (
+          <span
+            key={index}
+            className="h-full flex-1"
+            style={{
+              backgroundColor:
+                index < filled ? VALIDATION_ACCENT : "rgb(255 255 255 / 0.08)",
+            }}
+          />
+        ))}
+      </span>
+    </div>
+  );
+}
+
 export function InitiativeBriefBody({
   initiative,
   presenting,
 }: BriefingBodyProps) {
   return (
-    <div className={presenting ? "space-y-6" : "space-y-4"}>
+    <div className={presenting ? REVEAL_CLASS + " space-y-6" : "space-y-4"}>
       <div className={`grid gap-4 ${presenting ? "sm:grid-cols-2" : ""}`}>
         <Field
           icon={Target}
@@ -181,7 +278,7 @@ export function ValidationBriefBody({
       : [];
 
   return (
-    <div className={presenting ? "space-y-6" : "space-y-4"}>
+    <div className={presenting ? REVEAL_CLASS + " space-y-6" : "space-y-4"}>
       <Field
         icon={Zap}
         label="Solution Direction"
@@ -190,43 +287,34 @@ export function ValidationBriefBody({
       />
 
       <div className="space-y-2">
-        <SubHeading icon={TrendingUp} presenting={presenting}>
+        <SubHeading
+          icon={TrendingUp}
+          presenting={presenting}
+          aside={
+            valueTypes.length > 0 ? (
+              <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+                {valueTypes.length} value driver
+                {valueTypes.length === 1 ? "" : "s"}
+              </span>
+            ) : undefined
+          }
+        >
           Business Value
         </SubHeading>
         {valueTypes.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {valueTypes.map((type) => {
-              const label =
-                BUSINESS_VALUE_TYPES.find((t) => t.id === type)?.label ?? type;
-              const score =
-                businessValue && isBusinessValueData(businessValue)
-                  ? parseImpactScore(businessValue.expectations[type])
-                  : null;
-              return (
-                <div
-                  key={type}
-                  className="border border-border bg-surface px-3 py-2"
-                >
-                  <span
-                    className={presenting ? "text-sm" : "text-xs"}
-                  >
-                    {label}
-                  </span>
-                  {score != null && (
-                    <span
-                      className={`ml-2 font-display font-bold tabular-nums ${
-                        presenting ? "text-base" : "text-sm"
-                      }`}
-                    >
-                      {score}/10
-                      <span className="ml-1.5 font-normal text-muted">
-                        {impactScoreLabel(score)}
-                      </span>
-                    </span>
-                  )}
-                </div>
-              );
-            })}
+          <div className="grid gap-2 sm:grid-cols-3">
+            {valueTypes.map((type) => (
+              <ValueMeter
+                key={type}
+                type={type}
+                score={
+                  businessValue && isBusinessValueData(businessValue)
+                    ? parseImpactScore(businessValue.expectations[type])
+                    : null
+                }
+                presenting={presenting}
+              />
+            ))}
           </div>
         ) : typeof businessValue === "string" && businessValue.trim() ? (
           <p className={presenting ? "text-base" : "text-xs"}>
@@ -297,9 +385,12 @@ export function ScopingBriefBody({
   const inScope = sd?.scopeItems?.filter((item) => item.inScope) ?? [];
   const outOfScope = sd?.scopeItems?.filter((item) => !item.inScope) ?? [];
   const totalHours = team.reduce((sum, t) => sum + (t.totalHours || 0), 0);
+  const hasTimeline =
+    milestones.some((m) => m.startDate && m.endDate) ||
+    team.some((t) => t.startDate && t.endDate);
 
   return (
-    <div className={presenting ? "space-y-6" : "space-y-5"}>
+    <div className={presenting ? REVEAL_CLASS + " space-y-6" : "space-y-5"}>
       {/* Timeline */}
       <div className="space-y-2">
         <SubHeading
@@ -346,38 +437,15 @@ export function ScopingBriefBody({
                 </span>
               </div>
             ))}
+            {hasTimeline && (
+              /* Zoom keeps the Gantt legible from the back of the room */
+              <div className={presenting ? "p-3 [zoom:1.15]" : "p-3"}>
+                <MilestoneGantt milestones={milestones} team={team} />
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-xs text-muted/40">No milestones recorded.</p>
-        )}
-      </div>
-
-      {/* Scope */}
-      <div className="space-y-2">
-        <SubHeading icon={ListChecks} presenting={presenting}>
-          Scope Boundaries
-        </SubHeading>
-        {inScope.length + outOfScope.length > 0 ? (
-          <div className="grid gap-1.5 sm:grid-cols-2">
-            {[...inScope, ...outOfScope].map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center gap-2 border border-border bg-surface px-3 py-1.5"
-              >
-                <span
-                  className={`${presenting ? "text-sm" : "text-xs"} ${
-                    item.inScope
-                      ? "text-success"
-                      : "text-muted/50 line-through"
-                  }`}
-                >
-                  {item.label}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-muted/40">No scope items recorded.</p>
         )}
       </div>
 
@@ -437,6 +505,33 @@ export function ScopingBriefBody({
           </div>
         ) : (
           <p className="text-xs text-muted/40">No team members recorded.</p>
+        )}
+      </div>
+
+      {/* Scope */}
+      <div className="space-y-2">
+        <SubHeading icon={ListChecks} presenting={presenting}>
+          Scope Boundaries
+        </SubHeading>
+        {inScope.length + outOfScope.length > 0 ? (
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            {[...inScope, ...outOfScope].map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center gap-2 border border-border bg-surface px-3 py-1.5"
+              >
+                <span
+                  className={`${presenting ? "text-sm" : "text-xs"} ${
+                    item.inScope ? "text-success" : "text-muted/50 line-through"
+                  }`}
+                >
+                  {item.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted/40">No scope items recorded.</p>
         )}
       </div>
 

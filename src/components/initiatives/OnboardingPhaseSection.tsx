@@ -10,7 +10,6 @@ import {
   getOnboardingProgress,
   isOnboardingPhaseUnlocked,
   type AbsenceEntry,
-  type MeetingCadenceItem,
   type OnboardingData,
   type OnboardingTaskId,
   type SetupTaskStatus,
@@ -22,8 +21,8 @@ import { WorkspaceLinksCard } from "./onboarding/WorkspaceLinksCard";
 import { ToolAccessTask } from "./onboarding/ToolAccessTask";
 import { MeetingCadenceTask } from "./onboarding/MeetingCadenceTask";
 import { AbsenceLogTask } from "./onboarding/AbsenceLogTask";
-import { ScopeSignoffTask } from "./onboarding/ScopeSignoffTask";
 import { BacklogTask } from "./onboarding/BacklogTask";
+import { AllClearTask } from "./onboarding/AllClearTask";
 
 import {
   completeOnboardingTask,
@@ -71,19 +70,20 @@ export function OnboardingPhaseSection({
     data: Record<string, unknown>,
     options?: { complete?: boolean },
   ) => {
+    const isDraft = options?.complete === false;
     setTaskError(null);
-    setPendingTask(taskId);
+    if (!isDraft) setPendingTask(taskId);
     try {
       const formData = new FormData();
       formData.set("taskId", taskId);
       formData.set("data", JSON.stringify(data));
-      if (options?.complete === false) formData.set("complete", "0");
+      if (isDraft) formData.set("complete", "0");
       const result = await completeOnboardingTask(initiative.id, formData);
       if (result.error) setTaskError(result.error);
     } catch {
       setTaskError("Could not save this item. Try again.");
     } finally {
-      setPendingTask(null);
+      if (!isDraft) setPendingTask(null);
     }
   };
 
@@ -147,8 +147,6 @@ export function OnboardingPhaseSection({
         </p>
       )}
 
-      {pendingTask && <p className="text-xs text-muted">Saving…</p>}
-
       <PhaseSectionStack>
         <BriefingDeck
           initiative={initiative}
@@ -207,6 +205,7 @@ export function OnboardingPhaseSection({
                 lockHint={lockHint}
                 forceOpen={forceOpenTask === task.id ? forceOpenSeq : undefined}
                 completing={pendingTask === task.id}
+                stayOpenOnComplete={task.id === "absences"}
                 onMarkComplete={
                   readOnly || locked
                     ? undefined
@@ -293,12 +292,7 @@ function renderActionTask(
         <MeetingCadenceTask
           data={onboardingData.meetingCadence}
           readOnly={readOnly}
-          onSave={(meetings: MeetingCadenceItem[]) =>
-            onRun("meeting-cadence", { meetings }, { complete: false })
-          }
-          onComplete={(meetings: MeetingCadenceItem[]) =>
-            onRun("meeting-cadence", { meetings })
-          }
+          onComplete={() => onRun("meeting-cadence", {})}
         />
       );
     case "absences":
@@ -317,18 +311,6 @@ function renderActionTask(
           }) => onRun("absences", payload)}
         />
       );
-    case "scope-signoff":
-      return (
-        <ScopeSignoffTask
-          data={onboardingData.scopeSignoff}
-          scopeItems={initiative.scopingData?.scopeItems ?? []}
-          readOnly={readOnly}
-          onSave={(payload) =>
-            onRun("scope-signoff", payload, { complete: false })
-          }
-          onComplete={(payload) => onRun("scope-signoff", payload)}
-        />
-      );
     case "backlog":
       return (
         <BacklogTask
@@ -339,6 +321,14 @@ function renderActionTask(
           }
           readOnly={readOnly}
           onComplete={() => onRun("backlog", {})}
+        />
+      );
+    case "all-clear":
+      return (
+        <AllClearTask
+          data={onboardingData.allClear ?? { status: "pending" }}
+          readOnly={readOnly}
+          onComplete={() => onRun("all-clear", {})}
         />
       );
     default:

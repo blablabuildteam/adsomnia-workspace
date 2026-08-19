@@ -281,9 +281,20 @@ export function BriefingDeck({
             role="dialog"
             aria-modal="true"
             aria-label="Kickoff briefing"
-            className="fixed inset-0 z-[100] flex flex-col bg-background"
+            className="animate-fade-in fixed inset-0 z-[100] flex flex-col bg-background"
           >
-            <header className="flex items-center justify-between gap-4 border-b border-border px-5 py-4">
+            <header className="relative flex items-center justify-between gap-4 border-b border-border px-5 py-4">
+              {pendingTask === current.taskId && (
+                <span
+                  aria-hidden
+                  className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden"
+                >
+                  <span
+                    className="briefing-loading-bar block h-full w-1/4"
+                    style={{ backgroundColor: ACCENT }}
+                  />
+                </span>
+              )}
               <div className="min-w-0">
                 <p className="font-display text-[10px] font-bold uppercase tracking-[0.25em] text-muted">
                   {initiative.ticketId} · Kickoff Briefing
@@ -303,17 +314,25 @@ export function BriefingDeck({
             </header>
 
             <div className="flex-1 overflow-y-auto px-5 py-8 sm:px-8 sm:py-12">
-              <div className="mx-auto w-full max-w-4xl">
+              {/* Keyed on the slide so the staged reveal replays on every move */}
+              <div key={current.taskId} className="mx-auto w-full max-w-4xl">
                 <p
-                  className="font-display text-xs font-bold uppercase tracking-[0.35em]"
+                  className="briefing-slide-eyebrow font-display text-xs font-bold uppercase tracking-[0.35em]"
                   style={{ color: ACCENT }}
                 >
                   Phase {String(current.number).padStart(2, "0")} ·{" "}
                   {current.stage}
                 </p>
-                <h3 className="mt-2 font-display text-3xl font-extrabold uppercase leading-tight tracking-tight sm:text-4xl">
+                <h3 className="briefing-slide-title mt-2 font-display text-3xl font-extrabold uppercase leading-tight tracking-tight sm:text-4xl">
                   {current.title}
                 </h3>
+                <div
+                  aria-hidden
+                  className="briefing-slide-rule mt-5 h-px w-full"
+                  style={{
+                    background: `linear-gradient(to right, ${ACCENT}, ${ACCENT}00)`,
+                  }}
+                />
                 <div className="mt-8">
                   <current.Body initiative={initiative} presenting />
                 </div>
@@ -336,16 +355,18 @@ export function BriefingDeck({
                   <span
                     key={block.taskId}
                     aria-hidden
-                    className="h-1 w-8 transition-colors"
-                    style={{
-                      backgroundColor:
-                        index === slide
-                          ? ACCENT
-                          : isReviewed(data, block.dataKey)
-                            ? "#22C55E"
-                            : "rgb(255 255 255 / 0.12)",
-                    }}
-                  />
+                    className="h-1 w-8 bg-white/[0.12]"
+                  >
+                    {(index === slide || isReviewed(data, block.dataKey)) && (
+                      <span
+                        key={index === slide ? "active" : "reviewed"}
+                        className="briefing-progress-fill block h-full w-full"
+                        style={{
+                          backgroundColor: index === slide ? ACCENT : "#22C55E",
+                        }}
+                      />
+                    )}
+                  </span>
                 ))}
                 <span className="ml-2 font-display text-[10px] font-bold uppercase tracking-wide tabular-nums text-muted">
                   {slide + 1} / {BLOCKS.length}

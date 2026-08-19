@@ -572,8 +572,8 @@ export type OnboardingTaskId =
   | "tool-access"
   | "meeting-cadence"
   | "absences"
-  | "scope-signoff"
-  | "backlog";
+  | "backlog"
+  | "all-clear";
 
 /** Briefing blocks Coen walks the team through before the action items. */
 export type BriefingReviewData = {
@@ -600,13 +600,45 @@ export type MeetingCadenceData = {
   completedAt?: string;
 };
 
+export type AbsenceKind = "period" | "day";
+
+export const WEEKDAYS = [
+  { id: "monday", label: "Monday" },
+  { id: "tuesday", label: "Tuesday" },
+  { id: "wednesday", label: "Wednesday" },
+  { id: "thursday", label: "Thursday" },
+  { id: "friday", label: "Friday" },
+  { id: "saturday", label: "Saturday" },
+  { id: "sunday", label: "Sunday" },
+] as const;
+
+export type WeekdayId = (typeof WEEKDAYS)[number]["id"];
+
 export type AbsenceEntry = {
   id: string;
   name: string;
+  /** `day` = a recurring weekday off; `period` = an OOO range. Inferred when missing. */
+  kind?: AbsenceKind;
+  /** Recurring weekday for `kind: "day"`, e.g. every Friday. */
+  weekday?: WeekdayId | string;
   startDate?: string;
   endDate?: string;
   note?: string;
 };
+
+export function absenceKind(entry: AbsenceEntry): AbsenceKind {
+  if (entry.kind === "day" || entry.kind === "period") return entry.kind;
+  if (entry.weekday) return "day";
+  if (entry.startDate && entry.endDate && entry.startDate === entry.endDate) {
+    return "day";
+  }
+  return "period";
+}
+
+export function weekdayLabel(weekday?: string): string | null {
+  if (!weekday) return null;
+  return WEEKDAYS.find((day) => day.id === weekday)?.label ?? weekday;
+}
 
 export type AbsenceLogData = {
   status: SetupTaskStatus;
@@ -630,6 +662,11 @@ export type BacklogData = {
   completedAt?: string;
 };
 
+export type AllClearData = {
+  status: SetupTaskStatus;
+  completedAt?: string;
+};
+
 /** Links captured during onboarding itself, not during Project Setup. */
 export type OnboardingLinks = {
   slackChannelUrl?: string;
@@ -645,6 +682,7 @@ export type OnboardingData = {
   absences: AbsenceLogData;
   scopeSignoff: ScopeSignoffData;
   backlog: BacklogData;
+  allClear?: AllClearData;
   links?: OnboardingLinks;
 };
 
@@ -684,20 +722,14 @@ export const ONBOARDING_TASKS: {
   {
     id: "meeting-cadence",
     dataKey: "meetingCadence",
-    label: "Book Recurring Team Meetings",
+    label: "Book Recurring Status Sync",
     phase: "actions",
     logo: "/logos/google-calendar.png",
   },
   {
     id: "absences",
     dataKey: "absences",
-    label: "Log Holidays & Absences",
-    phase: "actions",
-  },
-  {
-    id: "scope-signoff",
-    dataKey: "scopeSignoff",
-    label: "Confirm Scope & Definition of Done",
+    label: "Log OOO & Days Off",
     phase: "actions",
   },
   {
@@ -706,6 +738,12 @@ export const ONBOARDING_TASKS: {
     label: "Prioritize First-Phase Backlog",
     phase: "actions",
     logo: "/logos/jira.png",
+  },
+  {
+    id: "all-clear",
+    dataKey: "allClear",
+    label: "All Clear",
+    phase: "actions",
   },
 ];
 
@@ -724,12 +762,6 @@ export function onboardingTaskIdToDataKey(
   return found?.dataKey ?? (taskId as keyof OnboardingData);
 }
 
-export const DEFAULT_MEETING_CADENCE: { id: string; label: string }[] = [
-  { id: "weekly-sync", label: "Weekly status sync with Head of Production" },
-  { id: "demo", label: "Demo / delivery review" },
-  { id: "escalation", label: "Escalation session" },
-];
-
 export function createDefaultOnboardingData(): OnboardingData {
   return {
     briefingInitiative: { status: "pending" },
@@ -738,11 +770,12 @@ export function createDefaultOnboardingData(): OnboardingData {
     toolAccess: { status: "pending" },
     meetingCadence: {
       status: "pending",
-      meetings: DEFAULT_MEETING_CADENCE.map((m) => ({ ...m, booked: false })),
+      meetings: [],
     },
     absences: { status: "pending", entries: [] },
     scopeSignoff: { status: "pending" },
     backlog: { status: "pending" },
+    allClear: { status: "pending" },
     links: {},
   };
 }
@@ -809,31 +842,19 @@ export function validateOnboardingTask(
   taskId: OnboardingTaskId,
   data: Record<string, unknown>,
 ): string | null {
-  if (taskId === "meeting-cadence") {
-    const meetings = Array.isArray(data.meetings)
-      ? (data.meetings as MeetingCadenceItem[])
-      : [];
-    if (meetings.length === 0) {
-      return "Add at least one recurring meeting before confirming.";
-    }
-    if (meetings.some((m) => !m.label?.trim())) {
-      return "Every meeting needs a name.";
-    }
-    if (meetings.some((m) => !m.booked)) {
-      return "Mark every meeting as booked before confirming.";
-    }
-  }
-
   if (taskId === "absences") {
     const entries = Array.isArray(data.entries)
       ? (data.entries as AbsenceEntry[])
       : [];
-    if (data.noneReported === true) return null;
-    if (entries.length === 0) {
-      return "Log at least one absence, or confirm there are none planned.";
-    }
-    if (entries.some((e) => !e.name?.trim() || !e.startDate || !e.endDate)) {
-      return "Every absence needs a name, a start date, and an end date.";
+    if (data.noneReported === true || entries.length === 0) return null;
+    if (
+      entries.some((e) => {
+        if (!e.name?.trim()) return true;
+        if (absenceKind(e) === "day") return !e.weekday;
+        return !e.startDate || !e.endDate;
+      })
+    ) {
+      return "Every entry needs a name. Weekly days off need a weekday; OOO periods need a start and an end.";
     }
   }
 

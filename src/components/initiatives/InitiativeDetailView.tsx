@@ -25,6 +25,7 @@ import { PhaseCard } from "./PhaseCard";
 import { IdeaDetailsSection } from "./IdeaDetailsSection";
 import { DownloadPdfButton } from "./DownloadPdfButton";
 import { ShareButton } from "./ShareButton";
+import { CurrentPhaseBar } from "./CurrentPhaseBar";
 import { FloatingDetailBar } from "./FloatingDetailBar";
 import {
   createDefaultOnboardingData,
@@ -121,28 +122,6 @@ function StageStepper({ currentStageId }: { currentStageId: string }) {
     </ol>
   );
 }
-
-const STATUS_BADGE_STYLES: Record<string, string> = {
-  submitted: "border-foreground bg-foreground text-background",
-  approved: "border-success bg-success/10 text-success",
-  rejected: "border-btr bg-btr/10 text-btr",
-  "on-hold": "border-hn bg-hn/10 text-hn",
-  feedback: "border-feedback bg-feedback/10 text-feedback",
-  ready: "border-success bg-success/10 text-success",
-  "ready-production": "border-success bg-success/10 text-success",
-  draft: "border-border bg-surface text-muted",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  submitted: "Review",
-  approved: "Approved",
-  rejected: "Rejected",
-  "on-hold": "On Hold",
-  feedback: "Feedback",
-  ready: "Ready for Onboarding",
-  "ready-production": "Ready for Production",
-  draft: "Draft",
-};
 
 type Props = {
   initiative: InitiativeWithUsers;
@@ -352,17 +331,20 @@ export function InitiativeDetailView({
   const onboardingReady =
     onboardingIsCurrent && getOnboardingProgress(onboardingData).allDone;
 
-  const statusKey =
-    ideaHasFeedback || validationHasFeedback || goNoGoHasFeedback
-      ? "feedback"
-      : onboardingReady
-        ? "ready-production"
-        : setupReady
+  const currentPhaseBarStatus: "current" | "review" | "ready" | null =
+    goNoGoIsCurrent
+      ? goNoGoStatus === "review"
+        ? "review"
+        : "current"
+      : setupIsCurrent
+        ? setupReady
           ? "ready"
-          : initiative.status;
-  const statusStyle =
-    STATUS_BADGE_STYLES[statusKey] ?? STATUS_BADGE_STYLES.draft;
-  const statusLabel = STATUS_LABELS[statusKey] ?? initiative.status;
+          : "current"
+        : onboardingIsCurrent
+          ? onboardingReady
+            ? "ready"
+            : "current"
+          : null;
 
   return (
     <div className="relative w-full flex-1">
@@ -382,9 +364,10 @@ export function InitiativeDetailView({
                   {initiative.ticketId}
                 </span>
                 <span
-                  className={`border px-2.5 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide ${statusStyle}`}
+                  className="font-display text-[10px] font-bold uppercase tracking-wide"
+                  style={{ color: getStageColor(initiative.currentStage) }}
                 >
-                  {statusLabel}
+                  {stage?.name ?? initiative.currentStage}
                 </span>
               </div>
               <h1 className="font-display mt-3 text-3xl font-extrabold uppercase leading-tight tracking-tight sm:text-4xl">
@@ -403,7 +386,6 @@ export function InitiativeDetailView({
           className={ENTER_CLASS}
           style={enterStyle(70)}
           initiative={initiative}
-          stageName={stage?.name ?? initiative.currentStage}
           goDate={
             goNoGoDecision?.decision === "approved"
               ? goNoGoDecision.createdAt
@@ -638,6 +620,20 @@ export function InitiativeDetailView({
           />
         )}
       </div>
+      {currentNum >= 4 && currentPhaseBarStatus && (
+        <CurrentPhaseBar
+          stageId={initiative.currentStage}
+          stageNumber={stage?.number ?? currentNum}
+          stageName={stage?.name ?? initiative.currentStage}
+          stageColor={getStageColor(initiative.currentStage)}
+          status={currentPhaseBarStatus}
+          readyLabel={
+            onboardingIsCurrent
+              ? "Ready for Production"
+              : "Ready for Onboarding"
+          }
+        />
+      )}
     </div>
   );
 }

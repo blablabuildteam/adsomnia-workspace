@@ -1,33 +1,31 @@
 "use client";
 
 import {
-  Calendar,
   ChevronDown,
   ExternalLink,
 } from "lucide-react";
 import { useState, type CSSProperties } from "react";
-import { PARTIES, getStageColor } from "@/data/workflow";
+import { PARTIES } from "@/data/workflow";
 import { MilestoneGantt } from "./MilestoneGantt";
 import { formatEuro, summarizeTeamCost } from "@/data/role-rates";
 import type { InitiativeWithUsers } from "@/lib/queries";
 import {
   BUSINESS_VALUE_TYPES,
   IMPACT_MAX,
-  IMPACT_MIN,
   formatBusinessValueSummary,
   impactScoreLabel,
   isBusinessValueData,
   parseImpactScore,
-  type BusinessValueType,
   type SetupData,
   type ValidationData,
 } from "@/lib/validation-data";
 
-const VALUE_COLORS: Record<BusinessValueType, string> = {
-  speed: "#38BDF8",
-  "cost-efficiency": "#CEFF00",
-  growth: "#22C55E",
-};
+/** Gray → white. Higher scores read brighter. */
+function scoreTone(score: number, max = IMPACT_MAX): string {
+  const t = Math.min(1, Math.max(0, score / max));
+  const v = Math.round(90 + t * 165);
+  return `rgb(${v} ${v} ${v})`;
+}
 
 const PRIORITY_META: Record<string, { color: string; hint: string }> = {
   Now: { color: "#FF3B1F", hint: "Urgent / blocking" },
@@ -46,13 +44,27 @@ const STAGE_NUM: Record<string, number> = {
   production: 7,
 };
 
-function fmtDate(iso: string) {
+function parseDay(iso: string) {
   const date = new Date(iso.includes("T") ? iso : `${iso}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return iso;
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function fmtDate(iso: string) {
+  const date = parseDay(iso);
+  if (!date) return iso;
   return date.toLocaleDateString(undefined, {
     day: "numeric",
     month: "short",
   });
+}
+
+/** Inclusive calendar span, rounded up to whole weeks. */
+function weeksInPeriod(startIso: string, endIso: string): number | null {
+  const start = parseDay(startIso);
+  const end = parseDay(endIso);
+  if (!start || !end || end < start) return null;
+  const days = Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+  return Math.max(1, Math.ceil(days / 7));
 }
 
 /** Hero stat — big display number with a small label above it. */
@@ -129,11 +141,6 @@ function BusinessValueVisual({
         {value.types.map((type) => {
           const meta = BUSINESS_VALUE_TYPES.find((t) => t.id === type);
           const score = parseImpactScore(value.expectations[type]);
-          const color = VALUE_COLORS[type];
-          const pct =
-            score !== null
-              ? ((score - IMPACT_MIN) / (IMPACT_MAX - IMPACT_MIN)) * 100
-              : 0;
           return (
             <div key={type}>
               <div className="mb-1 flex items-baseline justify-between gap-2">
@@ -145,7 +152,7 @@ function BusinessValueVisual({
                     <>
                       <span
                         className="font-display text-sm font-extrabold tabular-nums leading-none"
-                        style={{ color }}
+                        style={{ color: scoreTone(score) }}
                       >
                         {score}
                       </span>
@@ -167,8 +174,9 @@ function BusinessValueVisual({
                       key={i}
                       className="h-1.5 flex-1"
                       style={{
-                        backgroundColor: filled ? color : "rgb(255 255 255 / 0.08)",
-                        opacity: filled ? 0.35 + (i / IMPACT_MAX) * 0.65 : 1,
+                        backgroundColor: filled
+                          ? scoreTone(i + 1)
+                          : "rgb(255 255 255 / 0.08)",
                       }}
                     />
                   );
@@ -196,7 +204,7 @@ function ToolChip({
     <>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={logo} alt="" className="size-3.5 shrink-0 object-contain" />
-      <span className="max-w-[220px] truncate">{name}</span>
+      <span>{name}</span>
       {href && (
         <ExternalLink className="size-3 shrink-0 text-muted/50 transition-colors group-hover/chip:text-foreground" />
       )}
@@ -221,7 +229,6 @@ function ToolChip({
 
 type Props = {
   initiative: InitiativeWithUsers;
-  stageName: string;
   goDate?: Date | null;
   goApprover?: string | null;
   className?: string;
@@ -230,7 +237,6 @@ type Props = {
 
 export function DetailsQuickView({
   initiative,
-  stageName,
   goDate,
   goApprover,
   className,
@@ -238,7 +244,6 @@ export function DetailsQuickView({
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const currentNum = STAGE_NUM[initiative.currentStage] ?? 1;
-  const stageColor = getStageColor(initiative.currentStage);
 
   const vd = initiative.validationData;
   const sd = initiative.scopingData;
@@ -261,6 +266,14 @@ export function DetailsQuickView({
   const dateRange =
     sortedDates.length >= 2
       ? `${fmtDate(sortedDates[0])} – ${fmtDate(sortedDates[sortedDates.length - 1])}`
+      : null;
+  const weekCount =
+    sortedDates.length >= 2
+      ? weeksInPeriod(sortedDates[0], sortedDates[sortedDates.length - 1])
+      : null;
+  const weekLabel =
+    weekCount != null
+      ? `${weekCount} week${weekCount !== 1 ? "s" : ""}`
       : null;
 
   const businessValueSummary = formatBusinessValueSummary(vd?.businessValue);
@@ -296,31 +309,9 @@ export function DetailsQuickView({
       className={["mb-10", className].filter(Boolean).join(" ")}
       style={style}
     >
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-foreground/10 py-3">
-        <div className="flex items-center gap-3">
-          <h3 className="font-display text-[11px] font-bold uppercase tracking-[0.2em] text-foreground/50">
-            Current Phase:
-          </h3>
-          <span
-            className="font-display text-[10px] font-bold uppercase tracking-wide"
-            style={{ color: stageColor }}
-          >
-            {stageName}
-          </span>
-        </div>
-        {hasGoNoGo && goDate && (
-          <span className="inline-flex items-center gap-1.5 text-[10px] text-muted/50">
-            <Calendar className="size-3" />
-            GO {goDate.toLocaleDateString("en-US", { dateStyle: "medium" })}
-            {goApprover && ` · ${goApprover}`}
-          </span>
-        )}
-      </div>
-
       {/* Hero stats — from Scoping onward. Priority leads; t-shirt sizing drops out. */}
       {hasScoping && (
-        <div className="grid divide-y divide-foreground/[0.06] border-t border-foreground/[0.06] sm:grid-cols-2 sm:divide-y-0 sm:divide-x lg:grid-cols-4">
+        <div className="grid divide-y divide-foreground/10 border-t border-foreground/10 sm:grid-cols-2 sm:divide-y-0 sm:divide-x lg:grid-cols-4">
           <Hero
             label="Priority"
             value={priority ?? "TBD"}
@@ -331,9 +322,14 @@ export function DetailsQuickView({
             label="Timeline"
             value={dateRange ?? "TBD"}
             sub={
-              milestones.length > 0
-                ? `${milestones.length} epic${milestones.length !== 1 ? "s" : ""}`
-                : undefined
+              [
+                weekLabel,
+                milestones.length > 0
+                  ? `${milestones.length} epic${milestones.length !== 1 ? "s" : ""}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ") || undefined
             }
           />
           <Hero
@@ -357,7 +353,7 @@ export function DetailsQuickView({
       {hasValidation && (initiative.problemStatement ||
         vd?.solutionDirection ||
         businessValueSummary) && (
-        <div className="grid divide-y divide-foreground/[0.06] border-t border-foreground/[0.06] md:grid-cols-3 md:divide-y-0 md:divide-x">
+        <div className="grid divide-y divide-foreground/10 border-t border-foreground/10 md:grid-cols-3 md:divide-y-0 md:divide-x">
           <Narrative label="Problem" text={initiative.problemStatement} />
           <Narrative label="Solution" text={vd?.solutionDirection} />
           {vd?.businessValue ? (
@@ -370,7 +366,7 @@ export function DetailsQuickView({
 
       {/* Workspace links — from Setup onward */}
       {hasTools && (
-        <div className="flex flex-wrap items-center gap-2 border-t border-foreground/[0.06] px-5 py-3">
+        <div className="flex flex-wrap items-center gap-4 border-t border-foreground/10 py-3">
           <span className="mr-1 font-display text-[9px] font-bold uppercase tracking-[0.25em] text-foreground/30">
             Workspace
           </span>
@@ -395,7 +391,12 @@ export function DetailsQuickView({
       )}
 
       {/* Footer meta — one slim line */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 border-t border-foreground/[0.06] px-5 py-2.5 text-[10px] text-muted/60">
+      <div
+        className={[
+          "flex flex-wrap items-center gap-x-5 gap-y-1.5 border-t border-foreground/10 py-2.5 text-[10px] text-muted/60",
+          hasExpandableContent ? "" : "border-b",
+        ].join(" ")}
+      >
         <span>
           <span className="text-foreground/30">Submitter</span>{" "}
           <span className="text-foreground/70">{initiative.submitter.name}</span>
@@ -412,6 +413,15 @@ export function DetailsQuickView({
               style={{ color: leadParty.color }}
             >
               {leadParty.label}
+            </span>
+          </span>
+        )}
+        {hasGoNoGo && goDate && (
+          <span>
+            <span className="text-foreground/30">GO</span>{" "}
+            <span className="text-foreground/70">
+              {goDate.toLocaleDateString("en-US", { dateStyle: "medium" })}
+              {goApprover && ` · ${goApprover}`}
             </span>
           </span>
         )}
@@ -455,7 +465,7 @@ export function DetailsQuickView({
             <div className="overflow-hidden">
               <div
                 className={[
-                  "space-y-4 border-t border-foreground/[0.06] px-5 py-4 transition-opacity duration-300 ease-out",
+                  "space-y-4 border-t border-foreground/10 py-4 transition-opacity duration-300 ease-out",
                   expanded ? "opacity-100" : "opacity-0",
                 ].join(" ")}
               >
@@ -508,7 +518,7 @@ export function DetailsQuickView({
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
-            className="group/expand flex w-full items-center justify-center gap-1.5 border-t border-foreground/[0.06] py-2 text-[10px] font-bold uppercase tracking-wide text-foreground/25 transition-colors hover:bg-foreground/[0.03] hover:text-foreground/50"
+            className="group/expand flex w-full items-center justify-center gap-1.5 border-t border-b border-foreground/10 py-2 text-[10px] font-bold uppercase tracking-wide text-foreground/25 transition-colors hover:text-foreground/50"
           >
             {expanded ? "Less" : "More"}
             <span
