@@ -497,6 +497,26 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
   animation: check-pop 220ms ease-out;
 }
 
+@keyframes chevron-hint-down {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  45% {
+    transform: translateY(3px);
+  }
+}
+
+@keyframes chevron-hint-up {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  45% {
+    transform: translateY(-3px);
+  }
+}
+
 /* Card grid enter — staggered fade + rise when filter results change */
 @keyframes card-enter {
   from {

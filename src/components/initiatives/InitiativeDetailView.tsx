@@ -18,7 +18,7 @@ import { CommentSection } from "./CommentSection";
 import { ValidationPhaseSection } from "./ValidationPhaseSection";
 import { ScopingPhaseSection } from "./ScopingPhaseSection";
 import { SetupPhaseSection } from "./SetupPhaseSection";
-import { ProjectBriefCard } from "./ProjectBriefCard";
+import { DetailsQuickView } from "./DetailsQuickView";
 import { PhaseCard } from "./PhaseCard";
 import { IdeaDetailsSection } from "./IdeaDetailsSection";
 import { DownloadPdfButton } from "./DownloadPdfButton";
@@ -366,68 +366,29 @@ export function InitiativeDetailView({
           </div>
         </header>
 
-        {/* Details — horizontal metadata bar (replaces pipeline stepper) */}
-        <div className="mb-8 border border-border bg-surface">
-          <h3 className="border-b border-border px-4 py-3 font-display text-xs font-bold uppercase tracking-wide">
-            Details
-          </h3>
-          <div className="grid divide-border sm:grid-cols-2 lg:grid-cols-4 lg:divide-x">
-            <div className="border-b border-border px-4 py-3 lg:border-b-0">
-              <span className="text-xs text-muted">Stage</span>
-              <p
-                className="font-display mt-1 text-xs font-bold uppercase tracking-wide"
-                style={{ color: getStageColor(initiative.currentStage) }}
-              >
-                {stage?.name ?? initiative.currentStage}
-              </p>
-            </div>
-            <div className="border-b border-border px-4 py-3 sm:border-b-0 lg:border-b-0">
-              <span className="text-xs text-muted">Submitter</span>
-              <p className="mt-1 text-xs text-foreground">
-                {initiative.submitter.name}
-              </p>
-            </div>
-            <div className="border-b border-border px-4 py-3 lg:border-b-0">
-              <span className="text-xs text-muted">Sponsor</span>
-              <p className="mt-1 text-xs text-foreground">
-                {initiative.sponsor.name}
-              </p>
-            </div>
-            <div className="px-4 py-3">
-              <span className="text-xs text-muted">Last updated</span>
-              <p className="mt-1 text-xs text-foreground">
-                {initiative.updatedAt.toLocaleString("en-US", {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                })}
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* Quick View — grows as phases fill */}
+        <DetailsQuickView
+          initiative={initiative}
+          stageName={stage?.name ?? initiative.currentStage}
+          statusLabel={statusLabel}
+          statusStyle={statusStyle}
+          goDate={
+            goNoGoDecision?.decision === "approved"
+              ? goNoGoDecision.createdAt
+              : null
+          }
+          goApprover={
+            goNoGoDecision?.decision === "approved"
+              ? goNoGoDecision.approverName
+              : null
+          }
+        />
 
         <div id="detail-header-sentinel" aria-hidden="true" />
 
         {SHOW_PIPELINE_STEPPER && (
           <div className="mb-8 border border-border bg-surface-elevated p-5">
             <StageStepper currentStageId={initiative.currentStage} />
-          </div>
-        )}
-
-        {showSetup && (
-          <div className="mb-6">
-            <ProjectBriefCard
-              initiative={initiative}
-              goDate={
-                goNoGoDecision?.decision === "approved"
-                  ? goNoGoDecision.createdAt
-                  : null
-              }
-              goApprover={
-                goNoGoDecision?.decision === "approved"
-                  ? goNoGoDecision.approverName
-                  : null
-              }
-            />
           </div>
         )}
 

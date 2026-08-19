@@ -190,9 +190,17 @@ export function SetupTaskCard({
               </span>
             )}
           </span>
-          <ChevronDown
-            className={`size-3.5 shrink-0 text-muted transition-transform duration-300 ease-out group-hover/step:text-foreground ${open ? "rotate-180" : ""}`}
-          />
+          <span
+            className={
+              open
+                ? "inline-flex group-hover/step:animate-[chevron-hint-up_480ms_ease-in-out]"
+                : "inline-flex group-hover/step:animate-[chevron-hint-down_480ms_ease-in-out]"
+            }
+          >
+            <ChevronDown
+              className={`size-3.5 shrink-0 text-muted transition-transform duration-300 ease-out group-hover/step:text-foreground ${open ? "rotate-180" : ""}`}
+            />
+          </span>
         </div>
       </div>
       <div

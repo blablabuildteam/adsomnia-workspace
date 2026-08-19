@@ -21,8 +21,6 @@ import {
   isBusinessValueData,
   parseImpactScore,
 } from "@/lib/validation-data";
-import { CornerTicks } from "@/components/ui/CornerTicks";
-
 function Stat({
   icon: Icon,
   label,
@@ -86,9 +84,7 @@ export function ProjectBriefCard({
   const businessValueSummary = formatBusinessValueSummary(vd?.businessValue);
 
   return (
-    <div className="relative border border-border">
-      <CornerTicks />
-
+    <div>
       {/* Header */}
       <div className="flex items-center justify-between gap-4 border-b border-border bg-surface-elevated px-4 py-3 sm:px-5">
         <div className="flex items-center gap-3">

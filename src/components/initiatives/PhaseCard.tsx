@@ -13,10 +13,12 @@ const STATUS_COLORS = {
 
 /**
  * Phase wrapper with four visual states:
- * - "complete": collapsed by default, neutral chrome, dimmed body
- * - "current": open by default, stage-color accent + yellow "In Progress" badge
+ * - "complete": collapsed by default, dimmed body
+ * - "current": open by default, yellow "In Progress" badge
  * - "review": like current, but badged "Review" in blue
  * - "ready": like current, but badged "Ready for Onboarding" in green
+ * Closed cards show a left accent in the stage color; open cards swap that
+ * for corner ticks in the same color.
  * All use the same summary layout (status badge + chevron) so labels align.
  */
 export function PhaseCard({
@@ -39,29 +41,28 @@ export function PhaseCard({
   const [open, setOpen] = useState(isCurrent);
 
   return (
-    <div
-      className="group/phase relative border border-border"
-      style={
-        isCurrent
-          ? { borderLeftWidth: 3, borderLeftColor: color }
-          : undefined
-      }
-    >
-      <CornerTicks complete={!isCurrent} />
+    <div className="relative border border-border">
+      <div
+        aria-hidden
+        className={`pointer-events-none absolute inset-y-0 left-0 z-[1] w-[3px] transition-opacity duration-300 ${
+          open ? "opacity-0" : "opacity-100"
+        }`}
+        style={{ backgroundColor: color }}
+      />
+      <CornerTicks
+        color={color}
+        className={`z-[2] ${open ? "opacity-100" : "opacity-0"}`}
+      />
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
         className={[
-          "flex w-full items-center justify-between gap-4 px-4 py-4 text-left sm:px-5",
+          "group/phase flex w-full items-center justify-between gap-4 px-4 py-4 text-left sm:px-5",
+          open ? "border-b border-border" : "",
           isCurrent
-            ? "border-b border-border bg-surface-elevated"
+            ? "bg-surface-elevated"
             : "bg-surface transition-colors hover:bg-surface-elevated",
         ].join(" ")}
-        style={
-          isCurrent
-            ? { borderTopWidth: 3, borderTopColor: color }
-            : undefined
-        }
       >
         <div>
           <p
@@ -129,22 +130,42 @@ export function PhaseCard({
               Complete
             </span>
           )}
-          <ChevronDown
-            className={`size-4 text-muted transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-          />
+          <span
+            className={
+              open
+                ? "inline-flex group-hover/phase:animate-[chevron-hint-up_480ms_ease-in-out]"
+                : "inline-flex group-hover/phase:animate-[chevron-hint-down_480ms_ease-in-out]"
+            }
+          >
+            <ChevronDown
+              className={`size-4 text-muted transition-transform duration-300 ease-out ${
+                open ? "rotate-180" : ""
+              }`}
+            />
+          </span>
         </div>
       </button>
-      {open && (
-        <div
-          className={
-            isCurrent
-              ? undefined
-              : "border-t border-border opacity-70 transition-opacity hover:opacity-100"
-          }
-        >
-          {children}
+      <div
+        className={[
+          "grid transition-[grid-template-rows] duration-300 ease-out",
+          open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+        ].join(" ")}
+      >
+        <div className="overflow-hidden">
+          <div
+            className={[
+              "transition-opacity duration-300 ease-out",
+              open
+                ? isCurrent
+                  ? "opacity-100"
+                  : "opacity-70 hover:opacity-100"
+                : "opacity-0",
+            ].join(" ")}
+          >
+            {children}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
