@@ -126,7 +126,7 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: "Rejected",
   "on-hold": "On Hold",
   feedback: "Feedback",
-  ready: "Ready for Complete",
+  ready: "Ready for Onboarding",
   draft: "Draft",
 };
 

@@ -1117,6 +1117,7 @@ const VALID_TASK_IDS: SetupTaskId[] = [
   "jira-planning",
   "documentation",
   "kickoff-meeting",
+  "invite-team",
 ];
 
 /** Completes a single setup checklist task with provided data. */

@@ -16,7 +16,7 @@ const STATUS_COLORS = {
  * - "complete": collapsed by default, neutral chrome, dimmed body
  * - "current": open by default, stage-color accent + yellow "In Progress" badge
  * - "review": like current, but badged "Review" in blue
- * - "ready": like current, but badged "Ready for Complete" in green
+ * - "ready": like current, but badged "Ready for Onboarding" in green
  * All use the same summary layout (status badge + chevron) so labels align.
  */
 export function PhaseCard({
@@ -105,7 +105,7 @@ export function PhaseCard({
               }}
             >
               <Check className="size-3" />
-              Ready for Complete
+              Ready for Onboarding
             </span>
           ) : isCurrent ? (
             <span

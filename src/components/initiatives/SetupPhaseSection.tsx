@@ -21,6 +21,7 @@ import { JiraSetupTask } from "./setup/JiraSetupTask";
 import { JiraPlanningTask } from "./setup/JiraPlanningTask";
 import { DocsSetupTask } from "./setup/DocsSetupTask";
 import { KickoffMeetingTask } from "./setup/KickoffMeetingTask";
+import { InviteTeamTask } from "./setup/InviteTeamTask";
 
 import {
   completeSetupTask,
@@ -90,7 +91,7 @@ export function SetupPhaseSection({
     }
   };
 
-  const TASKS_NEEDING_INPUT: SetupTaskId[] = ["slack", "jira"];
+  const TASKS_NEEDING_INPUT: SetupTaskId[] = ["slack", "jira", "invite-team"];
 
   const handleMarkComplete = (taskId: SetupTaskId) => {
     const taskDef = SETUP_TASKS.find((t) => t.id === taskId);
@@ -335,6 +336,8 @@ function buildQuickCompletePayload(
       return { data: { linkedDocs: setupData.documentation.linkedDocs } };
     case "kickoff-meeting":
       return { data: { meetingDate: setupData.kickoffMeeting.meetingDate } };
+    case "invite-team":
+      return { data: {} };
     default:
       return { data: {} };
   }
@@ -430,6 +433,23 @@ function renderTaskContent(
           data={setupData.kickoffMeeting}
           readOnly={readOnly}
           onComplete={() => ctx.onComplete("kickoff-meeting", {})}
+        />
+      );
+    case "invite-team":
+      return (
+        <InviteTeamTask
+          data={setupData.inviteTeam ?? { status: "pending" }}
+          slackChannelName={
+            ctx.slackChannelName || setupData.slack.channelName
+          }
+          driveUrl={ctx.driveUrl || setupData.drive.driveUrl}
+          jiraBoardUrl={
+            ctx.jiraBoardUrl ||
+            setupData.jira.boardUrl ||
+            setupData.jira.projectUrl
+          }
+          readOnly={readOnly}
+          onComplete={() => ctx.onComplete("invite-team", {})}
         />
       );
     default:

@@ -303,7 +303,8 @@ export type SetupTaskId =
   | "planning"
   | "budget"
   | "kickoff-meeting"
-  | "kickoff-prep";
+  | "kickoff-prep"
+  | "invite-team";
 
 export type SlackSetupData = {
   status: SetupTaskStatus;
@@ -407,6 +408,11 @@ export type KickoffPrepData = {
   completedAt?: string;
 };
 
+export type InviteTeamData = {
+  status: SetupTaskStatus;
+  completedAt?: string;
+};
+
 export type SetupData = {
   slack: SlackSetupData;
   drive: DriveSetupData;
@@ -419,6 +425,7 @@ export type SetupData = {
   budget: BudgetConfirmData;
   kickoffMeeting: KickoffMeetingData;
   kickoffPrep: KickoffPrepData;
+  inviteTeam?: InviteTeamData;
 };
 
 export const SETUP_TASKS: {
@@ -435,6 +442,7 @@ export const SETUP_TASKS: {
   { id: "jira", dataKey: "jira", label: "Create Jira Board", phase: "A", logo: "/logos/jira.png" },
   { id: "jira-planning", dataKey: "jiraPlanning", label: "Set Up Jira Epic Planning", phase: "A", logo: "/logos/jira.png" },
   { id: "kickoff-meeting", dataKey: "kickoffMeeting", label: "Book Kickoff Meeting", phase: "C", logo: "/logos/google-calendar.png" },
+  { id: "invite-team", dataKey: "inviteTeam", label: "Invite Team to Tools", phase: "C" },
 ];
 
 export function setupTaskIdToDataKey(taskId: SetupTaskId): keyof SetupData {
@@ -498,6 +506,7 @@ export function createDefaultSetupData(
     budget: { status: "pending" },
     kickoffMeeting: { status: "pending" },
     kickoffPrep: { status: "pending" },
+    inviteTeam: { status: "pending" },
   };
 }
 
