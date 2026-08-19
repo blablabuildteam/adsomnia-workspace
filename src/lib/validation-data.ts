@@ -288,6 +288,253 @@ export function isScopingComplete(data: ScopingData | null | undefined): boolean
   return hasMilestones && hasTeam && hasImpact && hasScope;
 }
 
+/* ─── Project Setup Data (Phase 5) ─────────────────────── */
+
+export type SetupTaskStatus = "pending" | "in-progress" | "completed" | "skipped" | "error";
+
+export type SetupTaskId =
+  | "slack"
+  | "drive"
+  | "jira"
+  | "jira-planning"
+  | "documentation"
+  | "team"
+  | "scope"
+  | "planning"
+  | "budget"
+  | "kickoff-meeting"
+  | "kickoff-prep";
+
+export type SlackSetupData = {
+  status: SetupTaskStatus;
+  suggestedName: string;
+  channelName?: string;
+  completedAt?: string;
+};
+
+export type DriveSetupData = {
+  status: SetupTaskStatus;
+  suggestedName: string;
+  driveName?: string;
+  driveUrl?: string;
+  completedAt?: string;
+};
+
+export type JiraSetupData = {
+  status: SetupTaskStatus;
+  boardUrl?: string;
+  /** @deprecated Kept so older setup drafts still parse. */
+  projectUrl?: string;
+  workspace?: "adsomnia" | "btr" | "hn";
+  projectKey?: string;
+  projectName?: string;
+  projectId?: string;
+  template?: "scrum" | "kanban";
+  error?: string;
+  completedAt?: string;
+};
+
+export type JiraPlanningData = {
+  status: SetupTaskStatus;
+  notes?: string;
+  completedAt?: string;
+};
+
+export type SetupTeamMember = {
+  id: string;
+  name: string;
+  email?: string;
+  role: string;
+  party?: string;
+  totalHours: number;
+  hoursPerDay: number;
+  startDate?: string;
+  endDate?: string;
+};
+
+export type TeamSetupData = {
+  status: SetupTaskStatus;
+  members: SetupTeamMember[];
+  completedAt?: string;
+};
+
+export type DocsSetupData = {
+  status: SetupTaskStatus;
+  linkedDocs: Attachment[];
+  completedAt?: string;
+};
+
+export type ScopeConfirmData = {
+  status: SetupTaskStatus;
+  confirmedItems?: ScopingScopeItem[];
+  notes?: string;
+  completedAt?: string;
+};
+
+export type PlanningConfirmData = {
+  status: SetupTaskStatus;
+  confirmedMilestones?: ScopingMilestone[];
+  notes?: string;
+  completedAt?: string;
+};
+
+export type BudgetConfirmData = {
+  status: SetupTaskStatus;
+  originalBudget?: number;
+  adjustedBudget?: number;
+  notes?: string;
+  completedAt?: string;
+};
+
+export type KickoffMeetingData = {
+  status: SetupTaskStatus;
+  meetingDate?: string;
+  notes?: string;
+  completedAt?: string;
+};
+
+export type KickoffPrepData = {
+  status: SetupTaskStatus;
+  notes?: string;
+  completedAt?: string;
+};
+
+export type SetupData = {
+  slack: SlackSetupData;
+  drive: DriveSetupData;
+  jira: JiraSetupData;
+  jiraPlanning: JiraPlanningData;
+  documentation: DocsSetupData;
+  team: TeamSetupData;
+  scope: ScopeConfirmData;
+  planning: PlanningConfirmData;
+  budget: BudgetConfirmData;
+  kickoffMeeting: KickoffMeetingData;
+  kickoffPrep: KickoffPrepData;
+};
+
+export const SETUP_TASKS: {
+  id: SetupTaskId;
+  dataKey: keyof SetupData;
+  label: string;
+  phase: "A" | "B" | "C";
+  logo?: string;
+  optional?: boolean;
+}[] = [
+  { id: "slack", dataKey: "slack", label: "Create Slack Channel", phase: "A", logo: "/logos/slack.png" },
+  { id: "drive", dataKey: "drive", label: "Create Google Drive", phase: "A", logo: "/logos/google-drive.png" },
+  { id: "documentation", dataKey: "documentation", label: "Set Up Google Drive With Documentation", phase: "A", logo: "/logos/google-drive.png" },
+  { id: "jira", dataKey: "jira", label: "Create Jira Board", phase: "A", logo: "/logos/jira.png" },
+  { id: "jira-planning", dataKey: "jiraPlanning", label: "Set Up Jira Epic Planning", phase: "A", logo: "/logos/jira.png" },
+  { id: "team", dataKey: "team", label: "Add People & Resources", phase: "A" },
+  { id: "scope", dataKey: "scope", label: "Confirm Scope", phase: "B" },
+  { id: "planning", dataKey: "planning", label: "Confirm Planning", phase: "B" },
+  { id: "budget", dataKey: "budget", label: "Confirm Budget", phase: "B" },
+  { id: "kickoff-meeting", dataKey: "kickoffMeeting", label: "Book Kickoff Meeting", phase: "C" },
+  { id: "kickoff-prep", dataKey: "kickoffPrep", label: "Prepare Kickoff", phase: "C" },
+];
+
+export function setupTaskIdToDataKey(taskId: SetupTaskId): keyof SetupData {
+  const found = SETUP_TASKS.find((t) => t.id === taskId);
+  return found?.dataKey ?? (taskId as keyof SetupData);
+}
+
+export function createDefaultSetupData(
+  ticketId: string,
+  title: string,
+  scopingData?: ScopingData | null,
+): SetupData {
+  const slug = `${ticketId}-${title}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60);
+
+  return {
+    slack: { status: "pending", suggestedName: slug },
+    drive: { status: "pending", suggestedName: title },
+    jira: { status: "pending" },
+    jiraPlanning: { status: "pending" },
+    documentation: {
+      status: "pending",
+      linkedDocs: scopingData?.attachments ? [...scopingData.attachments] : [],
+    },
+    team: {
+      status: "pending",
+      members: (scopingData?.team ?? []).map((t) => ({
+        id: t.id,
+        name: t.name,
+        role: t.role,
+        party: t.party,
+        totalHours: t.totalHours,
+        hoursPerDay: t.hoursPerDay,
+        startDate: t.startDate,
+        endDate: t.endDate,
+      })),
+    },
+    scope: { status: "pending" },
+    planning: { status: "pending" },
+    budget: { status: "pending" },
+    kickoffMeeting: { status: "pending" },
+    kickoffPrep: { status: "pending" },
+  };
+}
+
+export function isSetupTaskDone(
+  data: SetupData | null | undefined,
+  taskId: SetupTaskId,
+): boolean {
+  const task = SETUP_TASKS.find((t) => t.id === taskId);
+  if (!task || !data) return false;
+  const taskData = data[task.dataKey] as { status?: SetupTaskStatus } | undefined;
+  return taskData?.status === "completed" || taskData?.status === "skipped";
+}
+
+export function isSetupPhaseComplete(
+  data: SetupData | null | undefined,
+  phase: "A" | "B" | "C",
+): boolean {
+  return SETUP_TASKS.filter((task) => task.phase === phase).every((task) =>
+    isSetupTaskDone(data, task.id),
+  );
+}
+
+/** Confirmations unlock after Environment Setup; Kickoff after Confirmations. */
+export function isSetupPhaseUnlocked(
+  data: SetupData | null | undefined,
+  phase: "A" | "B" | "C",
+): boolean {
+  if (phase === "A") return true;
+  if (phase === "B") return isSetupPhaseComplete(data, "A");
+  return isSetupPhaseComplete(data, "A") && isSetupPhaseComplete(data, "B");
+}
+
+export function getSetupPhaseUnlockHint(phase: "A" | "B" | "C"): string | null {
+  if (phase === "B") return "Complete Environment Setup first";
+  if (phase === "C") return "Complete Confirmations first";
+  return null;
+}
+
+export function getSetupProgress(data: SetupData | null | undefined): {
+  completed: number;
+  total: number;
+  allDone: boolean;
+} {
+  if (!data) return { completed: 0, total: SETUP_TASKS.length, allDone: false };
+  let completed = 0;
+  for (const task of SETUP_TASKS) {
+    const taskData = data[task.dataKey] as { status?: SetupTaskStatus } | undefined;
+    if (taskData?.status === "completed" || taskData?.status === "skipped") {
+      completed++;
+    }
+  }
+  return {
+    completed,
+    total: SETUP_TASKS.length,
+    allDone: completed === SETUP_TASKS.length,
+  };
+}
+
 /* ─── Business Value helpers ────────────────────────────── */
 
 export function formatBusinessValueSummary(

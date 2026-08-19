@@ -68,6 +68,7 @@ export const initiatives = pgTable("initiatives", {
     .references(() => users.id),
   validationData: jsonb("validation_data"),
   scopingData: jsonb("scoping_data"),
+  setupData: jsonb("setup_data"),
   currentStage: stageEnum("current_stage").notNull().default("idea"),
   status: statusEnum("status").notNull().default("draft"),
   createdAt: timestamp("created_at", { withTimezone: true })

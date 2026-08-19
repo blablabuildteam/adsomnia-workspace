@@ -36,10 +36,8 @@ export function PhaseCard({
   const [open, setOpen] = useState(isCurrent);
 
   return (
-    <details
+    <div
       className="group/phase relative border border-border"
-      open={open}
-      onToggle={(event) => setOpen(event.currentTarget.open)}
       style={
         isCurrent
           ? { borderLeftWidth: 3, borderLeftColor: color }
@@ -47,9 +45,11 @@ export function PhaseCard({
       }
     >
       <CornerTicks complete={!isCurrent} />
-      <summary
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
         className={[
-          "flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 sm:px-5 [&::-webkit-details-marker]:hidden",
+          "flex w-full items-center justify-between gap-4 px-4 py-4 text-left sm:px-5",
           isCurrent
             ? "border-b border-border bg-surface-elevated"
             : "bg-surface transition-colors hover:bg-surface-elevated",
@@ -114,18 +114,22 @@ export function PhaseCard({
               Complete
             </span>
           )}
-          <ChevronDown className="size-4 text-muted transition-transform duration-200 group-open/phase:rotate-180" />
+          <ChevronDown
+            className={`size-4 text-muted transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          />
         </div>
-      </summary>
-      <div
-        className={
-          isCurrent
-            ? undefined
-            : "border-t border-border opacity-70 transition-opacity hover:opacity-100"
-        }
-      >
-        {children}
-      </div>
-    </details>
+      </button>
+      {open && (
+        <div
+          className={
+            isCurrent
+              ? undefined
+              : "border-t border-border opacity-70 transition-opacity hover:opacity-100"
+          }
+        >
+          {children}
+        </div>
+      )}
+    </div>
   );
 }

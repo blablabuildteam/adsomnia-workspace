@@ -71,3 +71,8 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
 export function canApprove(user: SessionUser): boolean {
   return user.name === "Sietse" || user.name === "Coen";
 }
+
+/** Head of Production + leadership — can manage Project Setup checklist. */
+export function canManageSetup(user: SessionUser): boolean {
+  return user.role === "leadership" || user.name === "Coen";
+}

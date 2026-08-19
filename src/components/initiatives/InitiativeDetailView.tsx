@@ -17,6 +17,8 @@ import {
 import { CommentSection } from "./CommentSection";
 import { ValidationPhaseSection } from "./ValidationPhaseSection";
 import { ScopingPhaseSection } from "./ScopingPhaseSection";
+import { SetupPhaseSection } from "./SetupPhaseSection";
+import { ProjectBriefCard } from "./ProjectBriefCard";
 import { PhaseCard } from "./PhaseCard";
 import { IdeaDetailsSection } from "./IdeaDetailsSection";
 import { DownloadPdfButton } from "./DownloadPdfButton";
@@ -138,6 +140,8 @@ type Props = {
   isCreator?: boolean;
   /** When set, shows a Share CTA that copies this public path. */
   sharePath?: string;
+  /** Whether the current user can manage setup tasks (Head of Production). */
+  canUserManageSetup?: boolean;
 };
 
 export function InitiativeDetailView({
@@ -152,6 +156,7 @@ export function InitiativeDetailView({
   goNoGoDecision = null,
   isCreator = false,
   sharePath,
+  canUserManageSetup = false,
 }: Props) {
   const stage = STAGES.find(
     (s) => s.id === initiative.currentStage,
@@ -305,6 +310,12 @@ export function InitiativeDetailView({
       : goNoGoAwaitingDecision
         ? "review"
         : "current";
+
+  // ── Phase 5: Project Setup
+  const setupStage = STAGES.find((s) => s.id === "setup")!;
+  const showSetup = currentNum >= 5;
+  const setupIsCurrent = initiative.currentStage === "setup";
+  const setupIsReadOnly = !canUserManageSetup;
 
   const statusKey =
     ideaHasFeedback || validationHasFeedback || goNoGoHasFeedback
@@ -530,6 +541,46 @@ export function InitiativeDetailView({
                     awaitingDecision={goNoGoAwaitingDecision}
                   />
                 )}
+              </PhaseCard>
+            )}
+
+            {/* Project Brief — shown between Go/No-Go and Setup */}
+            {showSetup && (
+              <ProjectBriefCard
+                initiative={initiative}
+                goDate={
+                  goNoGoDecision?.decision === "approved"
+                    ? goNoGoDecision.createdAt
+                    : null
+                }
+                goApprover={
+                  goNoGoDecision?.decision === "approved"
+                    ? goNoGoDecision.approverName
+                    : null
+                }
+              />
+            )}
+
+            {showSetup && initiative.setupData && (
+              <PhaseCard
+                stageId="setup"
+                number={setupStage.number}
+                name={setupStage.name}
+                status={
+                  currentNum > 5 ? "complete" : "current"
+                }
+              >
+                <div className="bg-surface p-4 sm:p-5">
+                  <SetupPhaseSection
+                    initiativeId={initiative.id}
+                    setupData={initiative.setupData}
+                    scopingData={initiative.scopingData}
+                    ticketId={initiative.ticketId}
+                    projectTitle={initiative.title}
+                    leadParty={initiative.validationData?.leadProductionParty}
+                    readOnly={setupIsReadOnly}
+                  />
+                </div>
               </PhaseCard>
             )}
         </div>

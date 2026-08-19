@@ -8,6 +8,11 @@ import { getCurrentUser, canApprove } from "@/lib/session";
 import {
   isBusinessValueComplete,
   isScopingComplete,
+  createDefaultSetupData,
+  getSetupProgress,
+  setupTaskIdToDataKey,
+  isSetupPhaseUnlocked,
+  SETUP_TASKS,
   type Attachment,
   type BusinessValueData,
   type BusinessValueType,
@@ -16,7 +21,10 @@ import {
   type ScopingMilestone,
   type ScopingTeamMember,
   type ScopingScopeItem,
+  type SetupData,
+  type SetupTaskId,
 } from "@/lib/queries";
+import { canManageSetup } from "@/lib/session";
 
 const BUSINESS_VALUE_TYPE_IDS: BusinessValueType[] = [
   "speed",
@@ -1027,7 +1035,7 @@ export async function approveGoNoGoToSetup(
   _prev: GoNoGoDecisionResult,
   formData: FormData,
 ): Promise<GoNoGoDecisionResult> {
-  return recordGoNoGoDecision(initiativeId, formData, {
+  const result = await recordGoNoGoDecision(initiativeId, formData, {
     decision: "approved",
     newStatus: "approved",
     newStage: "setup",
@@ -1035,6 +1043,34 @@ export async function approveGoNoGoToSetup(
     action: "gonogo_approved",
     permissionError: "Only leadership can make Go/No-Go decisions.",
   });
+
+  if (result.success) {
+    const [row] = await db
+      .select({
+        ticketId: initiatives.ticketId,
+        title: initiatives.title,
+        scopingData: initiatives.scopingData,
+      })
+      .from(initiatives)
+      .where(eq(initiatives.id, initiativeId))
+      .limit(1);
+
+    if (row) {
+      const setupData = createDefaultSetupData(
+        row.ticketId,
+        row.title,
+        row.scopingData as ScopingData | null,
+      );
+      await db
+        .update(initiatives)
+        .set({ setupData })
+        .where(eq(initiatives.id, initiativeId));
+    }
+
+    revalidatePath("/pipeline/setup");
+  }
+
+  return result;
 }
 
 /** NO-GO — reject; initiative is closed. */
@@ -1065,4 +1101,298 @@ export async function requestGoNoGoChanges(
     action: "gonogo_feedback",
     permissionError: "Only leadership can send feedback.",
   });
+}
+
+/* ─── Project Setup (Phase 5) ──────────────────────────── */
+
+export type SetupResult = {
+  error?: string;
+  success?: boolean;
+};
+
+const VALID_TASK_IDS: SetupTaskId[] = [
+  "slack",
+  "drive",
+  "jira",
+  "jira-planning",
+  "documentation",
+  "team",
+  "scope",
+  "planning",
+  "budget",
+  "kickoff-meeting",
+  "kickoff-prep",
+];
+
+/** Completes a single setup checklist task with provided data. */
+export async function completeSetupTask(
+  initiativeId: number,
+  formData: FormData,
+): Promise<SetupResult> {
+  "use server";
+
+  const user = await getCurrentUser();
+  if (!user || !canManageSetup(user)) {
+    return { error: "Only the Head of Production can manage Project Setup." };
+  }
+
+  const taskId = formData.get("taskId") as SetupTaskId;
+  if (!VALID_TASK_IDS.includes(taskId)) {
+    return { error: `Invalid task ID: ${taskId}` };
+  }
+
+  const dataRaw = formData.get("data") as string;
+  let taskData: Record<string, unknown> = {};
+  try {
+    taskData = dataRaw ? JSON.parse(dataRaw) : {};
+  } catch {
+    return { error: "Invalid task data." };
+  }
+
+  if (taskId === "slack") {
+    const channelName =
+      typeof taskData.channelName === "string"
+        ? taskData.channelName.trim().replace(/^#/, "")
+        : "";
+    if (!channelName) {
+      return { error: "Slack channel name is required." };
+    }
+    taskData.channelName = channelName;
+  }
+
+  if (taskId === "jira") {
+    const boardUrl =
+      typeof taskData.boardUrl === "string" ? taskData.boardUrl.trim() : "";
+    if (!boardUrl) {
+      return { error: "Jira board URL is required." };
+    }
+    taskData.boardUrl = boardUrl;
+    taskData.projectUrl = boardUrl;
+  }
+
+  const [row] = await db
+    .select({ setupData: initiatives.setupData, currentStage: initiatives.currentStage })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
+  if (!row) return { error: "Initiative not found." };
+  if (row.currentStage !== "setup") {
+    return { error: "Initiative is not in the Project Setup stage." };
+  }
+
+  const setup = (row.setupData as SetupData | null) ?? {} as SetupData;
+  const taskDef = SETUP_TASKS.find((t) => t.id === taskId);
+  if (taskDef && !isSetupPhaseUnlocked(setup, taskDef.phase)) {
+    return {
+      error:
+        taskDef.phase === "B"
+          ? "Complete Environment Setup before Confirmations."
+          : "Complete Confirmations before Kickoff Preparation.",
+    };
+  }
+  const now = new Date().toISOString();
+  const dataKey = setupTaskIdToDataKey(taskId);
+
+  const existingTask = setup[dataKey] as Record<string, unknown> | undefined;
+  const updated: SetupData = {
+    ...setup,
+    [dataKey]: {
+      ...(existingTask ?? {}),
+      ...taskData,
+      status: "completed" as const,
+      completedAt: now,
+    },
+  };
+
+  await db
+    .update(initiatives)
+    .set({ setupData: updated, updatedAt: new Date() })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: `setup_task_completed`,
+    details: { taskId, completedBy: user.name },
+  });
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/setup");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+/** Skips an optional setup task (e.g., Jira). */
+export async function skipSetupTask(
+  initiativeId: number,
+  formData: FormData,
+): Promise<SetupResult> {
+  "use server";
+
+  const user = await getCurrentUser();
+  if (!user || !canManageSetup(user)) {
+    return { error: "Only the Head of Production can manage Project Setup." };
+  }
+
+  const taskId = formData.get("taskId") as SetupTaskId;
+  if (!VALID_TASK_IDS.includes(taskId)) {
+    return { error: `Invalid task ID: ${taskId}` };
+  }
+
+  const [row] = await db
+    .select({ setupData: initiatives.setupData, currentStage: initiatives.currentStage })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
+  if (!row) return { error: "Initiative not found." };
+  if (row.currentStage !== "setup") {
+    return { error: "Initiative is not in the Project Setup stage." };
+  }
+
+  const setup = (row.setupData as SetupData | null) ?? {} as SetupData;
+  const now = new Date().toISOString();
+  const dataKey = setupTaskIdToDataKey(taskId);
+
+  const existingTask = setup[dataKey] as Record<string, unknown> | undefined;
+  const updated: SetupData = {
+    ...setup,
+    [dataKey]: {
+      ...(existingTask ?? {}),
+      status: "skipped" as const,
+      completedAt: now,
+    },
+  };
+
+  await db
+    .update(initiatives)
+    .set({ setupData: updated, updatedAt: new Date() })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: `setup_task_skipped`,
+    details: { taskId, skippedBy: user.name },
+  });
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/setup");
+  return { success: true };
+}
+
+/** Resets a completed/skipped setup task back to pending. */
+export async function resetSetupTask(
+  initiativeId: number,
+  formData: FormData,
+): Promise<SetupResult> {
+  "use server";
+
+  const user = await getCurrentUser();
+  if (!user || !canManageSetup(user)) {
+    return { error: "Only the Head of Production can manage Project Setup." };
+  }
+
+  const taskId = formData.get("taskId") as SetupTaskId;
+  if (!VALID_TASK_IDS.includes(taskId)) {
+    return { error: `Invalid task ID: ${taskId}` };
+  }
+
+  const [row] = await db
+    .select({ setupData: initiatives.setupData, currentStage: initiatives.currentStage })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
+  if (!row) return { error: "Initiative not found." };
+  if (row.currentStage !== "setup") {
+    return { error: "Initiative is not in the Project Setup stage." };
+  }
+
+  const setup = (row.setupData as SetupData | null) ?? {} as SetupData;
+  const dataKey = setupTaskIdToDataKey(taskId);
+  const existingTask = setup[dataKey] as Record<string, unknown> | undefined;
+
+  const updated: SetupData = {
+    ...setup,
+    [dataKey]: {
+      ...(existingTask ?? {}),
+      status: "pending" as const,
+      completedAt: null,
+    },
+  };
+
+  await db
+    .update(initiatives)
+    .set({ setupData: updated, updatedAt: new Date() })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: "setup_task_reset",
+    details: { taskId, resetBy: user.name },
+  });
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/setup");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+/** Advances the initiative from Project Setup to Onboarding & Kickoff. */
+export async function advanceToOnboarding(
+  initiativeId: number,
+  _prev: SetupResult,
+): Promise<SetupResult> {
+  "use server";
+
+  const user = await getCurrentUser();
+  if (!user || !canManageSetup(user)) {
+    return { error: "Only the Head of Production can advance to Onboarding." };
+  }
+
+  const [row] = await db
+    .select({
+      currentStage: initiatives.currentStage,
+      setupData: initiatives.setupData,
+    })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
+  if (!row) return { error: "Initiative not found." };
+  if (row.currentStage !== "setup") {
+    return { error: "Initiative is not in the Project Setup stage." };
+  }
+
+  const progress = getSetupProgress(row.setupData as SetupData | null);
+  if (!progress.allDone) {
+    return {
+      error: `Complete all setup tasks before advancing (${progress.completed}/${progress.total} done).`,
+    };
+  }
+
+  await db
+    .update(initiatives)
+    .set({
+      currentStage: "onboarding",
+      status: "approved",
+      updatedAt: new Date(),
+    })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: "setup_completed",
+    details: { advancedBy: user.name, toStage: "Onboarding & Kickoff" },
+  });
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/setup");
+  revalidatePath("/pipeline/onboarding");
+  revalidatePath("/dashboard");
+  return { success: true };
 }

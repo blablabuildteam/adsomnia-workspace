@@ -7,7 +7,7 @@ import {
   comments,
 } from "@/db/schema";
 import { eq, desc, count, inArray } from "drizzle-orm";
-import type { ValidationData, ScopingData } from "@/lib/validation-data";
+import type { ValidationData, ScopingData, SetupData } from "@/lib/validation-data";
 
 export type {
   Attachment,
@@ -19,6 +19,9 @@ export type {
   ScopingTeamMember,
   ScopingScopeItem,
   ScopingValueMetric,
+  SetupData,
+  SetupTaskId,
+  SetupTaskStatus,
 } from "@/lib/validation-data";
 export {
   BUSINESS_VALUE_TYPES,
@@ -26,6 +29,11 @@ export {
   isBusinessValueComplete,
   isScopingComplete,
   formatBusinessValueSummary,
+  SETUP_TASKS,
+  getSetupProgress,
+  createDefaultSetupData,
+  setupTaskIdToDataKey,
+  isSetupPhaseUnlocked,
 } from "@/lib/validation-data";
 
 export type InitiativeWithUsers = {
@@ -39,6 +47,7 @@ export type InitiativeWithUsers = {
   targetAudience: string | null;
   validationData: ValidationData | null;
   scopingData: ScopingData | null;
+  setupData: SetupData | null;
   currentStage: string;
   status: string;
   createdAt: Date;
@@ -60,6 +69,7 @@ export async function getAllInitiatives(): Promise<InitiativeWithUsers[]> {
       targetAudience: initiatives.targetAudience,
       validationData: initiatives.validationData,
       scopingData: initiatives.scopingData,
+      setupData: initiatives.setupData,
       currentStage: initiatives.currentStage,
       status: initiatives.status,
       createdAt: initiatives.createdAt,
@@ -93,6 +103,7 @@ export async function getAllInitiatives(): Promise<InitiativeWithUsers[]> {
     targetAudience: r.targetAudience,
     validationData: (r.validationData as ValidationData) ?? null,
     scopingData: (r.scopingData as ScopingData) ?? null,
+    setupData: (r.setupData as SetupData) ?? null,
     currentStage: r.currentStage,
     status: r.status,
     createdAt: r.createdAt,
@@ -117,6 +128,7 @@ export async function getInitiativeById(
       targetAudience: initiatives.targetAudience,
       validationData: initiatives.validationData,
       scopingData: initiatives.scopingData,
+      setupData: initiatives.setupData,
       currentStage: initiatives.currentStage,
       status: initiatives.status,
       createdAt: initiatives.createdAt,
@@ -142,6 +154,7 @@ export async function getInitiativeById(
     ...row,
     validationData: (row.validationData as ValidationData) ?? null,
     scopingData: (row.scopingData as ScopingData) ?? null,
+    setupData: (row.setupData as SetupData) ?? null,
     submitter: userMap.get(row.submitterId) ?? {
       id: row.submitterId,
       name: "Unknown",

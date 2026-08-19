@@ -43,6 +43,13 @@
       "when": 1786467148174,
       "tag": "0005_living_black_bird",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787130818097,
+      "tag": "0006_superb_sleeper",
+      "breakpoints": true
     }
   ]
 }
