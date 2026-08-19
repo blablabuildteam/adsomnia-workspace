@@ -322,6 +322,7 @@ export type DriveSetupData = {
 
 export type JiraSetupData = {
   status: SetupTaskStatus;
+  suggestedName?: string;
   boardUrl?: string;
   /** @deprecated Kept so older setup drafts still parse. */
   projectUrl?: string;
@@ -478,7 +479,7 @@ export function createDefaultSetupData(
   return {
     slack: { status: "pending", suggestedName: slug },
     drive: { status: "pending", suggestedName: suggestedDriveName(title, ticketId) },
-    jira: { status: "pending" },
+    jira: { status: "pending", suggestedName: suggestedDriveName(title, ticketId) },
     jiraPlanning: { status: "pending" },
     documentation: {
       status: "pending",

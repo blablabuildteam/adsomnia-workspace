@@ -327,7 +327,14 @@ function buildQuickCompletePayload(
       if (!boardUrl) {
         return { error: "Paste the Jira board URL, then mark complete." };
       }
-      return { data: { boardUrl, projectUrl: boardUrl } };
+      return {
+        data: {
+          boardUrl,
+          projectUrl: boardUrl,
+          projectName:
+            setupData.jira.projectName || ctx.suggestedDriveName,
+        },
+      };
     }
     case "jira-planning":
       return { data: {} };
@@ -408,11 +415,16 @@ function renderTaskContent(
       return (
         <JiraSetupTask
           data={setupData.jira}
+          suggestedName={ctx.suggestedDriveName}
           boardUrl={ctx.jiraBoardUrl}
           onBoardUrlChange={ctx.onJiraBoardUrlChange}
           readOnly={readOnly}
-          onComplete={(boardUrl) =>
-            ctx.onComplete("jira", { boardUrl, projectUrl: boardUrl })
+          onComplete={(boardUrl, projectName) =>
+            ctx.onComplete("jira", {
+              boardUrl,
+              projectUrl: boardUrl,
+              projectName,
+            })
           }
         />
       );

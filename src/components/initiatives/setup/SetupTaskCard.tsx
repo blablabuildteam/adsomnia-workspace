@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Check,
   ChevronDown,
@@ -74,6 +74,7 @@ export function SetupTaskCard({
   const blocked = locked || readOnly;
   const canUndo = isDone && !blocked && !completing && !!onUndo;
   const [open, setOpen] = useState(false);
+  const wasDone = useRef(isDone);
   const meta = STATUS_ICON[status];
   const Icon = completing ? Loader2 : locked ? Lock : meta.icon;
 
@@ -84,6 +85,11 @@ export function SetupTaskCard({
   useEffect(() => {
     if (locked) setOpen(false);
   }, [locked]);
+
+  useEffect(() => {
+    if (isDone && !wasDone.current) setOpen(false);
+    wasDone.current = isDone;
+  }, [isDone]);
 
   return (
     <div className={`border border-border ${locked ? "opacity-45" : ""}`}>

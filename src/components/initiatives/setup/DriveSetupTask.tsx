@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { FolderOpen, Copy, Check, ExternalLink, Pencil } from "lucide-react";
 import type { DriveSetupData } from "@/lib/validation-data";
 import { inputClass } from "@/lib/form-styles";
@@ -26,41 +26,10 @@ export function DriveSetupTask({
   const suggestion = suggestedName || data.suggestedName;
   const savedUrl = data.driveUrl || "";
   const [loadedFolderName, setLoadedFolderName] = useState<string | null>(null);
-  const [loadingName, setLoadingName] = useState(false);
-  const folderLabel =
-    loadedFolderName ||
-    (data.driveName && data.driveName !== suggestion ? data.driveName : null);
-  const savedName = folderLabel || suggestion;
+  const savedName = loadedFolderName || data.driveName || suggestion;
   const [driveName, setDriveName] = useState(data.driveName || suggestion);
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState(false);
-  const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
-
-  useEffect(() => {
-    if (data.status !== "completed" || !savedUrl || readOnly) return;
-
-    let cancelled = false;
-    setLoadingName(true);
-    void fetchDriveFolderName(savedUrl)
-      .then((name) => {
-        if (cancelled || !name) return;
-        setLoadedFolderName(name);
-        if (name !== data.driveName) {
-          onCompleteRef.current(name, savedUrl);
-        }
-      })
-      .catch(() => {
-        /* keep the saved label if Google does not return a name */
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingName(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [savedUrl, readOnly, data.status, data.driveName]);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(driveName);
@@ -94,10 +63,7 @@ export function DriveSetupTask({
           <div>
             {savedUrl ? (
               <>
-                <p className="text-xs text-foreground">
-                  {folderLabel ||
-                    (loadingName ? "Loading folder name…" : "Drive folder")}
-                </p>
+                <p className="text-xs text-foreground">{savedName}</p>
                 <a
                   href={savedUrl}
                   target="_blank"
