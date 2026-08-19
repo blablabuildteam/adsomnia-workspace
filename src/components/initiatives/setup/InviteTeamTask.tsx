@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Check, CheckCircle2 } from "lucide-react";
+import { getStageColor } from "@/data/workflow";
 import type { InviteTeamData } from "@/lib/validation-data";
+import { CompletedLine, ConfirmRow } from "../onboarding/ConfirmRow";
+
+const ACCENT = getStageColor("setup");
 
 const SLACK_URL = "https://app.slack.com";
 
@@ -30,8 +32,6 @@ export function InviteTeamTask({
   readOnly,
   onComplete,
 }: Props) {
-  const [confirmed, setConfirmed] = useState(false);
-
   const tools: ToolLink[] = [
     {
       name: slackChannelName ? `#${slackChannelName.replace(/^#/, "")}` : "Slack",
@@ -55,18 +55,9 @@ export function InviteTeamTask({
 
   if (data.status === "completed") {
     return (
-      <div className="flex items-center gap-2 text-xs text-success">
-        <CheckCircle2 className="size-3.5" />
+      <CompletedLine accent={ACCENT} completedAt={data.completedAt}>
         Team invited to Slack, Jira, and Google Drive
-        {data.completedAt && (
-          <span className="text-muted">
-            ·{" "}
-            {new Date(data.completedAt).toLocaleDateString("en-US", {
-              dateStyle: "medium",
-            })}
-          </span>
-        )}
-      </div>
+      </CompletedLine>
     );
   }
 
@@ -118,35 +109,11 @@ export function InviteTeamTask({
         ))}
       </div>
 
-      <div className="flex items-center justify-between gap-3 border border-border bg-surface px-3 py-2">
-        <button
-          type="button"
-          onClick={() => setConfirmed((current) => !current)}
-          className="flex min-w-0 items-center gap-3 text-left"
-        >
-          <span
-            aria-hidden
-            className={`flex size-5 shrink-0 items-center justify-center border transition-colors ${
-              confirmed
-                ? "border-success bg-success text-background"
-                : "border-foreground/30 bg-transparent text-transparent hover:border-success"
-            }`}
-          >
-            <Check className="size-3.5" strokeWidth={3} />
-          </span>
-          <span className="text-xs text-foreground">
-            The team has been invited to Slack, Jira, and Google Drive
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => onComplete()}
-          disabled={!confirmed}
-          className="inline-flex shrink-0 items-center gap-2 border border-success bg-success/10 px-4 py-2 font-display text-[10px] font-bold uppercase tracking-wide text-success transition-colors hover:bg-success/20 disabled:opacity-40"
-        >
-          Confirm Done
-        </button>
-      </div>
+      <ConfirmRow
+        accent={ACCENT}
+        label="The team has been invited to Slack, Jira, and Google Drive"
+        onConfirm={onComplete}
+      />
     </div>
   );
 }

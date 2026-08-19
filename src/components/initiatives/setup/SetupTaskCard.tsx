@@ -51,6 +51,8 @@ type Props = {
   completing?: boolean;
   /** Keep the card expanded after it is marked complete. */
   stayOpenOnComplete?: boolean;
+  /** Phase accent for the completed check. */
+  accent?: string;
   logo?: string;
   onMarkComplete?: () => void;
   onUndo?: () => void;
@@ -68,6 +70,7 @@ export function SetupTaskCard({
   readOnly,
   completing,
   stayOpenOnComplete,
+  accent,
   logo,
   onMarkComplete,
   onUndo,
@@ -80,6 +83,7 @@ export function SetupTaskCard({
   const wasDone = useRef(isDone);
   const meta = STATUS_ICON[status];
   const Icon = completing ? Loader2 : locked ? Lock : meta.icon;
+  const doneAccent = status === "completed" ? accent : undefined;
 
   useEffect(() => {
     if (forceOpen != null && !locked) setOpen(true);
@@ -147,22 +151,32 @@ export function SetupTaskCard({
                   : undefined
           }
           className={`relative z-10 flex size-8 shrink-0 items-center justify-center rounded border transition-colors ${
-            locked ? "text-muted/50" : meta.bgColor
-          } ${locked ? "" : meta.color} ${
+            locked
+              ? "text-muted/50"
+              : doneAccent
+                ? ""
+                : `${meta.bgColor} ${meta.color}`
+          } ${
             blocked || completing || (isDone ? !onUndo : !onMarkComplete)
               ? "cursor-not-allowed opacity-60"
               : isDone
                 ? "cursor-pointer hover:border-btr hover:bg-btr/20 hover:text-btr"
-                : "cursor-pointer hover:border-success hover:bg-success/20 hover:text-success"
+                : "cursor-pointer"
           }`}
           style={
             locked
               ? { borderColor: "rgb(255 255 255 / 0.08)" }
               : status === "completed"
-                ? { borderColor: "rgb(34 197 94 / 0.4)" }
+                ? {
+                    borderColor: `${doneAccent ?? "#22C55E"}66`,
+                    backgroundColor: `${doneAccent ?? "#22C55E"}1A`,
+                    color: doneAccent ?? "#22C55E",
+                  }
                 : status === "error"
                   ? { borderColor: "rgb(255 59 31 / 0.4)" }
-                  : { borderColor: "rgb(255 255 255 / 0.12)" }
+                  : accent && !isDone
+                    ? { borderColor: "rgb(255 255 255 / 0.12)", color: undefined }
+                    : { borderColor: "rgb(255 255 255 / 0.12)" }
           }
         >
           <Icon

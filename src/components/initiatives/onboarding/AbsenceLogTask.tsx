@@ -10,7 +10,10 @@ import {
   type AbsenceKind,
   type AbsenceLogData,
 } from "@/lib/validation-data";
+import { getStageColor } from "@/data/workflow";
 import { CompletedLine, ConfirmRow } from "./ConfirmRow";
+
+const ACCENT = getStageColor("onboarding");
 
 const ROW_INPUT_CLASS =
   "w-full border border-border bg-surface-input px-2 py-1.5 text-xs text-foreground transition-colors focus:border-muted focus:outline-none";
@@ -281,6 +284,9 @@ export function AbsenceLogTask({
   onComplete,
 }: Props) {
   const [entries, setEntries] = useState<AbsenceEntry[]>(data.entries ?? []);
+  const [published, setPublished] = useState<AbsenceEntry[]>(
+    data.entries ?? [],
+  );
   const [extraNames, setExtraNames] = useState<string[]>(() =>
     [
       ...new Set(
@@ -340,6 +346,7 @@ export function AbsenceLogTask({
 
   const persistComplete = () => {
     const normalized = normalizeEntries(entries);
+    setPublished(normalized);
     onComplete({
       entries: normalized,
       noneReported: normalized.length === 0,
@@ -352,7 +359,7 @@ export function AbsenceLogTask({
         <div className="space-y-2">
           <CompletedLine>Time off logged</CompletedLine>
           <AbsenceList
-            entries={data.noneReported ? [] : (data.entries ?? [])}
+            entries={data.noneReported ? [] : (data.entries ?? published)}
           />
         </div>
       );
@@ -378,6 +385,12 @@ export function AbsenceLogTask({
 
   return (
     <div className="space-y-4">
+      {isDone && (
+        <div className="space-y-2">
+          <CompletedLine>Time off logged</CompletedLine>
+          <AbsenceList entries={published} />
+        </div>
+      )}
       <p className="text-xs text-muted">
         Log OOO periods and recurring days off — for example every Friday —
         so planning reflects real availability. Pick a name from the team, or
@@ -505,7 +518,12 @@ export function AbsenceLogTask({
               type="button"
               onClick={persistComplete}
               disabled={!!blockedReason}
-              className="inline-flex items-center gap-2 border border-success bg-success/10 px-4 py-2 font-display text-[10px] font-bold uppercase tracking-wide text-success transition-colors hover:bg-success/20 disabled:opacity-40"
+              className="inline-flex items-center gap-2 border px-4 py-2 font-display text-[10px] font-bold uppercase tracking-wide transition-opacity hover:opacity-80 disabled:opacity-40"
+              style={{
+                borderColor: `${ACCENT}66`,
+                backgroundColor: `${ACCENT}1A`,
+                color: ACCENT,
+              }}
             >
               Save changes
             </button>

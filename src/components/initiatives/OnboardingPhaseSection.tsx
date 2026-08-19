@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { ArrowRight, ListChecks, Rocket } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, Hammer, ListChecks } from "lucide-react";
 import { getPhaseProgressFill, getStageColor } from "@/data/workflow";
 import type { InitiativeWithUsers } from "@/lib/queries";
 import {
@@ -47,6 +48,7 @@ export function OnboardingPhaseSection({
   readOnly,
   isCurrentStage = true,
 }: Props) {
+  const router = useRouter();
   const progress = getOnboardingProgress(onboardingData);
   const actionProgress = getOnboardingProgress(onboardingData, "actions");
   const [taskError, setTaskError] = useState<string | null>(null);
@@ -79,7 +81,11 @@ export function OnboardingPhaseSection({
       formData.set("data", JSON.stringify(data));
       if (isDraft) formData.set("complete", "0");
       const result = await completeOnboardingTask(initiative.id, formData);
-      if (result.error) setTaskError(result.error);
+      if (result.error) {
+        setTaskError(result.error);
+        return;
+      }
+      if (!isDraft) router.refresh();
     } catch {
       setTaskError("Could not save this item. Try again.");
     } finally {
@@ -210,6 +216,7 @@ export function OnboardingPhaseSection({
                 forceOpen={forceOpenTask === task.id ? forceOpenSeq : undefined}
                 completing={pendingTask === task.id}
                 stayOpenOnComplete={task.id === "absences"}
+                accent={ACCENT}
                 onMarkComplete={
                   readOnly || locked
                     ? undefined
@@ -241,10 +248,15 @@ export function OnboardingPhaseSection({
           <button
             type="submit"
             disabled={advancePending}
-            className="group relative inline-flex items-center gap-3 overflow-hidden border border-success bg-success px-6 py-3.5 font-display text-sm font-bold uppercase tracking-wide text-background transition-colors hover:bg-success/90 disabled:opacity-50"
+            className="group relative inline-flex items-center gap-3 overflow-hidden border px-6 py-3.5 font-display text-sm font-bold uppercase tracking-wide transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{
+              borderColor: ACCENT,
+              backgroundColor: ACCENT,
+              color: "#0B0B0B",
+            }}
           >
             <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />
-            <Rocket className="relative size-4" />
+            <Hammer className="relative size-4" />
             <span className="relative">
               {advancePending ? "Confirming…" : "Move to Production"}
             </span>
@@ -254,8 +266,17 @@ export function OnboardingPhaseSection({
       )}
 
       {readOnly && isCurrentStage && progress.allDone && (
-        <div className="border border-success/30 bg-success/10 px-4 py-3 text-center">
-          <p className="font-display text-xs font-bold uppercase tracking-wide text-success">
+        <div
+          className="border px-4 py-3 text-center"
+          style={{
+            borderColor: `${ACCENT}4D`,
+            backgroundColor: `${ACCENT}1A`,
+          }}
+        >
+          <p
+            className="font-display text-xs font-bold uppercase tracking-wide"
+            style={{ color: ACCENT }}
+          >
             Onboarding complete — ready for production
           </p>
         </div>

@@ -38,7 +38,7 @@ export function MeetingCadenceTask({ data, readOnly, onComplete }: Props) {
           href={CALENDAR_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 border border-[#38BDF8]/30 bg-[#38BDF8]/10 px-3 py-2 text-xs text-[#38BDF8] transition-colors hover:bg-[#38BDF8]/20"
+          className="inline-flex items-center gap-1.5 border border-border bg-white/[0.04] px-3 py-2 text-xs text-muted transition-colors hover:border-foreground/30 hover:text-foreground"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

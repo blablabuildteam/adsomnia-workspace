@@ -23,8 +23,8 @@ const STATUS_COLORS = {
  * - "current": open by default, yellow "In Progress" badge
  * - "review": like current, but badged "Review" in blue
  * - "ready": like current, but badged with `readyLabel` in green
- * Closed cards show a left accent in the stage color; open cards swap that
- * for corner ticks in the same color.
+ * The phase index (01, 02…) sits to the left of the box; closed cards show
+ * a left accent in the stage color, open cards swap that for corner ticks.
  * All use the same summary layout (status badge + chevron) so labels align.
  */
 export function PhaseCard({
@@ -48,7 +48,7 @@ export function PhaseCard({
   children: ReactNode;
 }) {
   const color = getStageColor(stageId);
-  const phaseLabel = `Phase ${String(number).padStart(2, "0")}`;
+  const phaseIndex = String(number).padStart(2, "0");
   const isCurrent =
     status === "current" || status === "review" || status === "ready";
   const [open, setOpen] = useState(isCurrent);
@@ -74,11 +74,25 @@ export function PhaseCard({
     <div
       id={phaseCardDomId(stageId)}
       ref={rootRef}
-      className={["relative scroll-mt-[68px] border border-border", className]
+      className={["relative flex scroll-mt-[68px] items-start gap-3", className]
         .filter(Boolean)
         .join(" ")}
       style={style}
     >
+      <span
+        aria-hidden
+        className={[
+          "font-display w-7 shrink-0 text-right tabular-nums font-extrabold tracking-tight sm:w-8",
+          open
+            ? "pt-[1.15rem] text-xl sm:text-2xl"
+            : "pt-2 text-lg leading-none sm:text-xl",
+          isCurrent ? "" : "text-muted/40",
+        ].join(" ")}
+        style={isCurrent ? { color } : undefined}
+      >
+        {phaseIndex}
+      </span>
+      <div className="relative min-w-0 flex-1 border border-border">
       <div
         aria-hidden
         className={`pointer-events-none absolute inset-y-0 left-0 z-[1] w-[3px] transition-opacity duration-300 ${
@@ -93,33 +107,27 @@ export function PhaseCard({
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        aria-label={`Phase ${phaseIndex}: ${name}`}
         className={[
-          "group/phase flex w-full items-center justify-between gap-4 px-4 py-4 text-left sm:px-5",
-          open ? "border-b border-border" : "",
+          "group/phase flex w-full items-center justify-between gap-4 px-4 text-left sm:px-5",
+          open ? "border-b border-border py-4" : "py-2",
           isCurrent
             ? "bg-surface-elevated"
             : "bg-surface transition-colors hover:bg-surface-elevated",
         ].join(" ")}
       >
-        <div>
-          <p
-            className={[
-              "font-display text-[10px] font-bold uppercase tracking-[0.25em]",
-              isCurrent ? "" : "text-muted/70",
-            ].join(" ")}
-            style={isCurrent ? { color } : undefined}
-          >
-            {phaseLabel}
-          </p>
-          <h2
-            className={[
-              "font-display mt-1 text-xl font-extrabold uppercase tracking-tight sm:text-2xl",
-              isCurrent ? "" : "text-foreground/50",
-            ].join(" ")}
-          >
-            {name}
-          </h2>
-        </div>
+        <h2
+          className={[
+            "font-display font-extrabold uppercase tracking-tight",
+            open
+              ? "text-xl sm:text-2xl"
+              : "text-lg leading-none sm:text-xl",
+            isCurrent ? "" : "text-foreground/50",
+          ].join(" ")}
+        >
+          {name}
+        </h2>
         <div className="flex shrink-0 items-center gap-3">
           {status === "review" ? (
             <span
@@ -161,12 +169,7 @@ export function PhaseCard({
               />
               In Progress
             </span>
-          ) : (
-            <span className="font-display flex items-center gap-1.5 border border-success/40 bg-success/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-success">
-              <Check className="size-3" />
-              Complete
-            </span>
-          )}
+          ) : null}
           <span
             className={
               open
@@ -202,6 +205,7 @@ export function PhaseCard({
             {children}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

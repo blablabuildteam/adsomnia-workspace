@@ -1,20 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { Check, CheckCircle2 } from "lucide-react";
+import { getStageColor } from "@/data/workflow";
 
-/** Checkbox + "Confirm Done" row shared by every onboarding action item. */
+const DEFAULT_ACCENT = getStageColor("onboarding");
+
+export function accentFillStyle(accent: string, strong = false): CSSProperties {
+  return {
+    borderColor: strong ? accent : `${accent}66`,
+    backgroundColor: strong ? accent : `${accent}1A`,
+    color: strong ? "#0B0B0B" : accent,
+  };
+}
+
+/** Checkbox + "Confirm Done" row shared by onboarding and setup action items. */
 export function ConfirmRow({
   label,
   confirmLabel = "Confirm Done",
   blockedReason,
   onConfirm,
+  accent = DEFAULT_ACCENT,
 }: {
   label: string;
   confirmLabel?: string;
   /** When set, the confirm button stays disabled and this hint is shown. */
   blockedReason?: string | null;
   onConfirm: () => void;
+  /** Phase accent — defaults to Onboarding teal. */
+  accent?: string;
 }) {
   const [confirmed, setConfirmed] = useState(false);
 
@@ -28,11 +42,12 @@ export function ConfirmRow({
         >
           <span
             aria-hidden
-            className={`flex size-5 shrink-0 items-center justify-center border transition-colors ${
+            className="flex size-5 shrink-0 items-center justify-center border transition-colors"
+            style={
               confirmed
-                ? "border-success bg-success text-background"
-                : "border-foreground/30 bg-transparent text-transparent hover:border-success"
-            }`}
+                ? accentFillStyle(accent, true)
+                : { borderColor: "rgb(255 255 255 / 0.3)", color: "transparent" }
+            }
           >
             <Check className="size-3.5" strokeWidth={3} />
           </span>
@@ -42,7 +57,8 @@ export function ConfirmRow({
           type="button"
           onClick={onConfirm}
           disabled={!confirmed || !!blockedReason}
-          className="inline-flex shrink-0 items-center gap-2 border border-success bg-success/10 px-4 py-2 font-display text-[10px] font-bold uppercase tracking-wide text-success transition-colors hover:bg-success/20 disabled:opacity-40"
+          className="inline-flex shrink-0 items-center gap-2 border px-4 py-2 font-display text-[10px] font-bold uppercase tracking-wide transition-opacity hover:opacity-80 disabled:opacity-40"
+          style={accentFillStyle(accent)}
         >
           {confirmLabel}
         </button>
@@ -56,16 +72,18 @@ export function ConfirmRow({
   );
 }
 
-/** Green summary line shown once a task is complete. */
+/** Summary line shown once a task is complete. */
 export function CompletedLine({
   children,
   completedAt,
+  accent = DEFAULT_ACCENT,
 }: {
   children: React.ReactNode;
   completedAt?: string;
+  accent?: string;
 }) {
   return (
-    <div className="flex items-center gap-2 text-xs text-success">
+    <div className="flex items-center gap-2 text-xs" style={{ color: accent }}>
       <CheckCircle2 className="size-3.5 shrink-0" />
       <span>{children}</span>
       {completedAt && (

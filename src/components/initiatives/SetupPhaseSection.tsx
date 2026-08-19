@@ -217,6 +217,7 @@ export function SetupPhaseSection({
               lockHint={lockHint}
               forceOpen={forceOpenTask === task.id ? forceOpenSeq : undefined}
               completing={pendingTask === task.id}
+              accent={ACCENT}
               onMarkComplete={
                 readOnly || taskLocked
                   ? undefined

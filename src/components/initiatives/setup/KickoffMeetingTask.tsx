@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Check, CheckCircle2 } from "lucide-react";
+import { getStageColor } from "@/data/workflow";
 import type { KickoffMeetingData } from "@/lib/validation-data";
+import { CompletedLine, ConfirmRow } from "../onboarding/ConfirmRow";
 
+const ACCENT = getStageColor("setup");
 const CALENDAR_URL = "https://calendar.google.com/calendar/u/0/r";
 
 type Props = {
@@ -13,22 +14,11 @@ type Props = {
 };
 
 export function KickoffMeetingTask({ data, readOnly, onComplete }: Props) {
-  const [confirmed, setConfirmed] = useState(false);
-
   if (data.status === "completed") {
     return (
-      <div className="flex items-center gap-2 text-xs text-success">
-        <CheckCircle2 className="size-3.5" />
+      <CompletedLine accent={ACCENT} completedAt={data.completedAt}>
         Kickoff meeting booked
-        {data.completedAt && (
-          <span className="text-muted">
-            ·{" "}
-            {new Date(data.completedAt).toLocaleDateString("en-US", {
-              dateStyle: "medium",
-            })}
-          </span>
-        )}
-      </div>
+      </CompletedLine>
     );
   }
 
@@ -51,7 +41,7 @@ export function KickoffMeetingTask({ data, readOnly, onComplete }: Props) {
           href={CALENDAR_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex shrink-0 items-center gap-1.5 border border-[#38BDF8]/30 bg-[#38BDF8]/10 px-3 py-2 text-xs text-[#38BDF8] hover:bg-[#38BDF8]/20"
+          className="inline-flex shrink-0 items-center gap-1.5 border border-border bg-white/[0.04] px-3 py-2 text-xs text-muted transition-colors hover:border-foreground/30 hover:text-foreground"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -63,35 +53,11 @@ export function KickoffMeetingTask({ data, readOnly, onComplete }: Props) {
         </a>
       </div>
 
-      <div className="flex items-center justify-between gap-3 border border-border bg-surface px-3 py-2">
-        <button
-          type="button"
-          onClick={() => setConfirmed((current) => !current)}
-          className="flex min-w-0 items-center gap-3 text-left"
-        >
-          <span
-            aria-hidden
-            className={`flex size-5 shrink-0 items-center justify-center border transition-colors ${
-              confirmed
-                ? "border-success bg-success text-background"
-                : "border-foreground/30 bg-transparent text-transparent hover:border-success"
-            }`}
-          >
-            <Check className="size-3.5" strokeWidth={3} />
-          </span>
-          <span className="text-xs text-foreground">
-            The kickoff meeting is set and the team has been invited
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => onComplete()}
-          disabled={!confirmed}
-          className="inline-flex shrink-0 items-center gap-2 border border-success bg-success/10 px-4 py-2 font-display text-[10px] font-bold uppercase tracking-wide text-success transition-colors hover:bg-success/20 disabled:opacity-40"
-        >
-          Confirm Done
-        </button>
-      </div>
+      <ConfirmRow
+        accent={ACCENT}
+        label="The kickoff meeting is set and the team has been invited"
+        onConfirm={onComplete}
+      />
     </div>
   );
 }

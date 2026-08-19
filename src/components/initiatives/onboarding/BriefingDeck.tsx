@@ -216,14 +216,21 @@ export function BriefingDeck({
                           : "Mark reviewed"
                     }
                     className={`relative z-10 flex size-8 shrink-0 items-center justify-center rounded border transition-colors ${
-                      reviewed
-                        ? "border-success/40 bg-success/10 text-success"
-                        : "border-white/[0.12] text-muted/40"
+                      reviewed ? "" : "border-white/[0.12] text-muted/40"
                     } ${
                       readOnly || busy
                         ? "cursor-not-allowed opacity-60"
-                        : "cursor-pointer hover:border-success hover:text-success"
+                        : "cursor-pointer"
                     }`}
+                    style={
+                      reviewed
+                        ? {
+                            borderColor: `${ACCENT}66`,
+                            backgroundColor: `${ACCENT}1A`,
+                            color: ACCENT,
+                          }
+                        : undefined
+                    }
                   >
                     {busy ? (
                       <Loader2 className="size-4 animate-spin" />
@@ -362,7 +369,7 @@ export function BriefingDeck({
                         key={index === slide ? "active" : "reviewed"}
                         className="briefing-progress-fill block h-full w-full"
                         style={{
-                          backgroundColor: index === slide ? ACCENT : "#22C55E",
+                          backgroundColor: ACCENT,
                         }}
                       />
                     )}
@@ -387,7 +394,12 @@ export function BriefingDeck({
                   type="button"
                   onClick={reviewAndAdvance}
                   disabled={pendingTask === current.taskId}
-                  className="inline-flex items-center gap-2 border border-success bg-success/10 px-4 py-2 font-display text-[10px] font-bold uppercase tracking-wide text-success transition-colors hover:bg-success/20 disabled:opacity-40"
+                  className="inline-flex items-center gap-2 border px-4 py-2 font-display text-[10px] font-bold uppercase tracking-wide transition-opacity hover:opacity-80 disabled:opacity-40"
+                  style={{
+                    borderColor: `${ACCENT}66`,
+                    backgroundColor: `${ACCENT}1A`,
+                    color: ACCENT,
+                  }}
                 >
                   {pendingTask === current.taskId ? (
                     <Loader2 className="size-3 animate-spin" />
