@@ -19,7 +19,7 @@ export type IntakeField = {
   expectation: string;
   type: FieldType;
   required?: boolean;
-  options?: string[];
+  options?: Array<string | { value: string; label: string }>;
   placeholder?: string;
 };
 
