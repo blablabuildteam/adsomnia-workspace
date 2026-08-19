@@ -18,7 +18,7 @@ Scope: interactive process map of the Production Framework. This repo will later
 - Background: `#000000` / `#0B0B0B`, text `#FFFFFF`
 - Display type: bold condensed/impact sans (Oswald, Bebas Neue, Syne Heavy) — uppercase headers
 - Parties (legend / filter): Adsomnia; Bending The Rules (Production execution lane); Harlem Next (Production lane for IT/Product, Data & Pricing); blablabuild (AI innovation partner)
-- Party colors: Adsomnia `#FFFFFF` on `#000000`; BTR `#FF3B1F`; Harlem Next `#7E90A3`; blablabuild volt `#CEFF00`; Adsomnia Internal (AS) white border / black fill `#FFFFFF` on `#000000`
+- Party colors: Adsomnia `#FFFFFF` on `#000000`; BTR `#E8A07C`; Harlem Next `#7E90A3`; blablabuild volt `#CEFF00`; Adsomnia Internal (AS) white border / black fill `#FFFFFF` on `#000000`
 - UI: sharp corners, thin borders `#222222` or white, high-tech raw aesthetic (“TRAFFIC NEVER SLEEPS”) — Adsomnia chrome stays B&W (no gold)
 
 ## Workflow (English labels)

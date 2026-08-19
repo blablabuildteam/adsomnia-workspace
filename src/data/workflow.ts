@@ -11,7 +11,7 @@ export type Party = {
 
 export const PARTIES: Party[] = [
   { id: "adsomnia", label: "Adsomnia", short: "AS", color: "#FFFFFF" },
-  { id: "btr", label: "Bending The Rules", short: "BTR", color: "#FF3B1F" },
+  { id: "btr", label: "Bending The Rules", short: "BTR", color: "#E8A07C" },
   { id: "hn", label: "Harlem Next", short: "HN", color: "#7E90A3" },
   { id: "bbb", label: "blablabuild", short: "BBB", color: "#CEFF00" },
   {

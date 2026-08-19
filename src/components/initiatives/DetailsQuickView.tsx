@@ -11,12 +11,29 @@ import { formatEuro, summarizeTeamCost } from "@/data/role-rates";
 import type { InitiativeWithUsers } from "@/lib/queries";
 import {
   BUSINESS_VALUE_TYPES,
+  IMPACT_MAX,
+  IMPACT_MIN,
   formatBusinessValueSummary,
-  getSetupProgress,
+  impactScoreLabel,
   isBusinessValueData,
   parseImpactScore,
+  type BusinessValueType,
   type SetupData,
+  type ValidationData,
 } from "@/lib/validation-data";
+
+const VALUE_COLORS: Record<BusinessValueType, string> = {
+  speed: "#38BDF8",
+  "cost-efficiency": "#CEFF00",
+  growth: "#22C55E",
+};
+
+const PRIORITY_META: Record<string, { color: string; hint: string }> = {
+  Now: { color: "#FF3B1F", hint: "Urgent / blocking" },
+  Near: { color: "#EAB308", hint: "Next up" },
+  Later: { color: "#7E90A3", hint: "Lower priority" },
+  Backlog: { color: "#FFFFFF80", hint: "On the radar" },
+};
 
 const STAGE_NUM: Record<string, number> = {
   idea: 1,
@@ -88,6 +105,80 @@ function Narrative({
   );
 }
 
+/** Score bars for Speed / Cost / Growth. Falls back to text for legacy notes. */
+function BusinessValueVisual({
+  value,
+}: {
+  value: ValidationData["businessValue"];
+}) {
+  if (!value) return null;
+  if (typeof value === "string") {
+    return <Narrative label="Business Value" text={value} />;
+  }
+  if (!isBusinessValueData(value) || value.types.length === 0) return null;
+
+  return (
+    <div className="min-w-0 px-5 py-4">
+      <span className="font-display text-[9px] font-bold uppercase tracking-[0.25em] text-foreground/30">
+        Business Value
+      </span>
+      <div className="mt-2.5 space-y-2.5">
+        {value.types.map((type) => {
+          const meta = BUSINESS_VALUE_TYPES.find((t) => t.id === type);
+          const score = parseImpactScore(value.expectations[type]);
+          const color = VALUE_COLORS[type];
+          const pct =
+            score !== null
+              ? ((score - IMPACT_MIN) / (IMPACT_MAX - IMPACT_MIN)) * 100
+              : 0;
+          return (
+            <div key={type}>
+              <div className="mb-1 flex items-baseline justify-between gap-2">
+                <span className="font-display text-[10px] font-bold uppercase tracking-wide text-foreground/70">
+                  {meta?.label ?? type}
+                </span>
+                <span className="flex items-baseline gap-1.5">
+                  {score !== null ? (
+                    <>
+                      <span
+                        className="font-display text-sm font-extrabold tabular-nums leading-none"
+                        style={{ color }}
+                      >
+                        {score}
+                      </span>
+                      <span className="text-[9px] text-muted">/10</span>
+                      <span className="hidden font-display text-[9px] font-bold uppercase tracking-wide text-muted sm:inline">
+                        {impactScoreLabel(score)}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-[10px] text-muted">—</span>
+                  )}
+                </span>
+              </div>
+              <div className="flex gap-px">
+                {Array.from({ length: IMPACT_MAX }, (_, i) => {
+                  const filled = score !== null && i < score;
+                  return (
+                    <span
+                      key={i}
+                      className="h-1.5 flex-1"
+                      style={{
+                        backgroundColor: filled ? color : "rgb(255 255 255 / 0.08)",
+                        opacity: filled ? 0.35 + (i / IMPACT_MAX) * 0.65 : 1,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /** Tool chip — logo + name, links out when a URL exists. */
 function ToolChip({
   logo,
@@ -128,8 +219,6 @@ function ToolChip({
 type Props = {
   initiative: InitiativeWithUsers;
   stageName: string;
-  statusLabel: string;
-  statusStyle: string;
   goDate?: Date | null;
   goApprover?: string | null;
 };
@@ -137,8 +226,6 @@ type Props = {
 export function DetailsQuickView({
   initiative,
   stageName,
-  statusLabel,
-  statusStyle,
   goDate,
   goApprover,
 }: Props) {
@@ -169,17 +256,11 @@ export function DetailsQuickView({
       ? `${fmtDate(sortedDates[0])} – ${fmtDate(sortedDates[sortedDates.length - 1])}`
       : null;
 
-  const scopeIn = sd?.scopeItems?.filter((s) => s.inScope).length ?? 0;
-  const scopeOut = sd?.scopeItems?.filter((s) => !s.inScope).length ?? 0;
   const businessValueSummary = formatBusinessValueSummary(vd?.businessValue);
 
-  const setupProgress = getSetupProgress(setup);
-  const setupPct = Math.round(
-    (setupProgress.completed / setupProgress.total) * 100,
-  );
-
   const hasScoping = currentNum >= 3;
-  const hasSetup = currentNum >= 5 && !!setup;
+  const pastScoping = currentNum > 3;
+  const priorityMeta = priority ? PRIORITY_META[priority] : undefined;
 
   const slackName = setup?.slack.channelName;
   const jiraName = setup?.jira.projectName;
@@ -204,9 +285,9 @@ export function DetailsQuickView({
 
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-3">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <h3 className="font-display text-[11px] font-bold uppercase tracking-[0.2em] text-foreground/50">
-            Quick View
+            Current Phase:
           </h3>
           <span
             className="font-display text-[10px] font-bold uppercase tracking-wide"
@@ -215,33 +296,24 @@ export function DetailsQuickView({
             {stageName}
           </span>
         </div>
-        <div className="flex items-center gap-3">
-          {goDate && (
-            <span className="inline-flex items-center gap-1.5 text-[10px] text-muted/50">
-              <Calendar className="size-3" />
-              GO {goDate.toLocaleDateString("en-US", { dateStyle: "medium" })}
-              {goApprover && ` · ${goApprover}`}
-            </span>
-          )}
-          {leadParty && (
-            <span
-              className="border px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide"
-              style={{ borderColor: leadParty.color, color: leadParty.color }}
-            >
-              {leadParty.label}
-            </span>
-          )}
-          <span
-            className={`border px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide ${statusStyle}`}
-          >
-            {statusLabel}
+        {goDate && (
+          <span className="inline-flex items-center gap-1.5 text-[10px] text-muted/50">
+            <Calendar className="size-3" />
+            GO {goDate.toLocaleDateString("en-US", { dateStyle: "medium" })}
+            {goApprover && ` · ${goApprover}`}
           </span>
-        </div>
+        )}
       </div>
 
-      {/* Hero stats — from Scoping onward */}
+      {/* Hero stats — from Scoping onward. Priority leads; t-shirt sizing drops out. */}
       {hasScoping && (
         <div className="grid divide-y divide-foreground/[0.06] border-t border-foreground/[0.06] sm:grid-cols-2 sm:divide-y-0 sm:divide-x lg:grid-cols-4">
+          <Hero
+            label="Priority"
+            value={priority ?? "TBD"}
+            accent={priorityMeta?.color}
+            sub={priorityMeta?.hint}
+          />
           <Hero
             label="Timeline"
             value={dateRange ?? "TBD"}
@@ -265,34 +337,6 @@ export function DetailsQuickView({
               teamCost?.usesAssumedRates ? "assumed rates" : undefined
             }
           />
-          {hasSetup ? (
-            <Hero
-              label="Setup"
-              value={`${setupPct}%`}
-              accent={setupProgress.allDone ? "#22C55E" : undefined}
-              sub={
-                <span className="flex items-center gap-2">
-                  <span className="h-1 w-24 bg-foreground/[0.08]">
-                    <span
-                      className="block h-full bg-success transition-all duration-500"
-                      style={{ width: `${setupPct}%` }}
-                    />
-                  </span>
-                  {setupProgress.completed}/{setupProgress.total} tasks
-                </span>
-              }
-            />
-          ) : (
-            <Hero
-              label="Scope"
-              value={scopeIn + scopeOut > 0 ? scopeIn : "TBD"}
-              sub={
-                scopeIn + scopeOut > 0
-                  ? `items in scope${scopeOut > 0 ? ` · ${scopeOut} excluded` : ""}`
-                  : undefined
-              }
-            />
-          )}
         </div>
       )}
 
@@ -303,7 +347,11 @@ export function DetailsQuickView({
         <div className="grid divide-y divide-foreground/[0.06] border-t border-foreground/[0.06] md:grid-cols-3 md:divide-y-0 md:divide-x">
           <Narrative label="Problem" text={initiative.problemStatement} />
           <Narrative label="Solution" text={vd?.solutionDirection} />
-          <Narrative label="Business Value" text={businessValueSummary} />
+          {vd?.businessValue ? (
+            <BusinessValueVisual value={vd.businessValue} />
+          ) : businessValueSummary ? (
+            <Narrative label="Business Value" text={businessValueSummary} />
+          ) : null}
         </div>
       )}
 
@@ -343,19 +391,34 @@ export function DetailsQuickView({
           <span className="text-foreground/30">Sponsor</span>{" "}
           <span className="text-foreground/70">{initiative.sponsor.name}</span>
         </span>
-        {(tShirtSize || priority) && (
+        {leadParty && (
+          <span>
+            <span className="text-foreground/30">Production</span>{" "}
+            <span
+              className="font-display text-[10px] font-bold uppercase tracking-wide"
+              style={{ color: leadParty.color }}
+            >
+              {leadParty.label}
+            </span>
+          </span>
+        )}
+        {!pastScoping && tShirtSize && (
           <span className="inline-flex items-center gap-1.5">
             <span className="text-foreground/30">Sizing</span>
-            {tShirtSize && (
-              <span className="border border-foreground/15 px-1 font-display text-[9px] font-bold text-foreground/70">
-                {tShirtSize}
-              </span>
-            )}
-            {priority && (
-              <span className="font-display text-[9px] font-bold uppercase text-foreground/70">
-                {priority}
-              </span>
-            )}
+            <span className="border border-foreground/15 px-1 font-display text-[9px] font-bold text-foreground/70">
+              {tShirtSize}
+            </span>
+          </span>
+        )}
+        {!hasScoping && priority && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="text-foreground/30">Priority</span>
+            <span
+              className="font-display text-[9px] font-bold uppercase"
+              style={{ color: priorityMeta?.color }}
+            >
+              {priority}
+            </span>
           </span>
         )}
         <span className="ml-auto">

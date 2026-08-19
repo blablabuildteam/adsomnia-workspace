@@ -201,7 +201,7 @@ export function ProcessVisualizer() {
             detail="Leadership, intake, validation, governance"
           />
           <LegendItem
-            color="#FF3B1F"
+            color="#E8A07C"
             title="Bending The Rules"
             detail="Production execution lane"
           />

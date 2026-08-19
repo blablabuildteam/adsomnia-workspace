@@ -370,8 +370,6 @@ export function InitiativeDetailView({
         <DetailsQuickView
           initiative={initiative}
           stageName={stage?.name ?? initiative.currentStage}
-          statusLabel={statusLabel}
-          statusStyle={statusStyle}
           goDate={
             goNoGoDecision?.decision === "approved"
               ? goNoGoDecision.createdAt

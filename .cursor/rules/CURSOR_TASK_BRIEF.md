@@ -19,7 +19,7 @@ Match the exact design language of **Adsomnia** (`adsomnia.com`):
 - **Typography:** Bold, condensed/impact sans-serif display headers (e.g., *Impact*, *Oswald*, *Bebas Neue*, or heavy uppercase sans-serif like *Syne/Inter Heavy*).
 - **Accent Colors (party lanes):**
   - Adsomnia — black & white (`#000000` / `#FFFFFF`); UI chrome stays monochrome.
-  - Bending The Rules — red-orange (`#FF3B1F`).
+  - Bending The Rules — peach coral (`#E8A07C`).
   - Harlem Next — blue-gray (`#7E90A3`).
   - blablabuild — volt (`#CEFF00`); AI innovation partner.
 - **UI Elements:**
