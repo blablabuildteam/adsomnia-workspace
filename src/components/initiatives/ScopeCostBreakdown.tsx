@@ -86,8 +86,9 @@ export function ScopeCostBreakdown({ team }: ScopeCostBreakdownProps) {
 
       {summary.usesAssumedRates && (
         <p className="text-[11px] leading-relaxed text-muted/50">
-          Most hourly rates are assumed placeholders until official lists
-          arrive. blablabuild Hybrid is confirmed at {formatEuro(175)}/h.
+          Adsomnia, Bending The Rules, and Harlem Next currently use a
+          stand-in rate of {formatEuro(100)}/h until official lists arrive.
+          blablabuild Hybrid is confirmed at {formatEuro(175)}/h.
         </p>
       )}
     </div>
