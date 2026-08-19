@@ -3,14 +3,24 @@
 import { useState } from "react";
 import { Check, CheckCircle2 } from "lucide-react";
 import type { JiraPlanningData, ScopingMilestone } from "@/lib/validation-data";
-import { inputClass } from "@/lib/form-styles";
+
+function formatDate(value?: string): string {
+  if (!value) return "—";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 type Props = {
   data: JiraPlanningData;
   milestones?: ScopingMilestone[];
   boardUrl?: string;
   readOnly?: boolean;
-  onComplete: (notes?: string) => void;
+  onComplete: () => void;
 };
 
 export function JiraPlanningTask({
@@ -21,7 +31,6 @@ export function JiraPlanningTask({
   onComplete,
 }: Props) {
   const [confirmed, setConfirmed] = useState(false);
-  const [notes, setNotes] = useState(data.notes ?? "");
 
   if (data.status === "completed") {
     return (
@@ -38,9 +47,6 @@ export function JiraPlanningTask({
             </span>
           )}
         </div>
-        {data.notes && (
-          <p className="text-xs text-muted">{data.notes}</p>
-        )}
       </div>
     );
   }
@@ -55,22 +61,29 @@ export function JiraPlanningTask({
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-muted">
-        Add the high-level epics and tasks to the Jira board so the team can
-        work from them in Production. Use the scoping timeline below as the
-        source.
-      </p>
-
-      {boardUrl && (
-        <a
-          href={boardUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 border border-[#38BDF8]/30 bg-[#38BDF8]/10 px-3 py-2 text-xs text-[#38BDF8] hover:bg-[#38BDF8]/20"
-        >
-          Open Jira board
-        </a>
-      )}
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 text-xs text-muted">
+          Add the high-level epics and tasks to the Jira board so the team can
+          work from them in Production. Use the scoping timeline below as the
+          source.
+        </p>
+        {boardUrl && (
+          <a
+            href={boardUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex shrink-0 items-center gap-1.5 border border-[#38BDF8]/30 bg-[#38BDF8]/10 px-3 py-2 text-xs text-[#38BDF8] hover:bg-[#38BDF8]/20"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logos/jira.png"
+              alt=""
+              className="size-3.5 object-contain"
+            />
+            Open Jira board
+          </a>
+        )}
+      </div>
 
       {milestones.length > 0 && (
         <div className="space-y-1.5">
@@ -80,50 +93,55 @@ export function JiraPlanningTask({
           {milestones.map((m) => (
             <div
               key={m.id}
-              className="border border-border bg-surface px-3 py-2"
+              className="flex items-start justify-between gap-3 border border-border bg-surface px-3 py-2"
             >
-              <p className="text-xs font-medium text-foreground">
-                {m.epic || "Untitled epic"}
-              </p>
-              {m.milestone && (
-                <p className="mt-0.5 text-[10px] text-muted">{m.milestone}</p>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-foreground">
+                  {m.epic || "Untitled epic"}
+                </p>
+                {m.milestone && (
+                  <p className="mt-0.5 text-[10px] text-muted">{m.milestone}</p>
+                )}
+              </div>
+              {(m.startDate || m.endDate) && (
+                <p className="shrink-0 text-right text-[10px] tabular-nums text-muted">
+                  {formatDate(m.startDate)} – {formatDate(m.endDate)}
+                </p>
               )}
             </div>
           ))}
         </div>
       )}
 
-      <label className="flex items-start gap-3 border border-border bg-surface px-3 py-2.5">
-        <input
-          type="checkbox"
-          checked={confirmed}
-          onChange={(e) => setConfirmed(e.target.checked)}
-          className="mt-0.5 size-4 shrink-0 accent-success"
-        />
-        <span className="text-xs text-foreground">
-          The Jira board includes the high-level epic planning and tasks
-        </span>
-      </label>
-
-      {confirmed && (
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          className={inputClass}
-          rows={2}
-          placeholder="Notes (optional)…"
-        />
-      )}
-
-      <button
-        type="button"
-        onClick={() => onComplete(notes.trim() || undefined)}
-        disabled={!confirmed}
-        className="inline-flex items-center gap-2 border border-success bg-success/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-success transition-colors hover:bg-success/20 disabled:opacity-40"
-      >
-        <Check className="size-3.5" />
-        Confirm Done
-      </button>
+      <div className="flex items-center justify-between gap-3 border border-border bg-surface px-3 py-2">
+        <button
+          type="button"
+          onClick={() => setConfirmed((current) => !current)}
+          className="flex min-w-0 items-center gap-3 text-left"
+        >
+          <span
+            aria-hidden
+            className={`flex size-5 shrink-0 items-center justify-center border transition-colors ${
+              confirmed
+                ? "border-success bg-success text-background"
+                : "border-foreground/30 bg-transparent text-transparent hover:border-success"
+            }`}
+          >
+            <Check className="size-3.5" strokeWidth={3} />
+          </span>
+          <span className="text-xs text-foreground">
+            The Jira board includes the high-level epic planning and tasks
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onComplete()}
+          disabled={!confirmed}
+          className="inline-flex shrink-0 items-center gap-2 border border-success bg-success/10 px-4 py-2 font-display text-[10px] font-bold uppercase tracking-wide text-success transition-colors hover:bg-success/20 disabled:opacity-40"
+        >
+          Confirm Done
+        </button>
+      </div>
     </div>
   );
 }

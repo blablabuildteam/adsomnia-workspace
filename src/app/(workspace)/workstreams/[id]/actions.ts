@@ -1116,12 +1116,7 @@ const VALID_TASK_IDS: SetupTaskId[] = [
   "jira",
   "jira-planning",
   "documentation",
-  "team",
-  "scope",
-  "planning",
-  "budget",
   "kickoff-meeting",
-  "kickoff-prep",
 ];
 
 /** Completes a single setup checklist task with provided data. */
@@ -1186,9 +1181,7 @@ export async function completeSetupTask(
   if (taskDef && !isSetupPhaseUnlocked(setup, taskDef.phase)) {
     return {
       error:
-        taskDef.phase === "B"
-          ? "Complete Environment Setup before Confirmations."
-          : "Complete Confirmations before Kickoff Preparation.",
+        "Complete Environment Setup before Kickoff Preparation.",
     };
   }
   const now = new Date().toISOString();

@@ -8,13 +8,15 @@ import { CornerTicks } from "@/components/ui/CornerTicks";
 const STATUS_COLORS = {
   progress: "#EAB308",
   review: "#38BDF8",
+  ready: "#22C55E",
 } as const;
 
 /**
- * Phase wrapper with three visual states:
+ * Phase wrapper with four visual states:
  * - "complete": collapsed by default, neutral chrome, dimmed body
  * - "current": open by default, stage-color accent + yellow "In Progress" badge
  * - "review": like current, but badged "Review" in blue
+ * - "ready": like current, but badged "Ready for Complete" in green
  * All use the same summary layout (status badge + chevron) so labels align.
  */
 export function PhaseCard({
@@ -27,12 +29,13 @@ export function PhaseCard({
   stageId: string;
   number: number;
   name: string;
-  status: "complete" | "current" | "review";
+  status: "complete" | "current" | "review" | "ready";
   children: ReactNode;
 }) {
   const color = getStageColor(stageId);
   const phaseLabel = `Phase ${String(number).padStart(2, "0")}`;
-  const isCurrent = status === "current" || status === "review";
+  const isCurrent =
+    status === "current" || status === "review" || status === "ready";
   const [open, setOpen] = useState(isCurrent);
 
   return (
@@ -91,6 +94,18 @@ export function PhaseCard({
             >
               <Eye className="size-3 animate-pulse" />
               Review
+            </span>
+          ) : status === "ready" ? (
+            <span
+              className="font-display flex items-center gap-1.5 border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+              style={{
+                borderColor: STATUS_COLORS.ready,
+                color: STATUS_COLORS.ready,
+                backgroundColor: `${STATUS_COLORS.ready}1A`,
+              }}
+            >
+              <Check className="size-3" />
+              Ready for Complete
             </span>
           ) : isCurrent ? (
             <span

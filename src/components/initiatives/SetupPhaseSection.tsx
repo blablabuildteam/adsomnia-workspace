@@ -14,19 +14,13 @@ import {
   type SetupTaskStatus,
   type ScopingData,
 } from "@/lib/validation-data";
-import { summarizeTeamCost } from "@/data/role-rates";
-
 import { SetupTaskCard } from "./setup/SetupTaskCard";
 import { SlackSetupTask } from "./setup/SlackSetupTask";
 import { DriveSetupTask } from "./setup/DriveSetupTask";
 import { JiraSetupTask } from "./setup/JiraSetupTask";
 import { JiraPlanningTask } from "./setup/JiraPlanningTask";
 import { DocsSetupTask } from "./setup/DocsSetupTask";
-import { TeamSetupTask } from "./setup/TeamSetupTask";
-import { ScopeConfirmTask } from "./setup/ScopeConfirmTask";
-import { PlanningConfirmTask } from "./setup/PlanningConfirmTask";
-import { BudgetConfirmTask } from "./setup/BudgetConfirmTask";
-import { ManualConfirmTask } from "./setup/ManualConfirmTask";
+import { KickoffMeetingTask } from "./setup/KickoffMeetingTask";
 
 import {
   completeSetupTask,
@@ -145,7 +139,6 @@ export function SetupPhaseSection({
 
   const PHASE_LABELS: Record<string, string> = {
     A: "Environment Setup",
-    B: "Confirmations",
     C: "Kickoff Preparation",
   };
 
@@ -304,7 +297,7 @@ function buildQuickCompletePayload(
     suggestedDriveName: string;
   },
 ): { data: Record<string, unknown> } | { error: string } {
-  const { setupData, scopingData } = ctx;
+  const { setupData } = ctx;
 
   switch (taskId) {
     case "slack": {
@@ -340,40 +333,8 @@ function buildQuickCompletePayload(
       return { data: {} };
     case "documentation":
       return { data: { linkedDocs: setupData.documentation.linkedDocs } };
-    case "team":
-      return { data: { members: setupData.team.members } };
-    case "scope":
-      return {
-        data: {
-          confirmedItems:
-            setupData.scope.confirmedItems ?? scopingData?.scopeItems ?? [],
-        },
-      };
-    case "planning":
-      return {
-        data: {
-          confirmedMilestones:
-            setupData.planning.confirmedMilestones ??
-            scopingData?.milestones ??
-            [],
-        },
-      };
-    case "budget": {
-      const original =
-        setupData.budget.originalBudget ??
-        summarizeTeamCost(scopingData?.team ?? []).total ??
-        undefined;
-      return {
-        data: {
-          originalBudget: original,
-          adjustedBudget: setupData.budget.adjustedBudget,
-        },
-      };
-    }
     case "kickoff-meeting":
       return { data: { meetingDate: setupData.kickoffMeeting.meetingDate } };
-    case "kickoff-prep":
-      return { data: { notes: setupData.kickoffPrep.notes } };
     default:
       return { data: {} };
   }
@@ -435,9 +396,7 @@ function renderTaskContent(
           milestones={scopingData?.milestones}
           boardUrl={setupData.jira.boardUrl || setupData.jira.projectUrl}
           readOnly={readOnly}
-          onComplete={(notes) =>
-            ctx.onComplete("jira-planning", { notes })
-          }
+          onComplete={() => ctx.onComplete("jira-planning", {})}
         />
       );
     case "documentation":
@@ -465,91 +424,12 @@ function renderTaskContent(
           }
         />
       );
-    case "team":
-      return (
-        <TeamSetupTask
-          members={setupData.team.members}
-          readOnly={readOnly}
-          onComplete={(members) =>
-            ctx.onComplete("team", { members })
-          }
-        />
-      );
-    case "scope":
-      return (
-        <ScopeConfirmTask
-          scopeItems={
-            setupData.scope.confirmedItems ??
-            scopingData?.scopeItems ??
-            []
-          }
-          confirmed={setupData.scope.status === "completed"}
-          readOnly={readOnly}
-          onComplete={(items, notes) =>
-            ctx.onComplete("scope", {
-              confirmedItems: items,
-              notes,
-            })
-          }
-        />
-      );
-    case "planning":
-      return (
-        <PlanningConfirmTask
-          milestones={
-            setupData.planning.confirmedMilestones ??
-            scopingData?.milestones ??
-            []
-          }
-          confirmed={setupData.planning.status === "completed"}
-          readOnly={readOnly}
-          onComplete={(milestones, notes) =>
-            ctx.onComplete("planning", {
-              confirmedMilestones: milestones,
-              notes,
-            })
-          }
-        />
-      );
-    case "budget":
-      return (
-        <BudgetConfirmTask
-          team={scopingData?.team ?? []}
-          confirmed={setupData.budget.status === "completed"}
-          originalBudget={setupData.budget.originalBudget}
-          adjustedBudget={setupData.budget.adjustedBudget}
-          readOnly={readOnly}
-          onComplete={(adjustedBudget, notes) =>
-            ctx.onComplete("budget", { adjustedBudget, notes })
-          }
-        />
-      );
     case "kickoff-meeting":
       return (
-        <ManualConfirmTask
-          description="Book the kickoff meeting with the project team. Set a date and confirm once it's scheduled."
-          confirmed={setupData.kickoffMeeting.status === "completed"}
-          completedAt={setupData.kickoffMeeting.completedAt}
-          showDatePicker
+        <KickoffMeetingTask
+          data={setupData.kickoffMeeting}
           readOnly={readOnly}
-          onComplete={(date, notes) =>
-            ctx.onComplete("kickoff-meeting", {
-              meetingDate: date,
-              notes,
-            })
-          }
-        />
-      );
-    case "kickoff-prep":
-      return (
-        <ManualConfirmTask
-          description="Prepare the kickoff meeting agenda: project overview, team introductions, scope walk-through, tooling access, meeting cadence, and next steps."
-          confirmed={setupData.kickoffPrep.status === "completed"}
-          completedAt={setupData.kickoffPrep.completedAt}
-          readOnly={readOnly}
-          onComplete={(_, notes) =>
-            ctx.onComplete("kickoff-prep", { notes })
-          }
+          onComplete={() => ctx.onComplete("kickoff-meeting", {})}
         />
       );
     default:

@@ -92,13 +92,29 @@ export function SetupTaskCard({
   }, [isDone]);
 
   return (
-    <div className={`border border-border ${locked ? "opacity-45" : ""}`}>
+    <div
+      className={[
+        "group/step border border-border transition-colors duration-200",
+        locked
+          ? "opacity-45"
+          : "hover:border-border-strong hover:bg-white/[0.03]",
+      ].join(" ")}
+    >
       <div
         className={[
-          "flex w-full items-center gap-3 px-4 py-3",
+          "relative flex w-full items-center gap-3 px-4 py-3 transition-colors duration-200",
           isDone ? "bg-surface opacity-70" : "bg-surface",
+          locked ? "" : "group-hover/step:bg-surface-elevated",
         ].join(" ")}
       >
+        <button
+          type="button"
+          disabled={locked}
+          aria-expanded={open}
+          aria-label={`${open ? "Collapse" : "Expand"} ${label}`}
+          onClick={() => setOpen((current) => !current)}
+          className="absolute inset-0 z-0 cursor-pointer disabled:cursor-not-allowed"
+        />
         <button
           type="button"
           disabled={blocked || completing || (isDone ? !onUndo : !onMarkComplete)}
@@ -127,7 +143,7 @@ export function SetupTaskCard({
                   ? "Click to undo"
                   : undefined
           }
-          className={`flex size-8 shrink-0 items-center justify-center rounded border transition-colors ${
+          className={`relative z-10 flex size-8 shrink-0 items-center justify-center rounded border transition-colors ${
             locked ? "text-muted/50" : meta.bgColor
           } ${locked ? "" : meta.color} ${
             blocked || completing || (isDone ? !onUndo : !onMarkComplete)
@@ -150,21 +166,12 @@ export function SetupTaskCard({
             className={`size-4 pointer-events-none ${completing || status === "in-progress" ? "animate-spin" : ""}`}
           />
         </button>
-        <button
-          type="button"
-          disabled={locked}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            setOpen((current) => !current);
-          }}
-          className="flex min-w-0 flex-1 items-center gap-3 text-left hover:text-foreground disabled:cursor-not-allowed disabled:hover:text-inherit"
-        >
+        <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 items-center gap-3 text-left">
           <span className="flex min-w-0 flex-1 items-center gap-2">
             <span
               className={[
-                "font-display text-xs font-bold uppercase tracking-wide",
-                isDone ? "text-muted line-through" : "",
+                "font-display text-xs font-bold uppercase tracking-wide transition-colors duration-200",
+                isDone ? "text-muted line-through" : "group-hover/step:text-foreground",
               ].join(" ")}
             >
               {String(number).padStart(2, "0")}. {label}
@@ -184,15 +191,27 @@ export function SetupTaskCard({
             )}
           </span>
           <ChevronDown
-            className={`size-3.5 shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`}
+            className={`size-3.5 shrink-0 text-muted transition-transform duration-300 ease-out group-hover/step:text-foreground ${open ? "rotate-180" : ""}`}
           />
-        </button>
-      </div>
-      {open && (
-        <div className="border-t border-border px-4 py-4 sm:px-5">
-          {children}
         </div>
-      )}
+      </div>
+      <div
+        className={[
+          "grid transition-[grid-template-rows] duration-300 ease-out",
+          open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+        ].join(" ")}
+      >
+        <div className="overflow-hidden">
+          <div
+            className={[
+              "border-t border-border px-4 py-4 transition-opacity duration-300 ease-out sm:px-5",
+              open ? "opacity-100" : "opacity-0",
+            ].join(" ")}
+          >
+            {children}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -434,12 +434,7 @@ export const SETUP_TASKS: {
   { id: "documentation", dataKey: "documentation", label: "Set Up Google Drive With Documentation", phase: "A", logo: "/logos/google-drive.png" },
   { id: "jira", dataKey: "jira", label: "Create Jira Board", phase: "A", logo: "/logos/jira.png" },
   { id: "jira-planning", dataKey: "jiraPlanning", label: "Set Up Jira Epic Planning", phase: "A", logo: "/logos/jira.png" },
-  { id: "team", dataKey: "team", label: "Add People & Resources", phase: "A" },
-  { id: "scope", dataKey: "scope", label: "Confirm Scope", phase: "B" },
-  { id: "planning", dataKey: "planning", label: "Confirm Planning", phase: "B" },
-  { id: "budget", dataKey: "budget", label: "Confirm Budget", phase: "B" },
-  { id: "kickoff-meeting", dataKey: "kickoffMeeting", label: "Book Kickoff Meeting", phase: "C" },
-  { id: "kickoff-prep", dataKey: "kickoffPrep", label: "Prepare Kickoff", phase: "C" },
+  { id: "kickoff-meeting", dataKey: "kickoffMeeting", label: "Book Kickoff Meeting", phase: "C", logo: "/logos/google-calendar.png" },
 ];
 
 export function setupTaskIdToDataKey(taskId: SetupTaskId): keyof SetupData {
@@ -525,20 +520,18 @@ export function isSetupPhaseComplete(
   );
 }
 
-/** Confirmations unlock after Environment Setup; Kickoff after Confirmations. */
+/** Kickoff unlocks after Environment Setup. */
 export function isSetupPhaseUnlocked(
   data: SetupData | null | undefined,
   phase: "A" | "B" | "C",
 ): boolean {
   if (phase === "A") return true;
-  if (phase === "B") return isSetupPhaseComplete(data, "A");
-  return isSetupPhaseComplete(data, "A") && isSetupPhaseComplete(data, "B");
+  return isSetupPhaseComplete(data, "A");
 }
 
 export function getSetupPhaseUnlockHint(phase: "A" | "B" | "C"): string | null {
-  if (phase === "B") return "Complete Environment Setup first";
-  if (phase === "C") return "Complete Confirmations first";
-  return null;
+  if (phase === "A") return null;
+  return "Complete Environment Setup first";
 }
 
 export function getSetupProgress(data: SetupData | null | undefined): {

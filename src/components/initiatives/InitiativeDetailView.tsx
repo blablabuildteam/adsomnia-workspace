@@ -24,6 +24,7 @@ import { IdeaDetailsSection } from "./IdeaDetailsSection";
 import { DownloadPdfButton } from "./DownloadPdfButton";
 import { ShareButton } from "./ShareButton";
 import { FloatingDetailBar } from "./FloatingDetailBar";
+import { getSetupProgress } from "@/lib/validation-data";
 
 const STAGE_INDEX: Record<string, number> = {};
 for (const s of STAGES) STAGE_INDEX[s.id] = s.number;
@@ -115,6 +116,7 @@ const STATUS_BADGE_STYLES: Record<string, string> = {
   rejected: "border-btr bg-btr/10 text-btr",
   "on-hold": "border-hn bg-hn/10 text-hn",
   feedback: "border-feedback bg-feedback/10 text-feedback",
+  ready: "border-success bg-success/10 text-success",
   draft: "border-border bg-surface text-muted",
 };
 
@@ -124,6 +126,7 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: "Rejected",
   "on-hold": "On Hold",
   feedback: "Feedback",
+  ready: "Ready for Complete",
   draft: "Draft",
 };
 
@@ -316,11 +319,15 @@ export function InitiativeDetailView({
   const showSetup = currentNum >= 5;
   const setupIsCurrent = initiative.currentStage === "setup";
   const setupIsReadOnly = !canUserManageSetup;
+  const setupReady =
+    setupIsCurrent && getSetupProgress(initiative.setupData).allDone;
 
   const statusKey =
     ideaHasFeedback || validationHasFeedback || goNoGoHasFeedback
       ? "feedback"
-      : initiative.status;
+      : setupReady
+        ? "ready"
+        : initiative.status;
   const statusStyle =
     STATUS_BADGE_STYLES[statusKey] ?? STATUS_BADGE_STYLES.draft;
   const statusLabel = STATUS_LABELS[statusKey] ?? initiative.status;
@@ -568,7 +575,11 @@ export function InitiativeDetailView({
                 number={setupStage.number}
                 name={setupStage.name}
                 status={
-                  currentNum > 5 ? "complete" : "current"
+                  currentNum > 5
+                    ? "complete"
+                    : setupReady
+                      ? "ready"
+                      : "current"
                 }
               >
                 <div className="bg-surface p-4 sm:p-5">
