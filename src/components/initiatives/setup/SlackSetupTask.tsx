@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Hash, Copy, Check } from "lucide-react";
+import { Hash, Copy, Check, Pencil } from "lucide-react";
 import type { SlackSetupData } from "@/lib/validation-data";
 import { inputClass } from "@/lib/form-styles";
 
@@ -22,6 +22,9 @@ export function SlackSetupTask({
 }: Props) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+
+  const savedName = data.channelName || data.suggestedName;
 
   const handleCopySuggestion = async () => {
     await navigator.clipboard.writeText(data.suggestedName);
@@ -37,22 +40,37 @@ export function SlackSetupTask({
     }
     setError(null);
     onComplete(name);
+    setEditing(false);
   };
 
-  if (data.status === "completed") {
+  if (data.status === "completed" && !editing) {
     return (
-      <div className="flex items-center gap-3">
-        <Hash className="size-4 text-success" />
-        <div>
-          <p className="text-xs text-foreground">
-            #{data.channelName || data.suggestedName}
-          </p>
-          <p className="mt-0.5 text-[10px] text-muted">
-            Channel confirmed
-            {data.completedAt &&
-              ` · ${new Date(data.completedAt).toLocaleDateString("en-US", { dateStyle: "medium" })}`}
-          </p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Hash className="size-4 shrink-0 text-success" />
+          <div>
+            <p className="text-xs text-foreground">#{savedName}</p>
+            <p className="mt-0.5 text-[10px] text-muted">
+              Channel confirmed
+              {data.completedAt &&
+                ` · ${new Date(data.completedAt).toLocaleDateString("en-US", { dateStyle: "medium" })}`}
+            </p>
+          </div>
         </div>
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => {
+              onChannelNameChange(savedName);
+              setError(null);
+              setEditing(true);
+            }}
+            className="inline-flex items-center gap-1.5 font-display text-[10px] font-bold uppercase tracking-wide text-muted hover:text-foreground"
+          >
+            <Pencil className="size-3" />
+            Edit
+          </button>
+        )}
       </div>
     );
   }
@@ -65,22 +83,24 @@ export function SlackSetupTask({
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-muted">
-        Create a Slack channel for this project, enter the name, then mark the
-        task complete. Suggested name:{" "}
-        <button
-          type="button"
-          onClick={handleCopySuggestion}
-          className="inline-flex items-center gap-1 font-mono text-foreground hover:text-success"
-        >
-          #{data.suggestedName}
-          {copied ? (
-            <Check className="size-3 text-success" />
-          ) : (
-            <Copy className="size-3 text-muted" />
-          )}
-        </button>
-      </p>
+      {!editing && (
+        <p className="text-xs text-muted">
+          Create a Slack channel for this project, enter the name, then mark the
+          task complete. Suggested name:{" "}
+          <button
+            type="button"
+            onClick={handleCopySuggestion}
+            className="inline-flex items-center gap-1 font-mono text-foreground hover:text-success"
+          >
+            #{data.suggestedName}
+            {copied ? (
+              <Check className="size-3 text-success" />
+            ) : (
+              <Copy className="size-3 text-muted" />
+            )}
+          </button>
+        </p>
+      )}
 
       <label className="block">
         <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
@@ -106,15 +126,30 @@ export function SlackSetupTask({
 
       {error && <p className="text-xs text-btr">{error}</p>}
 
-      <button
-        type="button"
-        onClick={handleComplete}
-        disabled={!channelName.trim()}
-        className="inline-flex items-center gap-2 border border-success bg-success/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-success transition-colors hover:bg-success/20 disabled:opacity-40"
-      >
-        <Check className="size-3.5" />
-        Confirm Created
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={handleComplete}
+          disabled={!channelName.trim()}
+          className="inline-flex items-center gap-2 border border-success bg-success/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-success transition-colors hover:bg-success/20 disabled:opacity-40"
+        >
+          <Check className="size-3.5" />
+          {editing ? "Save Channel Name" : "Confirm Created"}
+        </button>
+        {editing && (
+          <button
+            type="button"
+            onClick={() => {
+              onChannelNameChange(savedName);
+              setError(null);
+              setEditing(false);
+            }}
+            className="font-display text-[10px] font-bold uppercase tracking-wide text-muted hover:text-foreground"
+          >
+            Cancel
+          </button>
+        )}
+      </div>
     </div>
   );
 }

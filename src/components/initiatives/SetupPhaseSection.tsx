@@ -57,7 +57,7 @@ export function SetupPhaseSection({
   const [forceOpenTask, setForceOpenTask] = useState<SetupTaskId | null>(null);
   const [forceOpenSeq, setForceOpenSeq] = useState(0);
   const [slackChannelName, setSlackChannelName] = useState(
-    setupData.slack.channelName || setupData.slack.suggestedName || "",
+    setupData.slack.channelName || "",
   );
   const [jiraBoardUrl, setJiraBoardUrl] = useState(
     setupData.jira.boardUrl || setupData.jira.projectUrl || "",
@@ -98,6 +98,11 @@ export function SetupPhaseSection({
       setTaskError(getSetupPhaseUnlockHint(taskDef.phase));
       return;
     }
+    if (TASKS_NEEDING_INPUT.includes(taskId)) {
+      setForceOpenTask(taskId);
+      setForceOpenSeq((s) => s + 1);
+      return;
+    }
     const payload = buildQuickCompletePayload(taskId, {
       setupData,
       scopingData,
@@ -105,11 +110,6 @@ export function SetupPhaseSection({
       jiraBoardUrl,
     });
     if ("error" in payload) {
-      if (TASKS_NEEDING_INPUT.includes(taskId)) {
-        setForceOpenTask(taskId);
-        setForceOpenSeq((s) => s + 1);
-        return;
-      }
       setTaskError(payload.error);
       setForceOpenTask(taskId);
       setForceOpenSeq((s) => s + 1);
