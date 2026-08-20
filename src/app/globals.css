@@ -20,12 +20,12 @@
   --success: #22c55e;
   --feedback: #a855f7;
   /* Phase / stage accents (shared with STAGE_COLORS in workflow.ts) */
-  --stage-idea: #ffffff;
-  --stage-validation: #7e90a3;
-  --stage-scoping: #ceff00;
-  --stage-go-nogo: #ff3b1f;
-  --stage-setup: #38bdf8;
-  --stage-onboarding: #2dd4bf;
+  --stage-idea: #9ca3af;
+  --stage-validation: #22d3ee;
+  --stage-scoping: #3b82f6;
+  --stage-go-nogo: #9333ea;
+  --stage-setup: #f472b6;
+  --stage-onboarding: #fb923c;
   --stage-production: #22c55e;
 }
 
@@ -64,22 +64,6 @@
 
 html {
   color-scheme: dark;
-}
-
-html.light {
-  color-scheme: light;
-  --background: #f4f4f4;
-  --surface: #ffffff;
-  --surface-elevated: #ffffff;
-  --surface-input: #eeeeee;
-  --foreground: #0b0b0b;
-  --muted: #5c5c5c;
-  --border: #d6d6d6;
-  --border-strong: #b4b4b4;
-  --border-input: #c8c8c8;
-  --adsomnia: #0b0b0b;
-  --as: #0b0b0b;
-  --stage-idea: #0b0b0b;
 }
 
 body {
@@ -138,104 +122,12 @@ body {
   position: relative;
   background-color: var(--background);
   background-image:
-    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(255, 255, 255, 0.025), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 90% 10%, rgba(126, 144, 163, 0.035), transparent 50%),
-    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
   background-size:
-    auto,
-    auto,
     48px 48px,
     48px 48px;
   background-position: 0 0;
-}
-
-html.light .app-atmosphere {
-  background-image:
-    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(0, 0, 0, 0.03), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 90% 10%, rgba(126, 144, 163, 0.06), transparent 50%),
-    linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
-}
-
-/* Upper-right twinkle dots — sits behind page content */
-.twinkle-field {
-  pointer-events: none;
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 0;
-  width: min(58vw, 960px);
-  height: min(50vh, 560px);
-  overflow: hidden;
-  -webkit-mask-image: radial-gradient(
-    ellipse 115% 110% at 100% 0%,
-    #000 0%,
-    #000 32%,
-    transparent 78%
-  );
-  mask-image: radial-gradient(
-    ellipse 115% 110% at 100% 0%,
-    #000 0%,
-    #000 32%,
-    transparent 78%
-  );
-}
-
-.twinkle-field--tl {
-  right: auto;
-  left: 0;
-  -webkit-mask-image: radial-gradient(
-    ellipse 115% 110% at 0% 0%,
-    #000 0%,
-    #000 32%,
-    transparent 78%
-  );
-  mask-image: radial-gradient(
-    ellipse 115% 110% at 0% 0%,
-    #000 0%,
-    #000 32%,
-    transparent 78%
-  );
-}
-
-.twinkle-field--tl .twinkle-field__svg {
-  transform: scaleX(-1);
-}
-
-.twinkle-field--contained {
-  width: min(72%, 640px);
-  height: min(100%, 260px);
-}
-
-.twinkle-field__svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.twinkle-dot {
-  opacity: var(--dot-o);
-  animation: twinkle-dot var(--twinkle-dur) ease-in-out var(--twinkle-delay) infinite;
-}
-
-@keyframes twinkle-dot {
-  0%,
-  100% {
-    opacity: var(--dot-o);
-  }
-  42% {
-    opacity: calc(var(--dot-o) * 0.28);
-  }
-  54% {
-    opacity: calc(var(--dot-o) * 2.5);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .twinkle-dot {
-    animation: none;
-  }
 }
 
 .font-display {
@@ -256,35 +148,49 @@ html.light .app-atmosphere {
   background-image: url("/brand/texture.jpg");
   background-size: cover;
   mix-blend-mode: screen;
-  filter: grayscale(1) contrast(1.05);
+  /* Lift midtones so scanlines survive screen-blend on black, not only the hot whites. */
+  filter: grayscale(1) contrast(1.2) brightness(1.55);
 }
 
-html.light .brand-texture {
-  mix-blend-mode: multiply;
-  filter: grayscale(1) contrast(1.15);
-}
-
-/* Hero variant — a streak anchored top-right of page headers, fading toward the content. */
+/* Hero variant — a streak stretched across page headers, fading toward the content below. */
 .brand-texture--hero {
-  opacity: 0.15;
-  background-position: right 35%;
-  -webkit-mask-image: radial-gradient(
-    ellipse 105% 160% at 100% 0%,
-    rgba(0, 0, 0, 0.95) 0%,
-    rgba(0, 0, 0, 0.4) 45%,
-    transparent 74%
-  );
-  mask-image: radial-gradient(
-    ellipse 105% 160% at 100% 0%,
-    rgba(0, 0, 0, 0.95) 0%,
-    rgba(0, 0, 0, 0.4) 45%,
-    transparent 74%
-  );
+  opacity: 0.28;
+  background-position: center 35%;
+  /* Vertical fade toward the content, intersected with a horizontal ramp so
+     the streak kicks in just before stage 01 and holds through stage 07. */
+  -webkit-mask-image: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.95) 0%,
+      rgba(0, 0, 0, 0.55) 55%,
+      transparent 96%
+    ),
+    linear-gradient(
+      to right,
+      transparent 0%,
+      rgba(0, 0, 0, 0.85) 42%,
+      rgb(0, 0, 0) 55%,
+      rgb(0, 0, 0) 100%
+    );
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.95) 0%,
+      rgba(0, 0, 0, 0.55) 55%,
+      transparent 96%
+    ),
+    linear-gradient(
+      to right,
+      transparent 0%,
+      rgba(0, 0, 0, 0.85) 42%,
+      rgb(0, 0, 0) 55%,
+      rgb(0, 0, 0) 100%
+    );
+  mask-composite: intersect;
 }
 
 /* Page variant — full-bleed atmosphere for standalone screens (login). */
 .brand-texture--page {
-  opacity: 0.22;
+  opacity: 0.34;
   background-position: center 30%;
   -webkit-mask-image: radial-gradient(
     ellipse 85% 90% at 60% 35%,
@@ -860,8 +766,7 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
     background: #fff !important;
   }
 
-  .brand-texture,
-  .twinkle-field {
+  .brand-texture {
     display: none !important;
   }
 

@@ -9,7 +9,6 @@ import { StageCard } from "@/components/StageCard";
 import { StageDrawer } from "@/components/StageDrawer";
 import { VisualizerToolbar } from "@/components/VisualizerToolbar";
 import { WorkspaceChip } from "@/components/WorkspaceChip";
-import { TwinkleField } from "@/components/ui/TwinkleField";
 
 export function ProcessVisualizer() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -33,8 +32,7 @@ export function ProcessVisualizer() {
 
   return (
     <div className="app-atmosphere flex min-h-full w-full min-w-0 flex-1 flex-col overflow-x-hidden">
-      <TwinkleField />
-      <header className="relative z-10 border-b border-border">
+      <header className="border-b border-border">
         <div className="mx-auto flex w-full min-w-0 max-w-[1600px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>

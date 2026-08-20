@@ -5,7 +5,6 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useState, type CSSProperties } from "react";
-import { TwinkleField } from "@/components/ui/TwinkleField";
 import { PARTIES } from "@/data/workflow";
 import { MilestoneGantt } from "./MilestoneGantt";
 import { formatEuro, summarizeTeamCost } from "@/data/role-rates";
@@ -307,16 +306,9 @@ export function DetailsQuickView({
 
   return (
     <div
-      className={[
-        "relative mb-10 overflow-hidden bg-black",
-        className,
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      className={["mb-10 bg-black", className].filter(Boolean).join(" ")}
       style={style}
     >
-      <TwinkleField corner="top-left" contained />
-      <div className="relative z-10 px-4 sm:px-5">
       {/* Hero stats — from Scoping onward. Priority leads; t-shirt sizing drops out. */}
       {hasScoping && (
         <div className="grid divide-y divide-foreground/10 border-t border-foreground/10 sm:grid-cols-2 sm:divide-y-0 sm:divide-x lg:grid-cols-4">
@@ -540,7 +532,6 @@ export function DetailsQuickView({
           </button>
         </>
       )}
-      </div>
     </div>
   );
 }

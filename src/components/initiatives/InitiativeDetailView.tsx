@@ -50,7 +50,12 @@ function enterStyle(delayMs: number): CSSProperties {
 
 /** Dark fill → light label; light fill (white / volt / teal) → black label. */
 function stageLabelOnFill(hex: string): string {
-  const light = hex === "#FFFFFF" || hex === "#CEFF00" || hex === "#2DD4BF";
+  const light =
+    hex === "#FFFFFF" ||
+    hex === "#CEFF00" ||
+    hex === "#9CA3AF" ||
+    hex === "#22D3EE" ||
+    hex === "#FB923C";
   return light ? "#000000" : "#FFFFFF";
 }
 

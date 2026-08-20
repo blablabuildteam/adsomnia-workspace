@@ -1,5 +1,3 @@
-import { TwinkleField } from "@/components/ui/TwinkleField";
-
 export default function ShareLayout({
   children,
 }: {
@@ -7,7 +5,6 @@ export default function ShareLayout({
 }) {
   return (
     <div className="app-atmosphere flex h-dvh min-h-0 flex-col overflow-hidden">
-      <TwinkleField />
       <p className="shrink-0 border-b border-border bg-surface/90 px-4 py-2 text-center text-xs text-muted print:hidden">
         Shared initiative view — sign-in is not required
       </p>

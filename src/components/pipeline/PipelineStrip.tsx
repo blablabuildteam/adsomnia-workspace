@@ -16,7 +16,11 @@ export const STAGE_PIPELINE_HREF: Record<string, string> = {
 /** Text on a filled stage-color box — light fills need dark type. */
 function stageLabelOnFill(hex: string): string {
   const light =
-    hex === "#FFFFFF" || hex === "#CEFF00" || hex === "#2DD4BF";
+    hex === "#FFFFFF" ||
+    hex === "#CEFF00" ||
+    hex === "#9CA3AF" ||
+    hex === "#22D3EE" ||
+    hex === "#FB923C";
   return light ? "#000000" : "#FFFFFF";
 }
 
