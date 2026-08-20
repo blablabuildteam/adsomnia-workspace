@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ClipboardList,
   Columns3,
   LayoutDashboard,
   Lightbulb,
@@ -40,7 +39,6 @@ const PIPELINE_SUB_ITEMS: {
 ];
 
 const REFERENCE_NAV_ITEMS = [
-  { href: "/intake", label: "Intake Template", icon: ClipboardList },
   { href: "/framework", label: "Framework Map", icon: Map },
 ] as const;
 

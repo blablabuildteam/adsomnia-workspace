@@ -10,7 +10,7 @@ export type Party = {
 };
 
 export const PARTIES: Party[] = [
-  { id: "adsomnia", label: "Adsomnia", short: "AS", color: "#FFFFFF" },
+  { id: "adsomnia", label: "Adsomnia", short: "AS", color: "var(--adsomnia)" },
   { id: "btr", label: "Bending The Rules", short: "BTR", color: "#E8A07C" },
   { id: "hn", label: "Harlem Next", short: "HN", color: "#7E90A3" },
   { id: "bbb", label: "blablabuild", short: "BBB", color: "#CEFF00" },
@@ -18,8 +18,8 @@ export const PARTIES: Party[] = [
     id: "as",
     label: "Adsomnia Internal",
     short: "AS",
-    color: "#FFFFFF",
-    background: "#000000",
+    color: "var(--as)",
+    background: "var(--background)",
   },
 ];
 
@@ -282,7 +282,7 @@ export function stageAccent(stage: WorkflowStage): string {
   if (stage.parties.length === 1) {
     return getParty(stage.parties[0]).color;
   }
-  return "#FFFFFF";
+  return "var(--foreground)";
 }
 
 /** Canonical stage IDs — matches DB `initiative_stage` enum. */
@@ -300,7 +300,7 @@ export type StageId =
  * Brand-aligned accents on black; early stages match intake section accents.
  */
 export const STAGE_COLORS: Record<StageId, string> = {
-  idea: "#FFFFFF",
+  idea: "var(--stage-idea)",
   validation: "#7E90A3",
   scoping: "#CEFF00",
   "go-nogo": "#A78BFA",
@@ -308,6 +308,21 @@ export const STAGE_COLORS: Record<StageId, string> = {
   onboarding: "#2DD4BF",
   production: "#22C55E",
 };
+
+/** Text on a filled stage/party swatch. Light fills (volt, teal, chrome) need dark type. */
+export function labelOnFill(hex: string): string {
+  if (hex === "#CEFF00" || hex === "#2DD4BF") return "#000000";
+  if (
+    hex === "#FFFFFF" ||
+    hex === "var(--stage-idea)" ||
+    hex === "var(--adsomnia)" ||
+    hex === "var(--as)" ||
+    hex === "var(--foreground)"
+  ) {
+    return "var(--background)";
+  }
+  return "#FFFFFF";
+}
 
 /** Fast-Track is not a pipeline stage; lands on Production. */
 export const FAST_TRACK_COLOR = "#FF3B1F";
@@ -319,13 +334,21 @@ export function getStageColor(stageId: string): string {
   if (stageId === FAST_TRACK.id) {
     return FAST_TRACK_COLOR;
   }
-  return "#FFFFFF";
+  return "var(--foreground)";
+}
+
+/** Append hex alpha, or color-mix when the value is a CSS variable. */
+export function withAlpha(color: string, hex: string, pct: number): string {
+  if (color.startsWith("var(")) {
+    return `color-mix(in srgb, ${color} ${pct}%, transparent)`;
+  }
+  return `${color}${hex}`;
 }
 
 /** In-progress fill: phase accent at ~60% strength. Complete: success green. */
 export function getPhaseProgressFill(stageColor: string, complete: boolean): string {
   if (complete) return STAGE_COLORS.production;
-  return `${stageColor}99`;
+  return withAlpha(stageColor, "99", 60);
 }
 
 export function isStageId(value: string): value is StageId {

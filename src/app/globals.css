@@ -45,6 +45,7 @@
   --color-bbb: var(--bbb);
   --color-as: var(--as);
   --color-success: var(--success);
+  --color-danger: var(--danger);
   --color-feedback: var(--feedback);
   --color-stage-idea: var(--stage-idea);
   --color-stage-validation: var(--stage-validation);
@@ -63,6 +64,22 @@
 
 html {
   color-scheme: dark;
+}
+
+html.light {
+  color-scheme: light;
+  --background: #f4f4f4;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-input: #eeeeee;
+  --foreground: #0b0b0b;
+  --muted: #5c5c5c;
+  --border: #d6d6d6;
+  --border-strong: #b4b4b4;
+  --border-input: #c8c8c8;
+  --adsomnia: #0b0b0b;
+  --as: #0b0b0b;
+  --stage-idea: #0b0b0b;
 }
 
 body {
@@ -113,12 +130,13 @@ body {
 
 ::selection {
   background: color-mix(in srgb, var(--foreground) 35%, transparent);
-  color: #000;
+  color: var(--background);
 }
 
 /* Subtle grid atmosphere — not flat black */
 .app-atmosphere {
-  background-color: #000;
+  position: relative;
+  background-color: var(--background);
   background-image:
     radial-gradient(ellipse 80% 50% at 20% -10%, rgba(255, 255, 255, 0.025), transparent 55%),
     radial-gradient(ellipse 60% 40% at 90% 10%, rgba(126, 144, 163, 0.035), transparent 50%),
@@ -130,6 +148,94 @@ body {
     48px 48px,
     48px 48px;
   background-position: 0 0;
+}
+
+html.light .app-atmosphere {
+  background-image:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(0, 0, 0, 0.03), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 10%, rgba(126, 144, 163, 0.06), transparent 50%),
+    linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+}
+
+/* Upper-right twinkle dots — sits behind page content */
+.twinkle-field {
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 0;
+  width: min(58vw, 960px);
+  height: min(50vh, 560px);
+  overflow: hidden;
+  -webkit-mask-image: radial-gradient(
+    ellipse 115% 110% at 100% 0%,
+    #000 0%,
+    #000 32%,
+    transparent 78%
+  );
+  mask-image: radial-gradient(
+    ellipse 115% 110% at 100% 0%,
+    #000 0%,
+    #000 32%,
+    transparent 78%
+  );
+}
+
+.twinkle-field--tl {
+  right: auto;
+  left: 0;
+  -webkit-mask-image: radial-gradient(
+    ellipse 115% 110% at 0% 0%,
+    #000 0%,
+    #000 32%,
+    transparent 78%
+  );
+  mask-image: radial-gradient(
+    ellipse 115% 110% at 0% 0%,
+    #000 0%,
+    #000 32%,
+    transparent 78%
+  );
+}
+
+.twinkle-field--tl .twinkle-field__svg {
+  transform: scaleX(-1);
+}
+
+.twinkle-field--contained {
+  width: min(72%, 640px);
+  height: min(100%, 260px);
+}
+
+.twinkle-field__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.twinkle-dot {
+  opacity: var(--dot-o);
+  animation: twinkle-dot var(--twinkle-dur) ease-in-out var(--twinkle-delay) infinite;
+}
+
+@keyframes twinkle-dot {
+  0%,
+  100% {
+    opacity: var(--dot-o);
+  }
+  42% {
+    opacity: calc(var(--dot-o) * 0.28);
+  }
+  54% {
+    opacity: calc(var(--dot-o) * 2.5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .twinkle-dot {
+    animation: none;
+  }
 }
 
 .font-display {
@@ -151,6 +257,11 @@ body {
   background-size: cover;
   mix-blend-mode: screen;
   filter: grayscale(1) contrast(1.05);
+}
+
+html.light .brand-texture {
+  mix-blend-mode: multiply;
+  filter: grayscale(1) contrast(1.15);
 }
 
 /* Hero variant — a streak anchored top-right of page headers, fading toward the content. */
@@ -193,8 +304,8 @@ body {
 .form-control {
   appearance: none;
   border-radius: 0;
-  color: #ffffff;
-  caret-color: #ffffff;
+  color: var(--foreground);
+  caret-color: var(--foreground);
 }
 
 .form-control::placeholder {
@@ -205,8 +316,8 @@ body {
 .form-control:-webkit-autofill,
 .form-control:-webkit-autofill:hover,
 .form-control:-webkit-autofill:focus {
-  -webkit-text-fill-color: #ffffff;
-  caret-color: #ffffff;
+  -webkit-text-fill-color: var(--foreground);
+  caret-color: var(--foreground);
   box-shadow: 0 0 0 1000px var(--surface-input) inset;
   transition: background-color 9999s ease-out 0s;
 }
@@ -238,7 +349,7 @@ input[type="number"].form-control::-webkit-outer-spin-button {
 input[type="date"].form-control,
 input[type="datetime-local"].form-control,
 input[type="time"].form-control {
-  color-scheme: dark;
+  color-scheme: inherit;
 }
 
 input[type="date"].form-control::-webkit-calendar-picker-indicator,
@@ -749,7 +860,8 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
     background: #fff !important;
   }
 
-  .brand-texture {
+  .brand-texture,
+  .twinkle-field {
     display: none !important;
   }
 

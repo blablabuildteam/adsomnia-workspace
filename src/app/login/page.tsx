@@ -7,6 +7,7 @@ import { login, type LoginResult } from "@/lib/auth";
 import { inputClass } from "@/lib/form-styles";
 import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
+import { TwinkleField } from "@/components/ui/TwinkleField";
 
 const initial: LoginResult = {};
 
@@ -16,6 +17,7 @@ export default function LoginPage() {
 
   return (
     <div className="app-atmosphere relative flex min-h-screen items-center justify-center overflow-hidden px-4">
+      <TwinkleField />
       <BrandTexture variant="page" />
       <div className="workspace-content relative z-10 w-full max-w-[400px]">
         <div className="mb-8 text-center">

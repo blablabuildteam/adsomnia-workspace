@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Libre_Franklin, Sen } from "next/font/google";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 const sen = Sen({
@@ -28,8 +29,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${sen.variable} ${libreFranklin.variable} h-full overflow-x-hidden antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="flex min-h-full min-w-0 flex-col overflow-x-hidden">
         {children}
       </body>

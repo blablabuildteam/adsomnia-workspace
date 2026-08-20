@@ -772,7 +772,7 @@ function ScopeItemChip({
         "group flex items-center gap-1.5 border px-2.5 py-1.5 transition-colors",
         item.inScope
           ? "border-success/40 bg-success/[0.06]"
-          : "border-btr/30 bg-btr/[0.04]",
+          : "border-danger/35 bg-danger/[0.05]",
       ].join(" ")}
     >
       <button
@@ -782,7 +782,7 @@ function ScopeItemChip({
           "flex size-4 shrink-0 items-center justify-center border text-[8px] font-bold transition-colors",
           item.inScope
             ? "border-success bg-success/20 text-success"
-            : "border-btr/60 bg-btr/10 text-btr",
+            : "border-danger/70 bg-danger/15 text-danger",
         ].join(" ")}
         title={item.inScope ? "Click to mark out of scope" : "Click to mark in scope"}
         aria-label={item.inScope ? "In scope — click to toggle" : "Out of scope — click to toggle"}
@@ -1343,7 +1343,7 @@ export function ScopingPhaseSection({
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="flex size-4 items-center justify-center border border-btr/60 bg-btr/10 text-[7px] font-bold text-btr">
+                  <span className="flex size-4 items-center justify-center border border-danger/70 bg-danger/15 text-[7px] font-bold text-danger">
                     OUT
                   </span>
                   <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
@@ -1365,7 +1365,7 @@ export function ScopingPhaseSection({
                 <button
                   type="button"
                   onClick={() => addScopeItem(false)}
-                  className="flex w-full items-center justify-center gap-1.5 border border-dashed border-btr/30 px-2 py-1.5 text-[10px] text-btr/60 transition-colors hover:border-btr/50 hover:text-btr"
+                  className="flex w-full items-center justify-center gap-1.5 border border-dashed border-danger/30 px-2 py-1.5 text-[10px] text-danger/60 transition-colors hover:border-danger/50 hover:text-danger"
                 >
                   <Plus className="size-3" />
                   Add out-of-scope item
@@ -1750,7 +1750,7 @@ function ScopingReadOnly({
                 ))}
             </div>
             <div className="space-y-1">
-              <span className="font-display text-[9px] font-bold uppercase tracking-wider text-btr">
+              <span className="font-display text-[9px] font-bold uppercase tracking-wider text-danger">
                 Out of Scope
               </span>
               {scopeItems
@@ -1758,7 +1758,7 @@ function ScopingReadOnly({
                 .map((s, i) => (
                   <div
                     key={s.id ?? i}
-                    className="flex items-center gap-1.5 border border-btr/30 bg-btr/[0.04] px-2 py-1 text-xs text-foreground/70 line-through"
+                    className="flex items-center gap-1.5 border border-danger/30 bg-danger/[0.04] px-2 py-1 text-xs text-foreground/70 line-through"
                   >
                     {s.label}
                   </div>
