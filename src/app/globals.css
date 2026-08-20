@@ -122,8 +122,8 @@ body {
   position: relative;
   background-color: var(--background);
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
   background-size:
     48px 48px,
     48px 48px;
@@ -155,37 +155,34 @@ body {
 /* Hero variant — a streak stretched across page headers, fading toward the content below. */
 .brand-texture--hero {
   opacity: 0.28;
-  background-position: center 35%;
-  /* Vertical fade toward the content, intersected with a horizontal ramp so
-     the streak kicks in just before stage 01 and holds through stage 07. */
+  /* Vertical fade toward the content is baked in by multiplying a
+     white→black gradient over the photo (black drops out under the
+     screen blend). The mask then handles the horizontal ramp: kick in
+     just before stage 01 and hold through stage 07 at the right edge. */
+  background-image: linear-gradient(
+      to bottom,
+      #ffffff 0%,
+      #8c8c8c 55%,
+      #000000 96%
+    ),
+    url("/brand/texture.jpg");
+  background-size: cover, cover;
+  background-position: center, center 35%;
+  background-blend-mode: multiply;
   -webkit-mask-image: linear-gradient(
-      to bottom,
-      rgba(0, 0, 0, 0.95) 0%,
-      rgba(0, 0, 0, 0.55) 55%,
-      transparent 96%
-    ),
-    linear-gradient(
-      to right,
-      transparent 0%,
-      rgba(0, 0, 0, 0.85) 42%,
-      rgb(0, 0, 0) 55%,
-      rgb(0, 0, 0) 100%
-    );
-  -webkit-mask-composite: source-in;
+    to right,
+    transparent 0%,
+    rgba(0, 0, 0, 0.85) 42%,
+    rgb(0, 0, 0) 55%,
+    rgb(0, 0, 0) 100%
+  );
   mask-image: linear-gradient(
-      to bottom,
-      rgba(0, 0, 0, 0.95) 0%,
-      rgba(0, 0, 0, 0.55) 55%,
-      transparent 96%
-    ),
-    linear-gradient(
-      to right,
-      transparent 0%,
-      rgba(0, 0, 0, 0.85) 42%,
-      rgb(0, 0, 0) 55%,
-      rgb(0, 0, 0) 100%
-    );
-  mask-composite: intersect;
+    to right,
+    transparent 0%,
+    rgba(0, 0, 0, 0.85) 42%,
+    rgb(0, 0, 0) 55%,
+    rgb(0, 0, 0) 100%
+  );
 }
 
 /* Page variant — full-bleed atmosphere for standalone screens (login). */
