@@ -1323,6 +1323,7 @@ export async function createAndCompleteSlackChannel(
       teamId,
       name: channelName,
       isPrivate: Boolean(input.isPrivate),
+      adsomniaUserId: user.id,
     });
   } catch (err) {
     return {

@@ -32,6 +32,7 @@ export async function POST(request: Request) {
       teamId,
       name,
       isPrivate: Boolean(isPrivate),
+      adsomniaUserId: user.id,
     });
     return NextResponse.json({ success: true, ...result });
   } catch (err) {

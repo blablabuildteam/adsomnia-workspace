@@ -1,0 +1,1 @@
+ALTER TABLE "slack_workspaces" ADD COLUMN "installer_slack_user_id" varchar(64);

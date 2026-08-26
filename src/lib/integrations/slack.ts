@@ -1,7 +1,7 @@
 import { WebClient, LogLevel } from "@slack/web-api";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { slackWorkspaces } from "@/db/schema";
+import { slackUserLinks, slackWorkspaces } from "@/db/schema";
 
 export const SLACK_BOT_SCOPES = [
   "channels:manage",
@@ -9,12 +9,15 @@ export const SLACK_BOT_SCOPES = [
   "groups:write",
   "groups:read",
   "chat:write",
+  "bookmarks:write",
 ] as const;
 
 export type SlackWorkspaceSummary = {
   teamId: string;
   teamName: string;
   installedAt: Date;
+  /** True when the current Adsomnia user has linked their Slack account for this workspace. */
+  userLinked: boolean;
 };
 
 export type CreateChannelResult = {
@@ -107,12 +110,29 @@ function mapSlackError(code: string | undefined, fallback: string): string {
       return "Slack blocked this action. Check workspace policies for channel creation.";
     case "ratelimited":
       return "Slack rate-limited the request. Try again in a moment.";
+    case "cant_invite":
+    case "cant_invite_self":
+    case "user_not_found":
+      return "Could not invite your Slack account to the channel. Connect Slack again while logged into the correct Slack user.";
     default:
       return fallback;
   }
 }
 
-export async function getInstalledWorkspaces(): Promise<SlackWorkspaceSummary[]> {
+export async function getUserSlackLink(userId: string, teamId: string) {
+  const [row] = await db
+    .select()
+    .from(slackUserLinks)
+    .where(
+      and(eq(slackUserLinks.userId, userId), eq(slackUserLinks.teamId, teamId)),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+export async function getInstalledWorkspaces(
+  adsomniaUserId?: string,
+): Promise<SlackWorkspaceSummary[]> {
   const rows = await db
     .select({
       teamId: slackWorkspaces.teamId,
@@ -122,7 +142,22 @@ export async function getInstalledWorkspaces(): Promise<SlackWorkspaceSummary[]>
     .from(slackWorkspaces)
     .orderBy(asc(slackWorkspaces.teamName));
 
-  return rows;
+  if (!adsomniaUserId) {
+    return rows.map((row) => ({ ...row, userLinked: false }));
+  }
+
+  const links = await db
+    .select({
+      teamId: slackUserLinks.teamId,
+    })
+    .from(slackUserLinks)
+    .where(eq(slackUserLinks.userId, adsomniaUserId));
+
+  const linkedTeams = new Set(links.map((l) => l.teamId));
+  return rows.map((row) => ({
+    ...row,
+    userLinked: linkedTeams.has(row.teamId),
+  }));
 }
 
 export async function getWorkspace(teamId: string) {
@@ -134,9 +169,37 @@ export async function getWorkspace(teamId: string) {
   return row ?? null;
 }
 
+async function upsertUserSlackLink(opts: {
+  userId: string;
+  teamId: string;
+  slackUserId: string;
+}) {
+  const existing = await getUserSlackLink(opts.userId, opts.teamId);
+  if (existing) {
+    await db
+      .update(slackUserLinks)
+      .set({
+        slackUserId: opts.slackUserId,
+        updatedAt: new Date(),
+      })
+      .where(eq(slackUserLinks.id, existing.id));
+    return;
+  }
+
+  await db.insert(slackUserLinks).values({
+    userId: opts.userId,
+    teamId: opts.teamId,
+    slackUserId: opts.slackUserId,
+  });
+}
+
+/**
+ * Completes OAuth: upserts the workspace bot install and links the current
+ * Adsomnia user to the Slack user who approved the install.
+ */
 export async function exchangeOAuthCode(
   code: string,
-  installedByUserId: string,
+  adsomniaUserId: string,
 ): Promise<SlackWorkspaceSummary> {
   const creds = getAppCredentials();
   if (!creds) {
@@ -164,9 +227,17 @@ export async function exchangeOAuthCode(
   const teamName = result.team?.name ?? "Slack workspace";
   const botToken = result.access_token;
   const botUserId = result.bot_user_id;
+  const slackUserId =
+    typeof result.authed_user?.id === "string" ? result.authed_user.id : null;
 
   if (!teamId || !botToken || !botUserId) {
     throw new Error("Slack OAuth response was missing workspace or bot details.");
+  }
+
+  if (!slackUserId) {
+    throw new Error(
+      "Slack OAuth did not return your Slack user id. Try Connect Slack again.",
+    );
   }
 
   if (result.token_type && result.token_type !== "bot") {
@@ -181,7 +252,8 @@ export async function exchangeOAuthCode(
         teamName,
         botToken,
         botUserId,
-        installedByUserId,
+        installerSlackUserId: slackUserId,
+        installedByUserId: adsomniaUserId,
         updatedAt: new Date(),
       })
       .where(eq(slackWorkspaces.teamId, teamId));
@@ -191,14 +263,22 @@ export async function exchangeOAuthCode(
       teamName,
       botToken,
       botUserId,
-      installedByUserId,
+      installerSlackUserId: slackUserId,
+      installedByUserId: adsomniaUserId,
     });
   }
+
+  await upsertUserSlackLink({
+    userId: adsomniaUserId,
+    teamId,
+    slackUserId,
+  });
 
   return {
     teamId,
     teamName,
     installedAt: existing?.installedAt ?? new Date(),
+    userLinked: true,
   };
 }
 
@@ -206,11 +286,20 @@ export async function createChannel(opts: {
   teamId: string;
   name: string;
   isPrivate?: boolean;
+  /** Adsomnia user creating the channel — invited via their linked Slack id. */
+  adsomniaUserId: string;
 }): Promise<CreateChannelResult> {
   const workspace = await getWorkspace(opts.teamId);
   if (!workspace) {
     throw new Error(
       `Slack workspace "${opts.teamId}" is not connected. Connect Slack first.`,
+    );
+  }
+
+  const userLink = await getUserSlackLink(opts.adsomniaUserId, opts.teamId);
+  if (!userLink) {
+    throw new Error(
+      "Connect your Slack account once before creating channels. Use Connect Slack while logged into the Slack user you want invited.",
     );
   }
 
@@ -241,6 +330,29 @@ export async function createChannel(opts: {
 
     const channelId = result.channel.id;
     const channelName = result.channel.name ?? name;
+
+    try {
+      await client.conversations.invite({
+        channel: channelId,
+        users: userLink.slackUserId,
+      });
+    } catch (inviteErr) {
+      const code =
+        inviteErr && typeof inviteErr === "object" && "data" in inviteErr
+          ? (inviteErr as { data?: { error?: string } }).data?.error
+          : undefined;
+      if (code !== "already_in_channel") {
+        if (isPrivate) {
+          throw new Error(
+            mapSlackError(
+              code,
+              "Channel was created but you could not be invited. Connect Slack again and retry, or open the channel from the link in Project Setup.",
+            ),
+          );
+        }
+        // Public channels remain findable via Browse; invite failure is non-fatal.
+      }
+    }
 
     try {
       await client.chat.postMessage({

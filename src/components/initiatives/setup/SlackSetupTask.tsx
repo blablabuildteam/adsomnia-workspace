@@ -10,6 +10,7 @@ import { createAndCompleteSlackChannel } from "@/app/(workspace)/workstreams/[id
 type SlackWorkspaceOption = {
   teamId: string;
   teamName: string;
+  userLinked: boolean;
 };
 
 type Props = {
@@ -53,6 +54,8 @@ export function SlackSetupTask({
 
   const view = optimistic ?? data;
   const savedName = view.channelName || view.suggestedName;
+  const selectedWorkspace = workspaces.find((w) => w.teamId === teamId);
+  const userLinkedToSelected = Boolean(selectedWorkspace?.userLinked);
 
   const loadWorkspaces = useCallback(async () => {
     setLoadingWorkspaces(true);
@@ -71,7 +74,12 @@ export function SlackSetupTask({
         workspaces: SlackWorkspaceOption[];
       };
       setAppConfigured(body.appConfigured);
-      setWorkspaces(body.workspaces);
+      setWorkspaces(
+        body.workspaces.map((w) => ({
+          ...w,
+          userLinked: Boolean(w.userLinked),
+        })),
+      );
       setTeamId((current) => {
         if (current && body.workspaces.some((w) => w.teamId === current)) {
           return current;
@@ -341,6 +349,22 @@ export function SlackSetupTask({
             </div>
           </label>
 
+          {!userLinkedToSelected && (
+            <div className="space-y-3 border border-border bg-surface px-3 py-3">
+              <p className="text-xs text-muted">
+                Connect your Slack account once so we can invite you when a
+                channel is created. Approve while logged into the Slack user you
+                use day to day.
+              </p>
+              <a
+                href={connectHref}
+                className="inline-flex items-center gap-2 border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors hover:bg-transparent hover:text-foreground"
+              >
+                Connect My Slack Account
+              </a>
+            </div>
+          )}
+
           <label className="block">
             <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
               Channel name<span className="ml-1 text-btr">*</span>
@@ -401,7 +425,7 @@ export function SlackSetupTask({
       {error && <p className="text-xs text-btr">{error}</p>}
 
       <div className="flex flex-wrap items-center gap-3">
-        {workspaces.length > 0 && !manualMode && (
+        {workspaces.length > 0 && !manualMode && userLinkedToSelected && (
           <button
             type="button"
             onClick={handleCreate}
@@ -429,7 +453,7 @@ export function SlackSetupTask({
           </button>
         )}
 
-        {workspaces.length > 0 && !manualMode && (
+        {workspaces.length > 0 && !manualMode && userLinkedToSelected && (
           <button
             type="button"
             onClick={() => setManualMode(true)}

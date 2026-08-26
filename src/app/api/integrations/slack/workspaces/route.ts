@@ -11,7 +11,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const workspaces = await getInstalledWorkspaces();
+  const workspaces = await getInstalledWorkspaces(user.id);
   return NextResponse.json({
     appConfigured: isSlackAppConfigured(),
     workspaces,

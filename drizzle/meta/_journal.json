@@ -64,6 +64,20 @@
       "when": 1787737728305,
       "tag": "0008_slack_workspaces",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787739071891,
+      "tag": "0009_slack_installer_user",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787739522265,
+      "tag": "0010_slack_user_links",
+      "breakpoints": true
     }
   ]
 }

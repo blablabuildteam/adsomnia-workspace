@@ -7,6 +7,7 @@ import {
   serial,
   jsonb,
   pgEnum,
+  unique,
 } from "drizzle-orm/pg-core";
 
 export const userRoleEnum = pgEnum("user_role", [
@@ -134,6 +135,8 @@ export const slackWorkspaces = pgTable("slack_workspaces", {
   teamName: varchar("team_name", { length: 255 }).notNull(),
   botToken: text("bot_token").notNull(),
   botUserId: varchar("bot_user_id", { length: 64 }).notNull(),
+  /** Slack user id of the person who installed the app (for invites). */
+  installerSlackUserId: varchar("installer_slack_user_id", { length: 64 }),
   installedByUserId: uuid("installed_by_user_id")
     .notNull()
     .references(() => users.id),
@@ -145,3 +148,33 @@ export const slackWorkspaces = pgTable("slack_workspaces", {
     .defaultNow()
     .$onUpdate(() => new Date()),
 });
+
+/**
+ * Links an Adsomnia user to their Slack user id within a connected workspace.
+ * Each Setup user who creates channels Connects Slack once; we invite that
+ * Slack user on channel create.
+ */
+export const slackUserLinks = pgTable(
+  "slack_user_links",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    teamId: varchar("team_id", { length: 64 }).notNull(),
+    slackUserId: varchar("slack_user_id", { length: 64 }).notNull(),
+    linkedAt: timestamp("linked_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    userTeamUnique: unique("slack_user_links_user_team_unique").on(
+      table.userId,
+      table.teamId,
+    ),
+  }),
+);
