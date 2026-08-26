@@ -9,6 +9,7 @@ import {
   exchangeGoogleLoginCode,
   isEmailDomainAllowed,
   isGoogleLoginConfigured,
+  isLeadershipEmail,
   type GoogleLoginProfile,
 } from "@/lib/integrations/google-login";
 import { verifyGoogleLoginOAuthState } from "@/lib/integrations/google-login-oauth-state";
@@ -73,8 +74,10 @@ export async function GET(request: Request) {
       return loginErrorRedirect(origin, "google_domain_not_allowed");
     }
 
+    const leadership = isLeadershipEmail(profile.email);
+
     const [existing] = await db
-      .select({ id: users.id })
+      .select({ id: users.id, role: users.role })
       .from(users)
       .where(eq(users.email, profile.email))
       .limit(1);
@@ -83,6 +86,13 @@ export async function GET(request: Request) {
 
     if (existing) {
       userId = existing.id;
+      // Promote LOGIN_* emails to leadership if they were created as team earlier.
+      if (leadership && existing.role !== "leadership") {
+        await db
+          .update(users)
+          .set({ role: "leadership" })
+          .where(eq(users.id, userId));
+      }
     } else {
       const name = displayNameFromGoogle(profile);
       const passwordHash = hashSync(randomBytes(32).toString("hex"), 10);
@@ -94,7 +104,7 @@ export async function GET(request: Request) {
           lastName: profile.familyName?.trim() || null,
           email: profile.email,
           passwordHash,
-          role: "team",
+          role: leadership ? "leadership" : "team",
           profileCompletedAt: null,
         })
         .returning({ id: users.id });

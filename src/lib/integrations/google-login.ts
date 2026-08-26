@@ -54,6 +54,34 @@ export function isEmailDomainAllowed(email: string): boolean {
   return allowed.includes(domain);
 }
 
+/**
+ * Emails from LOGIN_*_EMAIL env vars (Adsomnia leadership + blablabuild admins).
+ * Matched Google accounts get the `leadership` role.
+ */
+export function getLeadershipEmails(): string[] {
+  const keys = [
+    "LOGIN_SIETSE_EMAIL",
+    "LOGIN_OLEG_EMAIL",
+    "LOGIN_JASPER_EMAIL",
+    "LOGIN_COEN_EMAIL",
+    "LOGIN_XENNITH_EMAIL",
+    "LOGIN_KEVIN_EMAIL",
+  ] as const;
+
+  const emails = new Set<string>();
+  for (const key of keys) {
+    const value = process.env[key]?.toLowerCase().trim();
+    if (value) emails.add(value);
+  }
+  return [...emails];
+}
+
+export function isLeadershipEmail(email: string): boolean {
+  const normalized = email.toLowerCase().trim();
+  if (!normalized) return false;
+  return getLeadershipEmails().includes(normalized);
+}
+
 export function getGoogleAuthorizeUrl(state: string): string {
   const clientId = process.env.GOOGLE_LOGIN_CLIENT_ID;
   if (!clientId || !appUrl()) {

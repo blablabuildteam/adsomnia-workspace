@@ -8,9 +8,9 @@ Sign in with Google on `/login`. Uses a dedicated OAuth Web client (not the Driv
 |-------|---------|
 | **OAuth client** | Separate Web application credentials for login (`GOOGLE_LOGIN_CLIENT_ID` / `SECRET`) |
 | **Domain allowlist** | `GOOGLE_ALLOWED_DOMAINS` — comma-separated (e.g. `adsomnia.com,blablabuild.com`) |
-| **User match** | Allowed-domain Google accounts are matched or **created** as `team` on first login |
+| **User match** | Allowed-domain Google accounts are matched or **created** on first login (`team` by default) |
 | **Profile signup** | Users missing first name, last name, or job title are sent to `/complete-profile` before the workspace (required after Google or password login) |
-| **Admins** | Seeded `leadership` users (Adsomnia `LOGIN_*` + blablabuild Xennith/Kevin) skip signup and get full admin capabilities |
+| **Admins** | Emails in `LOGIN_*_EMAIL` (Adsomnia Sietse/Oleg/Jasper/Coen + blablabuild Xennith/Kevin) are assigned `leadership` on Google login (create or promote) |
 | **Session** | Same `adsomnia-session` cookie via `createSession()` |
 
 Drive Picker keeps using `NEXT_PUBLIC_GOOGLE_CLIENT_ID` — do not reuse that client for login.
@@ -39,6 +39,7 @@ Use the existing **Adsomnia** Google Cloud project.
 | `GOOGLE_LOGIN_CLIENT_ID` | Server | Login OAuth Client ID |
 | `GOOGLE_LOGIN_CLIENT_SECRET` | Server | Login OAuth Client secret |
 | `GOOGLE_ALLOWED_DOMAINS` | Server | Comma-separated email domains allowed after Google auth |
+| `LOGIN_*_EMAIL` | Server | Leadership admin emails (Sietse/Oleg/Jasper/Coen/Xennith/Kevin) — assigned `leadership` on Google login |
 | `NEXT_PUBLIC_APP_URL` | Public | App origin used to build the redirect URI (no trailing slash) |
 
 Example `.env.local` entries:
