@@ -86,7 +86,7 @@ export function DocsSetupTask({
           className="inline-flex items-center gap-2 border border-success bg-success/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-success transition-colors hover:bg-success/20"
         >
           <Check className="size-3.5" />
-          Confirm Documentation
+          Confirm folder structure and documentation
         </button>
       )}
     </div>

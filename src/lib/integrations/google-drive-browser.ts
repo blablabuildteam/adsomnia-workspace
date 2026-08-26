@@ -125,6 +125,11 @@ export function canCreateDriveFolders(): boolean {
   return Boolean(GOOGLE_CLIENT_ID);
 }
 
+/** Same OAuth client powers folder structure and project Drive creation. */
+export function canCreateProjectDrive(): boolean {
+  return canCreateDriveFolders();
+}
+
 export async function fetchDriveFolderName(
   driveUrl: string,
 ): Promise<string | null> {
@@ -240,13 +245,107 @@ export type CreateDriveFoldersResult = {
   folders: CreatedDriveFolder[];
 };
 
+export type ProjectDriveKind = "shared_drive" | "folder";
+
+export type CreatedProjectDrive = {
+  id: string;
+  name: string;
+  url: string;
+  kind: ProjectDriveKind;
+};
+
+async function createSharedDrive(
+  token: string,
+  name: string,
+): Promise<CreatedProjectDrive> {
+  const requestId =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `adsomnia-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  const response = await driveFetch(
+    token,
+    `drives?requestId=${encodeURIComponent(requestId)}`,
+    {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    },
+  );
+  if (!response.ok) {
+    throw await driveError(response);
+  }
+  const payload = (await response.json()) as { id?: string; name?: string };
+  if (!payload.id) {
+    throw new Error("Google Drive created a Shared Drive but did not return an id.");
+  }
+  return {
+    id: payload.id,
+    name: payload.name || name,
+    url: driveFolderUrl(payload.id),
+    kind: "shared_drive",
+  };
+}
+
+async function createRootFolder(
+  token: string,
+  name: string,
+): Promise<CreatedProjectDrive> {
+  const response = await driveFetch(token, "files", {
+    method: "POST",
+    body: JSON.stringify({
+      name,
+      mimeType: FOLDER_MIME,
+    }),
+  });
+  if (!response.ok) {
+    throw await driveError(response);
+  }
+  const payload = (await response.json()) as { id?: string; name?: string };
+  if (!payload.id) {
+    throw new Error("Google Drive created a folder but did not return an id.");
+  }
+  return {
+    id: payload.id,
+    name: payload.name || name,
+    url: driveFolderUrl(payload.id),
+    kind: "folder",
+  };
+}
+
+/**
+ * Creates a Shared Drive when the signed-in Workspace account allows it;
+ * otherwise creates a project folder in that account's My Drive.
+ */
+export async function createProjectDrive(
+  name: string,
+): Promise<CreatedProjectDrive> {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error("Drive name is required.");
+  }
+
+  const token = await getDriveAccessToken();
+
+  try {
+    return await createSharedDrive(token, trimmed);
+  } catch {
+    try {
+      return await createRootFolder(token, trimmed);
+    } catch (folderError) {
+      throw folderError instanceof Error
+        ? folderError
+        : new Error("Could not create a Google Drive for this project.");
+    }
+  }
+}
+
 export async function createRecommendedDriveFolders(
   driveUrl: string,
 ): Promise<CreateDriveFoldersResult> {
   const folderId = parseGoogleDriveFolderId(driveUrl);
   if (!folderId) {
     throw new Error(
-      "Paste a Google Drive folder link first, then create the structure.",
+      "Create or link the project Drive first, then create the folder structure.",
     );
   }
 

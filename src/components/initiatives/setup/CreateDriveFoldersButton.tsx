@@ -75,8 +75,8 @@ export function CreateDriveFoldersButton({ driveUrl, onCreated }: Props) {
       </button>
       {!folderId && (
         <p className="text-[11px] text-muted">
-          Confirm the project Drive folder first. Google will ask for
-          permission to create the folders.
+          Finish Create Google Drive first. Google will ask for permission to
+          create the folders.
         </p>
       )}
       {message && <p className="text-[11px] text-success">{message}</p>}
