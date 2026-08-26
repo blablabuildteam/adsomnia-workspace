@@ -103,7 +103,17 @@ Audit trail for all significant actions.
 - Session managed via HTTP-only cookie (signed JWT)
 - `getCurrentUser()` server-side helper reads the session cookie and returns the user
 - The `(workspace)` route group layout enforces authentication — unauthenticated users redirect to `/login`
-- No self-registration, no password reset, no OAuth
+- No self-registration, no password reset
+- **Admin capabilities** (`canApprove`, `canManageSetup`, `canManageOnboarding`) are granted by `role === "leadership"` (not hard-coded names). Seeded admins include Adsomnia + blablabuild accounts from `LOGIN_*` env vars.
+
+### Google Workspace login (current)
+
+- **Continue with Google** on `/login` uses a dedicated OAuth Web client (`GOOGLE_LOGIN_*`) — separate from Drive Picker
+- Callback verifies the Google ID token, checks `GOOGLE_ALLOWED_DOMAINS`, matches or **creates** a `users` row (`team` for new accounts), then calls `createSession()`
+- Non-leadership users without a completed profile are redirected to `/complete-profile` (first name, last name, optional job title) before accessing the workspace
+- Profile details are editable from the sidebar (bottom left)
+- Password login remains available as fallback for seeded accounts
+- Setup checklist: [`docs/google-login.md`](./google-login.md)
 
 ### Future: Email-Based Authentication (Resend)
 
@@ -243,14 +253,17 @@ Each stage gate (Validation → Scoping, Scoping → Go/No-Go, etc.) will have i
 | `LOGIN_*_EMAIL` / `LOGIN_*_PASSWORD` | Server | 1 | Per-user seed credentials |
 | `RESEND_API_KEY` | Server | Future | Resend transactional email |
 | `GEMINI_API_KEY` | Server | Future | Google Gemini for chat agent |
-| `NEXT_PUBLIC_APP_URL` | Public | Slack | App origin for Slack OAuth redirect URI |
+| `NEXT_PUBLIC_APP_URL` | Public | Slack / Google login | App origin for OAuth redirect URIs |
 | `SLACK_CLIENT_ID` | Server | Slack | Distributable Slack app Client ID |
 | `SLACK_CLIENT_SECRET` | Server | Slack | Distributable Slack app Client Secret |
 | `SLACK_SIGNING_SECRET` | Server | Slack | Slack signing secret (future request verification) |
+| `GOOGLE_LOGIN_CLIENT_ID` | Server | Google login | Dedicated login OAuth Client ID |
+| `GOOGLE_LOGIN_CLIENT_SECRET` | Server | Google login | Dedicated login OAuth Client secret |
+| `GOOGLE_ALLOWED_DOMAINS` | Server | Google login | Comma-separated allowed email domains |
 
-Local values live in `.env.local` (gitignored). Sync auth/session/login vars to Vercel via `npm run env:sync-vercel`. When Resend and Gemini go live, add those keys to the sync script and Vercel Production/Preview/Development. Slack setup steps: [`docs/slack-integration.md`](./slack-integration.md).
+Local values live in `.env.local` (gitignored). Sync auth/session/login vars to Vercel via `npm run env:sync-vercel`. When Resend and Gemini go live, add those keys to the sync script and Vercel Production/Preview/Development. Slack setup: [`docs/slack-integration.md`](./slack-integration.md). Google login: [`docs/google-login.md`](./google-login.md).
 
-**Never** prefix secrets with `NEXT_PUBLIC_` — client bundle exposure. `NEXT_PUBLIC_APP_URL` is the only Slack-related public value (origin only, not secrets).
+**Never** prefix secrets with `NEXT_PUBLIC_` — client bundle exposure. `NEXT_PUBLIC_APP_URL` is the public origin only (not secrets).
 
 ---
 

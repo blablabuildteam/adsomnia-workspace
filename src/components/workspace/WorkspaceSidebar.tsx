@@ -11,12 +11,13 @@ import {
   Columns3,
   LayoutDashboard,
   Lightbulb,
-  LogOut,
   Map,
-  User,
 } from "lucide-react";
-import { logout } from "@/lib/auth";
 import { STAGE_COLORS, type StageId } from "@/data/workflow";
+import {
+  SidebarProfile,
+  type SidebarProfileUser,
+} from "./SidebarProfile";
 
 const PRIMARY_NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -176,7 +177,7 @@ function PipelineNav({
 }
 
 type Props = {
-  userName: string;
+  user: SidebarProfileUser;
   collapsed: boolean;
   onToggle: () => void;
 };
@@ -193,7 +194,7 @@ function isActive(pathname: string, href: string): boolean {
   return false;
 }
 
-export function WorkspaceSidebar({ userName, collapsed, onToggle }: Props) {
+export function WorkspaceSidebar({ user, collapsed, onToggle }: Props) {
   const pathname = usePathname();
 
   return (
@@ -318,37 +319,7 @@ export function WorkspaceSidebar({ userName, collapsed, onToggle }: Props) {
         </ul>
       </div>
 
-      {/* User + sign out */}
-      <div
-        className={[
-          "border-t border-border",
-          collapsed ? "px-2 py-3" : "px-3 py-4",
-        ].join(" ")}
-      >
-        {!collapsed && (
-          <div className="mb-3 flex items-center gap-2 px-1 text-xs text-muted">
-            <User className="size-3.5 shrink-0" />
-            <span className="truncate">{userName}</span>
-          </div>
-        )}
-        <form action={logout}>
-          <button
-            type="submit"
-            title={collapsed ? "Sign out" : undefined}
-            className={[
-              "flex w-full items-center border border-transparent text-xs text-muted transition-colors hover:border-border hover:text-foreground",
-              collapsed ? "justify-center py-2" : "gap-2 px-3 py-2",
-            ].join(" ")}
-          >
-            <LogOut className="size-3.5 shrink-0" />
-            {!collapsed && (
-              <span className="font-display font-bold uppercase tracking-wide">
-                Sign Out
-              </span>
-            )}
-          </button>
-        </form>
-      </div>
+      <SidebarProfile user={user} collapsed={collapsed} />
     </aside>
   );
 }

@@ -1,5 +1,9 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/session";
+import {
+  displayName,
+  getCurrentUser,
+  needsProfileCompletion,
+} from "@/lib/session";
 import { WorkspaceShell } from "@/components/workspace/WorkspaceShell";
 
 export default async function WorkspaceLayout({
@@ -12,9 +16,24 @@ export default async function WorkspaceLayout({
     redirect("/login");
   }
 
+  if (needsProfileCompletion(user)) {
+    redirect("/complete-profile");
+  }
+
   return (
     <div className="app-atmosphere flex h-dvh min-h-0 flex-col overflow-hidden">
-      <WorkspaceShell userName={user.name}>{children}</WorkspaceShell>
+      <WorkspaceShell
+        user={{
+          name: displayName(user),
+          firstName: user.firstName,
+          lastName: user.lastName,
+          jobTitle: user.jobTitle,
+          email: user.email,
+          role: user.role,
+        }}
+      >
+        {children}
+      </WorkspaceShell>
     </div>
   );
 }

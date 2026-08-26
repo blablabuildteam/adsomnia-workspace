@@ -1,0 +1,69 @@
+# Google login (Workspace SSO)
+
+Sign in with Google on `/login`. Uses a dedicated OAuth Web client (not the Drive Picker client). After Google verifies the account, the app checks an allowed-domain list and matches an **existing** user by email, then creates the same JWT session cookie as password login.
+
+## Identity model
+
+| Piece | Meaning |
+|-------|---------|
+| **OAuth client** | Separate Web application credentials for login (`GOOGLE_LOGIN_CLIENT_ID` / `SECRET`) |
+| **Domain allowlist** | `GOOGLE_ALLOWED_DOMAINS` — comma-separated (e.g. `adsomnia.com,blablabuild.com`) |
+| **User match** | Allowed-domain Google accounts are matched or **created** as `team` on first login |
+| **Profile signup** | Users missing first name, last name, or job title are sent to `/complete-profile` before the workspace (required after Google or password login) |
+| **Admins** | Seeded `leadership` users (Adsomnia `LOGIN_*` + blablabuild Xennith/Kevin) skip signup and get full admin capabilities |
+| **Session** | Same `adsomnia-session` cookie via `createSession()` |
+
+Drive Picker keeps using `NEXT_PUBLIC_GOOGLE_CLIENT_ID` — do not reuse that client for login.
+
+## Google Cloud setup
+
+Use the existing **Adsomnia** Google Cloud project.
+
+1. **APIs & Services → OAuth consent screen** (project configuration wizard if shown)
+   - App name: `Adsomnia Workspace`
+   - Support / developer emails: Adsomnia addresses you monitor
+   - Audience: **Internal** for Adsomnia-only testing; switch to **External** before non-Adsomnia Workspace domains (e.g. `blablabuild.com`) can complete Google sign-in
+   - Scopes: `openid`, `email`, `profile` only
+2. **Credentials → Create OAuth client ID → Web application**
+   - Name: e.g. `Adsomnia Workspace Login`
+   - Authorized JavaScript origins: `http://localhost:3000` and production origin
+   - Authorized redirect URIs:
+     - `http://localhost:3000/api/auth/google/callback`
+     - `https://<prod-host>/api/auth/google/callback`
+3. Copy Client ID and Client secret into env (below).
+
+## Environment variables
+
+| Variable | Scope | Purpose |
+|----------|-------|---------|
+| `GOOGLE_LOGIN_CLIENT_ID` | Server | Login OAuth Client ID |
+| `GOOGLE_LOGIN_CLIENT_SECRET` | Server | Login OAuth Client secret |
+| `GOOGLE_ALLOWED_DOMAINS` | Server | Comma-separated email domains allowed after Google auth |
+| `NEXT_PUBLIC_APP_URL` | Public | App origin used to build the redirect URI (no trailing slash) |
+
+Example `.env.local` entries:
+
+```bash
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+GOOGLE_LOGIN_CLIENT_ID=
+GOOGLE_LOGIN_CLIENT_SECRET=
+GOOGLE_ALLOWED_DOMAINS=adsomnia.com,blablabuild.com
+```
+
+Sync to Vercel with `npm run env:sync-vercel` after the keys are in `.env.local`.
+
+## Routes
+
+| Path | Role |
+|------|------|
+| `/api/auth/google/start` | Redirects to Google authorize |
+| `/api/auth/google/callback` | Exchanges code, allowlists domain, looks up user, sets session |
+
+## Opening additional Workspaces
+
+1. Ensure consent is **External** (Internal blocks non-Adsomnia Google Workspace accounts).
+2. Add the domain to `GOOGLE_ALLOWED_DOMAINS`.
+3. Seed (or insert) a `users` row whose `email` matches the Google account exactly.
+4. Add production redirect URI / origin if the host changes.
+
+No second OAuth client is required per Workspace.

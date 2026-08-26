@@ -2,15 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
+import type { SidebarProfileUser } from "./SidebarProfile";
 
 const STORAGE_KEY = "adsomnia-sidebar-collapsed";
 
 type Props = {
-  userName: string;
+  user: SidebarProfileUser;
   children: React.ReactNode;
 };
 
-export function WorkspaceShell({ userName, children }: Props) {
+export function WorkspaceShell({ user, children }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
@@ -39,7 +40,7 @@ export function WorkspaceShell({ userName, children }: Props) {
   return (
     <div className="flex min-h-0 min-w-0 flex-1">
       <WorkspaceSidebar
-        userName={userName}
+        user={user}
         collapsed={hydrated ? collapsed : false}
         onToggle={toggle}
       />

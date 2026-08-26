@@ -13,8 +13,12 @@ const EXPIRY = "7d";
 export type SessionUser = {
   id: string;
   name: string;
+  firstName: string | null;
+  lastName: string | null;
+  jobTitle: string | null;
   email: string;
   role: "leadership" | "production" | "team";
+  profileCompletedAt: Date | null;
 };
 
 export async function createSession(userId: string): Promise<void> {
@@ -53,8 +57,12 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
       .select({
         id: users.id,
         name: users.name,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        jobTitle: users.jobTitle,
         email: users.email,
         role: users.role,
+        profileCompletedAt: users.profileCompletedAt,
       })
       .from(users)
       .where(eq(users.id, userId))
@@ -67,17 +75,37 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   }
 }
 
+/** Everyone must confirm first name, last name, and job title once. */
+export function needsProfileCompletion(user: SessionUser): boolean {
+  return (
+    !user.firstName?.trim() ||
+    !user.lastName?.trim() ||
+    !user.jobTitle?.trim()
+  );
+}
+
+export function displayName(user: {
+  name: string;
+  firstName?: string | null;
+  lastName?: string | null;
+}): string {
+  const first = user.firstName?.trim() ?? "";
+  const last = user.lastName?.trim() ?? "";
+  const combined = `${first} ${last}`.trim();
+  return combined || user.name;
+}
+
 /** Leadership admins who can approve, reject, or hold initiatives. */
 export function canApprove(user: SessionUser): boolean {
-  return user.name === "Sietse" || user.name === "Coen";
+  return user.role === "leadership";
 }
 
-/** Head of Production + leadership — can manage Project Setup checklist. */
+/** Leadership — can manage Project Setup checklist. */
 export function canManageSetup(user: SessionUser): boolean {
-  return user.role === "leadership" || user.name === "Coen";
+  return user.role === "leadership";
 }
 
-/** Head of Production + leadership — runs the Onboarding & Kickoff session. */
+/** Leadership — runs the Onboarding & Kickoff session. */
 export function canManageOnboarding(user: SessionUser): boolean {
-  return user.role === "leadership" || user.name === "Coen";
+  return user.role === "leadership";
 }
