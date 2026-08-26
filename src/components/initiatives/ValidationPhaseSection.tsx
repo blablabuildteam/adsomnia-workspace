@@ -105,7 +105,7 @@ function resolveLeadPartyState(stored: string | undefined | null): {
   return { select: OTHER_PARTY_VALUE, other: stored };
 }
 
-const IS_DEV = process.env.NODE_ENV === "development";
+const SHOW_FORM_PREFILL = true;
 
 const DEV_PREFILL = {
   businessValueTypes: ["speed", "cost-efficiency"] as BusinessValueType[],
@@ -216,11 +216,11 @@ function BusinessCaseHeader({
           with confidence.
         </p>
       </div>
-      {IS_DEV && onPrefill && (
+      {SHOW_FORM_PREFILL && onPrefill && (
         <button
           type="button"
           onClick={onPrefill}
-          title="Prefill form (dev only)"
+          title="Prefill form for testing"
           aria-label="Prefill form for testing"
           className="inline-flex size-8 shrink-0 items-center justify-center border border-border text-muted transition-colors hover:border-bbb/50 hover:text-bbb"
         >

@@ -68,7 +68,7 @@ import type { Attachment } from "@/lib/validation-data";
 
 const initial: ScopingResult = {};
 
-const IS_DEV = process.env.NODE_ENV === "development";
+const SHOW_FORM_PREFILL = true;
 
 /* ─── Help text & icons ─────────────────────────────────── */
 
@@ -868,11 +868,11 @@ function ScopingHeader({
           </p>
         </div>
       </div>
-      {IS_DEV && onPrefill && (
+      {SHOW_FORM_PREFILL && onPrefill && (
         <button
           type="button"
           onClick={onPrefill}
-          title="Prefill form (dev only)"
+          title="Prefill form for testing"
           aria-label="Prefill form for testing"
           className="inline-flex size-8 shrink-0 items-center justify-center border border-border text-muted transition-colors hover:border-bbb/50 hover:text-bbb"
         >

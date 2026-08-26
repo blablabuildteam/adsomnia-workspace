@@ -32,7 +32,7 @@ const IDEA_STAGE = STAGES.find((s) => s.id === "idea")!;
 
 const SPONSOR_OPTIONS = ["Sietse", "Jasper", "Oleg", "Coen"];
 
-const IS_DEV = process.env.NODE_ENV === "development";
+const SHOW_FORM_PREFILL = true;
 
 const FORM_FIELDS = [
   {
@@ -398,11 +398,11 @@ export function IdeaFormView({ submitterName }: { submitterName: string }) {
             <span className="size-1.5 animate-pulse bg-foreground" aria-hidden />
             New Initiative
           </span>
-          {IS_DEV && (
+          {SHOW_FORM_PREFILL && (
             <button
               type="button"
               onClick={() => setValues(DEV_PREFILL)}
-              title="Prefill form (dev only)"
+              title="Prefill form for testing"
               aria-label="Prefill form for testing"
               className="inline-flex size-8 items-center justify-center border border-border text-muted transition-colors hover:border-bbb/50 hover:text-bbb"
             >
