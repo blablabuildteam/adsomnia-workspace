@@ -220,7 +220,7 @@ Each stage gate (Validation → Scoping, Scoping → Go/No-Go, etc.) will have i
 - Budget & capacity sign-off
 
 ### Phase 5: Project Setup
-- Jira integration (create Epics, Milestones)
+- Jira integration — create board/project via API on the **lead party’s** Cloud site (Adsomnia / BTR / HN); see [`jira-integration.md`](./jira-integration.md)
 - Resource booking from Scoping hour estimates
 - Dual-system tracking (Workspace + Jira)
 
@@ -231,6 +231,7 @@ Each stage gate (Validation → Scoping, Scoping → Go/No-Go, etc.) will have i
 
 ### Phase 7: Production & Reporting
 - Lead party assignment for Production
+- **Production Overview** — epics (name, start/end) + nested task progress (todo / in progress / done) pulled from each lead’s Jira
 - Governance dashboard for Head of Production
 - Weekly Leadership Updates view
 
@@ -260,8 +261,13 @@ Each stage gate (Validation → Scoping, Scoping → Go/No-Go, etc.) will have i
 | `GOOGLE_LOGIN_CLIENT_ID` | Server | Google login | Dedicated login OAuth Client ID |
 | `GOOGLE_LOGIN_CLIENT_SECRET` | Server | Google login | Dedicated login OAuth Client secret |
 | `GOOGLE_ALLOWED_DOMAINS` | Server | Google login | Comma-separated allowed email domains |
+| `JIRA_ADSOMNIA_HOST` | Server | Jira | Adsomnia Jira Cloud host (connect first) |
+| `JIRA_ADSOMNIA_EMAIL` | Server | Jira | Service/admin email for Adsomnia API token |
+| `JIRA_ADSOMNIA_API_TOKEN` | Server | Jira | Adsomnia Atlassian API token |
+| `JIRA_BTR_HOST` / `_EMAIL` / `_API_TOKEN` | Server | Jira | Bending The Rules Jira Cloud (later) |
+| `JIRA_HN_HOST` / `_EMAIL` / `_API_TOKEN` | Server | Jira | Harlem Next Jira Cloud (later) |
 
-Local values live in `.env.local` (gitignored). Sync auth/session/login vars to Vercel via `npm run env:sync-vercel`. When Resend and Gemini go live, add those keys to the sync script and Vercel Production/Preview/Development. Slack setup: [`docs/slack-integration.md`](./slack-integration.md). Google login: [`docs/google-login.md`](./google-login.md).
+Local values live in `.env.local` (gitignored). Sync auth/session/login/Slack/Google/Jira vars to Vercel via `npm run env:sync-vercel`. When Resend and Gemini go live, add those keys to the sync script and Vercel Production/Preview/Development. Slack: [`slack-integration.md`](./slack-integration.md). Google login: [`google-login.md`](./google-login.md). Jira: [`jira-integration.md`](./jira-integration.md) · client handoff: [`jira-client-connect.md`](./jira-client-connect.md).
 
 **Never** prefix secrets with `NEXT_PUBLIC_` — client bundle exposure. `NEXT_PUBLIC_APP_URL` is the public origin only (not secrets).
 

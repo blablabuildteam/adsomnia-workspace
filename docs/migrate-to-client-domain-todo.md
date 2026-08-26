@@ -7,4 +7,5 @@
 - Update URLs under the **OAuth 2.0 Client ID** in Google Cloud → APIs & Services → Credentials: set **Authorized JavaScript origins** (and any redirect URIs) to `https://<client-domain>` for Drive Picker
 - Create / update the **OAuth 2.0 Client ID** for workspace Drive credentials in Google Cloud → APIs & Services → Credentials, then set Production `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (and API key if needed) for the client domain
 - Smoke-test: login, Slack Connect OAuth, create channel in client workspace, Google Drive attach
+- **Jira:** after domain cutover, reconfirm `JIRA_*` env on Vercel Production (tokens are host-based, not domain-based; no Atlassian redirect URL change unless you add OAuth later)
 - Remove or leave old `*.vercel.app` Slack redirect URL only if you still need preview/fallback; otherwise drop it to avoid wrong-origin installs
