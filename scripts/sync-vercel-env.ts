@@ -13,6 +13,10 @@ const SYNC_KEYS = [
   "LOGIN_JASPER_PASSWORD",
   "LOGIN_COEN_EMAIL",
   "LOGIN_COEN_PASSWORD",
+  "NEXT_PUBLIC_APP_URL",
+  "SLACK_CLIENT_ID",
+  "SLACK_CLIENT_SECRET",
+  "SLACK_SIGNING_SECRET",
 ] as const;
 
 const SENSITIVE_KEYS = new Set([
@@ -22,6 +26,8 @@ const SENSITIVE_KEYS = new Set([
   "LOGIN_OLEG_PASSWORD",
   "LOGIN_JASPER_PASSWORD",
   "LOGIN_COEN_PASSWORD",
+  "SLACK_CLIENT_SECRET",
+  "SLACK_SIGNING_SECRET",
 ]);
 
 const TARGETS = ["production", "preview", "development"] as const;
@@ -138,7 +144,6 @@ async function updateEnvVar(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        key,
         value,
         type: SENSITIVE_KEYS.has(key) && target !== "development"
           ? "sensitive"
@@ -162,14 +167,33 @@ async function main() {
   const { projectId, teamId } = getProjectConfig();
   const existing = await listEnvVars(token, projectId, teamId);
 
+  const productionAppUrl =
+    local.get("VERCEL_PRODUCTION_APP_URL") ||
+    "https://adsomnia-workspace.vercel.app";
+
   for (const key of SYNC_KEYS) {
-    const value = local.get(key);
-    if (!value) {
+    const localValue = local.get(key);
+    if (!localValue) {
       console.warn(`Skipping ${key} — not found in .env.local`);
       continue;
     }
 
     for (const target of TARGETS) {
+      const value =
+        key === "NEXT_PUBLIC_APP_URL" && target !== "development"
+          ? productionAppUrl
+          : localValue;
+
+      if (
+        key === "NEXT_PUBLIC_APP_URL" &&
+        target !== "development" &&
+        localValue.startsWith("http://localhost")
+      ) {
+        console.log(
+          `Using ${productionAppUrl} for ${key} (${target}) instead of localhost`,
+        );
+      }
+
       const match = existing.find(
         (env) =>
           env.key === key &&

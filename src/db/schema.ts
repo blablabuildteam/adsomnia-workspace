@@ -126,3 +126,22 @@ export const activityLog = pgTable("activity_log", {
     .notNull()
     .defaultNow(),
 });
+
+/** Installed Slack workspaces (distributable app OAuth installs). */
+export const slackWorkspaces = pgTable("slack_workspaces", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  teamId: varchar("team_id", { length: 64 }).notNull().unique(),
+  teamName: varchar("team_name", { length: 255 }).notNull(),
+  botToken: text("bot_token").notNull(),
+  botUserId: varchar("bot_user_id", { length: 64 }).notNull(),
+  installedByUserId: uuid("installed_by_user_id")
+    .notNull()
+    .references(() => users.id),
+  installedAt: timestamp("installed_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});

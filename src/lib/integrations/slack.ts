@@ -1,0 +1,286 @@
+import { WebClient, LogLevel } from "@slack/web-api";
+import { asc, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { slackWorkspaces } from "@/db/schema";
+
+export const SLACK_BOT_SCOPES = [
+  "channels:manage",
+  "channels:read",
+  "groups:write",
+  "groups:read",
+  "chat:write",
+] as const;
+
+export type SlackWorkspaceSummary = {
+  teamId: string;
+  teamName: string;
+  installedAt: Date;
+};
+
+export type CreateChannelResult = {
+  channelId: string;
+  channelName: string;
+  channelUrl: string;
+  teamId: string;
+  teamName: string;
+  isPrivate: boolean;
+};
+
+function getAppCredentials(): {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+} | null {
+  const clientId = process.env.SLACK_CLIENT_ID?.trim();
+  const clientSecret = process.env.SLACK_CLIENT_SECRET?.trim();
+  const appUrl = (
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    ""
+  ).replace(/\/$/, "");
+
+  if (!clientId || !clientSecret || !appUrl) return null;
+
+  return {
+    clientId,
+    clientSecret,
+    redirectUri: `${appUrl}/api/integrations/slack/oauth/callback`,
+  };
+}
+
+export function isSlackAppConfigured(): boolean {
+  return getAppCredentials() !== null;
+}
+
+export function getSlackAuthorizeUrl(state: string): string {
+  const creds = getAppCredentials();
+  if (!creds) {
+    throw new Error(
+      "Slack app is not configured. Set SLACK_CLIENT_ID, SLACK_CLIENT_SECRET, and NEXT_PUBLIC_APP_URL.",
+    );
+  }
+
+  const params = new URLSearchParams({
+    client_id: creds.clientId,
+    scope: SLACK_BOT_SCOPES.join(","),
+    redirect_uri: creds.redirectUri,
+    state,
+  });
+
+  return `https://slack.com/oauth/v2/authorize?${params.toString()}`;
+}
+
+export function buildChannelUrl(teamId: string, channelId: string): string {
+  return `https://app.slack.com/client/${teamId}/${channelId}`;
+}
+
+export function sanitizeChannelName(raw: string): string {
+  return raw
+    .trim()
+    .replace(/^#/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+}
+
+function mapSlackError(code: string | undefined, fallback: string): string {
+  switch (code) {
+    case "name_taken":
+      return "A channel with that name already exists in this Slack workspace.";
+    case "invalid_name":
+    case "invalid_name_required":
+    case "invalid_name_punctuation":
+    case "invalid_name_maxlength":
+    case "invalid_name_specials":
+      return "That channel name is not valid in Slack. Use lowercase letters, numbers, hyphens, and underscores.";
+    case "missing_scope":
+      return "The Slack app is missing required permissions. Reconnect Slack and approve the requested scopes.";
+    case "not_authed":
+    case "invalid_auth":
+    case "token_revoked":
+    case "account_inactive":
+      return "Slack authorization expired or was revoked. Reconnect the Slack workspace.";
+    case "restricted_action":
+    case "is_archived":
+      return "Slack blocked this action. Check workspace policies for channel creation.";
+    case "ratelimited":
+      return "Slack rate-limited the request. Try again in a moment.";
+    default:
+      return fallback;
+  }
+}
+
+export async function getInstalledWorkspaces(): Promise<SlackWorkspaceSummary[]> {
+  const rows = await db
+    .select({
+      teamId: slackWorkspaces.teamId,
+      teamName: slackWorkspaces.teamName,
+      installedAt: slackWorkspaces.installedAt,
+    })
+    .from(slackWorkspaces)
+    .orderBy(asc(slackWorkspaces.teamName));
+
+  return rows;
+}
+
+export async function getWorkspace(teamId: string) {
+  const [row] = await db
+    .select()
+    .from(slackWorkspaces)
+    .where(eq(slackWorkspaces.teamId, teamId))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function exchangeOAuthCode(
+  code: string,
+  installedByUserId: string,
+): Promise<SlackWorkspaceSummary> {
+  const creds = getAppCredentials();
+  if (!creds) {
+    throw new Error("Slack app is not configured.");
+  }
+
+  const client = new WebClient(undefined, { logLevel: LogLevel.ERROR });
+  const result = await client.oauth.v2.access({
+    client_id: creds.clientId,
+    client_secret: creds.clientSecret,
+    code,
+    redirect_uri: creds.redirectUri,
+  });
+
+  if (!result.ok) {
+    throw new Error(
+      mapSlackError(
+        typeof result.error === "string" ? result.error : undefined,
+        "Slack OAuth failed.",
+      ),
+    );
+  }
+
+  const teamId = result.team?.id;
+  const teamName = result.team?.name ?? "Slack workspace";
+  const botToken = result.access_token;
+  const botUserId = result.bot_user_id;
+
+  if (!teamId || !botToken || !botUserId) {
+    throw new Error("Slack OAuth response was missing workspace or bot details.");
+  }
+
+  if (result.token_type && result.token_type !== "bot") {
+    throw new Error("Expected a Slack bot token from OAuth install.");
+  }
+
+  const existing = await getWorkspace(teamId);
+  if (existing) {
+    await db
+      .update(slackWorkspaces)
+      .set({
+        teamName,
+        botToken,
+        botUserId,
+        installedByUserId,
+        updatedAt: new Date(),
+      })
+      .where(eq(slackWorkspaces.teamId, teamId));
+  } else {
+    await db.insert(slackWorkspaces).values({
+      teamId,
+      teamName,
+      botToken,
+      botUserId,
+      installedByUserId,
+    });
+  }
+
+  return {
+    teamId,
+    teamName,
+    installedAt: existing?.installedAt ?? new Date(),
+  };
+}
+
+export async function createChannel(opts: {
+  teamId: string;
+  name: string;
+  isPrivate?: boolean;
+}): Promise<CreateChannelResult> {
+  const workspace = await getWorkspace(opts.teamId);
+  if (!workspace) {
+    throw new Error(
+      `Slack workspace "${opts.teamId}" is not connected. Connect Slack first.`,
+    );
+  }
+
+  const name = sanitizeChannelName(opts.name);
+  if (!name) {
+    throw new Error("Channel name is required.");
+  }
+
+  const isPrivate = Boolean(opts.isPrivate);
+  const client = new WebClient(workspace.botToken, {
+    logLevel: LogLevel.ERROR,
+  });
+
+  try {
+    const result = await client.conversations.create({
+      name,
+      is_private: isPrivate,
+    });
+
+    if (!result.ok || !result.channel?.id) {
+      throw new Error(
+        mapSlackError(
+          typeof result.error === "string" ? result.error : undefined,
+          "Failed to create Slack channel.",
+        ),
+      );
+    }
+
+    const channelId = result.channel.id;
+    const channelName = result.channel.name ?? name;
+
+    try {
+      await client.chat.postMessage({
+        channel: channelId,
+        text: `Channel created from Adsomnia Workspace for project coordination.`,
+      });
+    } catch {
+      // Welcome post is optional; channel create already succeeded.
+    }
+
+    return {
+      channelId,
+      channelName,
+      channelUrl: buildChannelUrl(workspace.teamId, channelId),
+      teamId: workspace.teamId,
+      teamName: workspace.teamName,
+      isPrivate,
+    };
+  } catch (err) {
+    if (err && typeof err === "object" && "data" in err) {
+      const data = (err as { data?: { error?: string } }).data;
+      throw new Error(
+        mapSlackError(data?.error, "Failed to create Slack channel."),
+      );
+    }
+    if (err instanceof Error) throw err;
+    throw new Error("Failed to create Slack channel.");
+  }
+}
+
+export async function getSlackIntegrationStatus(): Promise<{
+  configured: boolean;
+  appConfigured: boolean;
+  workspaces: string[];
+}> {
+  const workspaces = await getInstalledWorkspaces();
+  const appConfigured = isSlackAppConfigured();
+  return {
+    appConfigured,
+    configured: appConfigured && workspaces.length > 0,
+    workspaces: workspaces.map((w) => w.teamId),
+  };
+}

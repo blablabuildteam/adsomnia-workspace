@@ -310,6 +310,11 @@ export type SlackSetupData = {
   status: SetupTaskStatus;
   suggestedName: string;
   channelName?: string;
+  channelId?: string;
+  channelUrl?: string;
+  teamId?: string;
+  teamName?: string;
+  isPrivate?: boolean;
   completedAt?: string;
 };
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { usePathname } from "next/navigation";
 import { ArrowRight, Rocket } from "lucide-react";
 import { getPhaseProgressFill, getStageColor } from "@/data/workflow";
 import {
@@ -54,6 +55,7 @@ export function SetupPhaseSection({
   readOnly,
   isCurrentStage = true,
 }: Props) {
+  const pathname = usePathname();
   const progress = getSetupProgress(setupData);
   const [taskError, setTaskError] = useState<string | null>(null);
   const [pendingTask, setPendingTask] = useState<SetupTaskId | null>(null);
@@ -230,6 +232,8 @@ export function SetupPhaseSection({
               }
             >
               {renderTaskContent(task.id, {
+                initiativeId,
+                returnTo: pathname || `/workstreams/${initiativeId}`,
                 setupData,
                 scopingData,
                 readOnly: readOnly || taskLocked,
@@ -280,6 +284,8 @@ export function SetupPhaseSection({
 }
 
 type TaskRenderContext = {
+  initiativeId: number;
+  returnTo: string;
   setupData: SetupData;
   scopingData?: ScopingData | null;
   readOnly?: boolean;
@@ -363,13 +369,17 @@ function renderTaskContent(
     case "slack":
       return (
         <SlackSetupTask
+          initiativeId={ctx.initiativeId}
           data={setupData.slack}
           channelName={ctx.slackChannelName}
           onChannelNameChange={ctx.onSlackChannelNameChange}
+          returnTo={ctx.returnTo}
           readOnly={readOnly}
-          onComplete={(channelName) =>
-            ctx.onComplete("slack", { channelName })
-          }
+          onComplete={(payload) => {
+            // API create already persisted via createAndCompleteSlackChannel.
+            if (payload.channelId) return;
+            ctx.onComplete("slack", payload);
+          }}
         />
       );
     case "drive":
@@ -452,6 +462,7 @@ function renderTaskContent(
           slackChannelName={
             ctx.slackChannelName || setupData.slack.channelName
           }
+          slackChannelUrl={setupData.slack.channelUrl}
           driveUrl={ctx.driveUrl || setupData.drive.driveUrl}
           jiraBoardUrl={
             ctx.jiraBoardUrl ||

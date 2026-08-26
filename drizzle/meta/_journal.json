@@ -57,6 +57,13 @@
       "when": 1787148105748,
       "tag": "0007_lean_solo",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787737728305,
+      "tag": "0008_slack_workspaces",
+      "breakpoints": true
     }
   ]
 }

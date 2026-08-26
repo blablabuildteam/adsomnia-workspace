@@ -243,10 +243,14 @@ Each stage gate (Validation → Scoping, Scoping → Go/No-Go, etc.) will have i
 | `LOGIN_*_EMAIL` / `LOGIN_*_PASSWORD` | Server | 1 | Per-user seed credentials |
 | `RESEND_API_KEY` | Server | Future | Resend transactional email |
 | `GEMINI_API_KEY` | Server | Future | Google Gemini for chat agent |
+| `NEXT_PUBLIC_APP_URL` | Public | Slack | App origin for Slack OAuth redirect URI |
+| `SLACK_CLIENT_ID` | Server | Slack | Distributable Slack app Client ID |
+| `SLACK_CLIENT_SECRET` | Server | Slack | Distributable Slack app Client Secret |
+| `SLACK_SIGNING_SECRET` | Server | Slack | Slack signing secret (future request verification) |
 
-Local values live in `.env.local` (gitignored). Sync auth/session/login vars to Vercel via `npm run env:sync-vercel`. When Resend and Gemini go live, add those keys to the sync script and Vercel Production/Preview/Development.
+Local values live in `.env.local` (gitignored). Sync auth/session/login vars to Vercel via `npm run env:sync-vercel`. When Resend and Gemini go live, add those keys to the sync script and Vercel Production/Preview/Development. Slack setup steps: [`docs/slack-integration.md`](./slack-integration.md).
 
-**Never** prefix secrets with `NEXT_PUBLIC_` — client bundle exposure.
+**Never** prefix secrets with `NEXT_PUBLIC_` — client bundle exposure. `NEXT_PUBLIC_APP_URL` is the only Slack-related public value (origin only, not secrets).
 
 ---
 

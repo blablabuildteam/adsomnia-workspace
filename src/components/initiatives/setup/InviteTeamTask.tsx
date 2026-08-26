@@ -6,7 +6,7 @@ import { CompletedLine, ConfirmRow } from "../onboarding/ConfirmRow";
 
 const ACCENT = getStageColor("setup");
 
-const SLACK_URL = "https://app.slack.com";
+const FALLBACK_SLACK_URL = "https://app.slack.com";
 
 type ToolLink = {
   name: string;
@@ -18,6 +18,7 @@ type ToolLink = {
 type Props = {
   data: InviteTeamData;
   slackChannelName?: string;
+  slackChannelUrl?: string;
   driveUrl?: string;
   jiraBoardUrl?: string;
   readOnly?: boolean;
@@ -27,6 +28,7 @@ type Props = {
 export function InviteTeamTask({
   data,
   slackChannelName,
+  slackChannelUrl,
   driveUrl,
   jiraBoardUrl,
   readOnly,
@@ -36,7 +38,7 @@ export function InviteTeamTask({
     {
       name: slackChannelName ? `#${slackChannelName.replace(/^#/, "")}` : "Slack",
       logo: "/logos/slack.png",
-      href: SLACK_URL,
+      href: slackChannelUrl || FALLBACK_SLACK_URL,
       openLabel: "Open Slack",
     },
     {

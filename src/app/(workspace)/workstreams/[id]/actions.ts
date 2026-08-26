@@ -35,6 +35,10 @@ import {
   type OnboardingTaskId,
 } from "@/lib/queries";
 import { canManageSetup, canManageOnboarding } from "@/lib/session";
+import {
+  createChannel,
+  sanitizeChannelName,
+} from "@/lib/integrations/slack";
 
 const BUSINESS_VALUE_TYPE_IDS: BusinessValueType[] = [
   "speed",
@@ -1158,7 +1162,7 @@ export async function completeSetupTask(
   if (taskId === "slack") {
     const channelName =
       typeof taskData.channelName === "string"
-        ? taskData.channelName.trim().replace(/^#/, "")
+        ? sanitizeChannelName(taskData.channelName)
         : "";
     if (!channelName) {
       return { error: "Slack channel name is required." };
@@ -1177,7 +1181,11 @@ export async function completeSetupTask(
   }
 
   const [row] = await db
-    .select({ setupData: initiatives.setupData, currentStage: initiatives.currentStage })
+    .select({
+      setupData: initiatives.setupData,
+      onboardingData: initiatives.onboardingData,
+      currentStage: initiatives.currentStage,
+    })
     .from(initiatives)
     .where(eq(initiatives.id, initiativeId))
     .limit(1);
@@ -1215,9 +1223,35 @@ export async function completeSetupTask(
     },
   };
 
+  const channelUrl =
+    taskId === "slack" && typeof taskData.channelUrl === "string"
+      ? taskData.channelUrl.trim()
+      : "";
+  const patch: {
+    setupData: SetupData;
+    updatedAt: Date;
+    onboardingData?: OnboardingData;
+  } = {
+    setupData: updated,
+    updatedAt: new Date(),
+  };
+
+  if (channelUrl) {
+    const onboarding =
+      (row.onboardingData as OnboardingData | null) ??
+      createDefaultOnboardingData();
+    patch.onboardingData = {
+      ...onboarding,
+      links: {
+        ...(onboarding.links ?? {}),
+        slackChannelUrl: channelUrl,
+      },
+    };
+  }
+
   await db
     .update(initiatives)
-    .set({ setupData: updated, updatedAt: new Date() })
+    .set(patch)
     .where(eq(initiatives.id, initiativeId));
 
   if (markComplete) {
@@ -1233,6 +1267,126 @@ export async function completeSetupTask(
   revalidatePath("/pipeline/setup");
   revalidatePath("/dashboard");
   return { success: true };
+}
+
+/**
+ * Creates a Slack channel via the installed workspace bot, then marks the
+ * Slack setup task complete and stores the channel deep link for onboarding.
+ */
+export async function createAndCompleteSlackChannel(
+  initiativeId: number,
+  input: {
+    teamId: string;
+    channelName: string;
+    isPrivate?: boolean;
+  },
+): Promise<SetupResult & {
+  channelId?: string;
+  channelName?: string;
+  channelUrl?: string;
+}> {
+  "use server";
+
+  const user = await getCurrentUser();
+  if (!user || !canManageSetup(user)) {
+    return { error: "Only the Head of Production can manage Project Setup." };
+  }
+
+  const teamId = input.teamId?.trim();
+  const channelName = sanitizeChannelName(input.channelName ?? "");
+  if (!teamId) return { error: "Select a Slack workspace." };
+  if (!channelName) return { error: "Slack channel name is required." };
+
+  const [row] = await db
+    .select({
+      setupData: initiatives.setupData,
+      onboardingData: initiatives.onboardingData,
+      currentStage: initiatives.currentStage,
+    })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
+  if (!row) return { error: "Initiative not found." };
+  if (row.currentStage !== "setup") {
+    return { error: "Initiative is not in the Project Setup stage." };
+  }
+
+  const setup = (row.setupData as SetupData | null) ?? ({} as SetupData);
+  if (!isSetupPhaseUnlocked(setup, "A")) {
+    return { error: "Complete Environment Setup before Kickoff Preparation." };
+  }
+
+  let created;
+  try {
+    created = await createChannel({
+      teamId,
+      name: channelName,
+      isPrivate: Boolean(input.isPrivate),
+    });
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error ? err.message : "Failed to create Slack channel.",
+    };
+  }
+
+  const now = new Date().toISOString();
+  const updated: SetupData = {
+    ...setup,
+    slack: {
+      ...setup.slack,
+      status: "completed",
+      channelName: created.channelName,
+      channelId: created.channelId,
+      channelUrl: created.channelUrl,
+      teamId: created.teamId,
+      teamName: created.teamName,
+      isPrivate: created.isPrivate,
+      completedAt: now,
+    },
+  };
+
+  const onboarding =
+    (row.onboardingData as OnboardingData | null) ??
+    createDefaultOnboardingData();
+
+  await db
+    .update(initiatives)
+    .set({
+      setupData: updated,
+      onboardingData: {
+        ...onboarding,
+        links: {
+          ...(onboarding.links ?? {}),
+          slackChannelUrl: created.channelUrl,
+        },
+      },
+      updatedAt: new Date(),
+    })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: "setup_task_completed",
+    details: {
+      taskId: "slack",
+      completedBy: user.name,
+      channelId: created.channelId,
+      teamId: created.teamId,
+    },
+  });
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/setup");
+  revalidatePath("/dashboard");
+  return {
+    success: true,
+    channelId: created.channelId,
+    channelName: created.channelName,
+    channelUrl: created.channelUrl,
+  };
 }
 
 /** Skips an optional setup task (e.g., Jira). */
