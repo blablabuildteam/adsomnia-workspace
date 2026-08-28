@@ -548,6 +548,11 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
   animation-delay: var(--enter-delay, 0ms);
 }
 
+.login-enter-rise {
+  animation: card-enter 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--login-delay, 0ms);
+}
+
 @keyframes logo-write-in {
   from {
     clip-path: inset(0 100% 0 0);
@@ -564,6 +569,10 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .login-enter-rise {
+    animation: fade-in 300ms ease both;
+  }
+
   .animate-logo-write-in {
     animation: fade-in 400ms ease both;
     clip-path: inset(0 0 0 0);

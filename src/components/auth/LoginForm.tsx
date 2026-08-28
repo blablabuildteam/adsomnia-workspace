@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, type CSSProperties } from "react";
 import Image from "next/image";
 import { ArrowRight, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { login, type LoginResult } from "@/lib/auth";
@@ -26,6 +26,10 @@ type LoginFormProps = {
   errorCode?: string;
 };
 
+function loginDelay(ms: number): CSSProperties {
+  return { "--login-delay": `${ms}ms` };
+}
+
 export function LoginForm({ googleEnabled, errorCode }: LoginFormProps) {
   const [state, formAction, pending] = useActionState(login, initial);
   const [showPassword, setShowPassword] = useState(false);
@@ -48,18 +52,28 @@ export function LoginForm({ googleEnabled, errorCode }: LoginFormProps) {
             alt="Adsomnia"
             width={48}
             height={48}
-            className="mx-auto mb-4 size-12"
+            className="login-enter-rise mx-auto mb-4 size-12"
+            style={loginDelay(0)}
             priority
           />
-          <p className="font-display text-[10px] font-bold uppercase tracking-[0.22em] text-muted">
+          <p
+            className="login-enter-rise font-display text-[10px] font-bold uppercase tracking-[0.22em] text-muted"
+            style={loginDelay(70)}
+          >
             Adsomnia
           </p>
-          <h1 className="font-display mt-1 text-3xl font-extrabold uppercase tracking-tight">
+          <h1
+            className="login-enter-rise font-display mt-1 text-3xl font-extrabold uppercase tracking-tight"
+            style={loginDelay(130)}
+          >
             Workspace
           </h1>
         </div>
 
-        <div className="approval-action-frame relative border border-border bg-surface/95 p-6 backdrop-blur-sm">
+        <div
+          className="login-enter-rise approval-action-frame relative border border-border bg-surface/95 p-6 backdrop-blur-sm"
+          style={loginDelay(200)}
+        >
           <span
             aria-hidden
             className="approval-action-border approval-action-border--slow"
@@ -150,7 +164,10 @@ export function LoginForm({ googleEnabled, errorCode }: LoginFormProps) {
           )}
         </div>
 
-        <p className="mt-4 text-center text-xs text-muted">
+        <p
+          className="login-enter-rise mt-4 text-center text-xs text-muted"
+          style={loginDelay(320)}
+        >
           Contact your administrator for access credentials.
         </p>
 

@@ -7,3 +7,4 @@
 - [ ] **Jira Setup UI:** wire Create Board (like Slack) using lead party → instance map; keep paste fallback
 - [ ] **Production Overview:** epics + task progress across boards ([`jira-integration.md`](./jira-integration.md))
 - [ ] **Jira — BTR** then **HN:** repeat client connect + env for partner Cloud sites
+- [ ] Build a **reminder to recycle Jira API tokens** (per instance / service account; surface before expiry or on a fixed rotation schedule)
