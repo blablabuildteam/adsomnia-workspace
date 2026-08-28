@@ -17,3 +17,4 @@
 - [ ] Projects in **Production** (and earlier stages) can **adjust priorities**
 - [ ] **Fast-Track recognition & overview** — staged Fast-Track view (status, priority, assignee, title, description from Jira), including control to push; backed by a Fast-Track Jira board
   - Option to convert **Fast-Track ↔ full project** (and vice versa)
+- [ ] **Fix Slack channel creation**
