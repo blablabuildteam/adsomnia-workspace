@@ -24,8 +24,24 @@ function appUrl(): string {
   );
 }
 
-export function getGoogleLoginRedirectUri(): string {
-  return `${appUrl()}/api/auth/google/callback`;
+export function getGoogleLoginRedirectUri(origin?: string): string {
+  const base = (origin || appUrl()).replace(/\/$/, "");
+  if (!base) {
+    throw new Error(
+      "Google login redirect origin is not configured. Set NEXT_PUBLIC_APP_URL.",
+    );
+  }
+  return `${base}/api/auth/google/callback`;
+}
+
+/** Prefer the live request origin in dev so OAuth works when Next.js picks another port. */
+export function getGoogleLoginRedirectOrigin(request: Request): string {
+  const requestOrigin = new URL(request.url).origin;
+  if (process.env.NODE_ENV === "development") {
+    return requestOrigin;
+  }
+  const configured = appUrl();
+  return configured || requestOrigin;
 }
 
 export function isGoogleLoginConfigured(): boolean {
@@ -82,9 +98,12 @@ export function isLeadershipEmail(email: string): boolean {
   return getLeadershipEmails().includes(normalized);
 }
 
-export function getGoogleAuthorizeUrl(state: string): string {
+export function getGoogleAuthorizeUrl(
+  state: string,
+  redirectOrigin: string,
+): string {
   const clientId = process.env.GOOGLE_LOGIN_CLIENT_ID;
-  if (!clientId || !appUrl()) {
+  if (!clientId || !redirectOrigin) {
     throw new Error(
       "Google login is not configured. Set GOOGLE_LOGIN_CLIENT_ID, GOOGLE_LOGIN_CLIENT_SECRET, and NEXT_PUBLIC_APP_URL.",
     );
@@ -92,7 +111,7 @@ export function getGoogleAuthorizeUrl(state: string): string {
 
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: getGoogleLoginRedirectUri(),
+    redirect_uri: getGoogleLoginRedirectUri(redirectOrigin),
     response_type: "code",
     scope: LOGIN_SCOPES,
     state,
@@ -112,10 +131,11 @@ type GoogleTokenResponse = {
 
 export async function exchangeGoogleLoginCode(
   code: string,
+  redirectOrigin: string,
 ): Promise<GoogleLoginProfile> {
   const clientId = process.env.GOOGLE_LOGIN_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_LOGIN_CLIENT_SECRET;
-  if (!clientId || !clientSecret || !appUrl()) {
+  if (!clientId || !clientSecret || !redirectOrigin) {
     throw new Error("Google login is not configured.");
   }
 
@@ -123,7 +143,7 @@ export async function exchangeGoogleLoginCode(
     code,
     client_id: clientId,
     client_secret: clientSecret,
-    redirect_uri: getGoogleLoginRedirectUri(),
+    redirect_uri: getGoogleLoginRedirectUri(redirectOrigin),
     grant_type: "authorization_code",
   });
 

@@ -11,17 +11,29 @@ function getSecret(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
-export async function createGoogleLoginOAuthState(): Promise<string> {
-  return new SignJWT({ purpose: STATE_PURPOSE })
+export async function createGoogleLoginOAuthState(
+  redirectOrigin: string,
+): Promise<string> {
+  return new SignJWT({ purpose: STATE_PURPOSE, redirectOrigin })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${STATE_TTL_SECONDS}s`)
     .sign(getSecret());
 }
 
-export async function verifyGoogleLoginOAuthState(state: string): Promise<void> {
+export async function verifyGoogleLoginOAuthState(
+  state: string,
+): Promise<{ redirectOrigin: string }> {
   const { payload } = await jwtVerify(state, getSecret());
   if (payload.purpose !== STATE_PURPOSE) {
     throw new Error("Invalid Google OAuth state.");
   }
+  const redirectOrigin =
+    typeof payload.redirectOrigin === "string"
+      ? payload.redirectOrigin.replace(/\/$/, "")
+      : "";
+  if (!redirectOrigin) {
+    throw new Error("Invalid Google OAuth state.");
+  }
+  return { redirectOrigin };
 }

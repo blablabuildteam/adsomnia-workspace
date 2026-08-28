@@ -63,8 +63,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    await verifyGoogleLoginOAuthState(state);
-    const profile = await exchangeGoogleLoginCode(code);
+    const { redirectOrigin } = await verifyGoogleLoginOAuthState(state);
+    const profile = await exchangeGoogleLoginCode(code, redirectOrigin);
 
     if (!profile.emailVerified) {
       return loginErrorRedirect(origin, "google_email_unverified");

@@ -40,6 +40,8 @@ export type WorkflowStage = {
   id: string;
   number: number;
   name: string;
+  /** Short overview-board copy: why this phase exists in the pipeline. */
+  purpose: string;
   /** Original Dutch stage name from the source PDF (for reference only). */
   nameNl?: string;
   owner: string;
@@ -70,6 +72,8 @@ export const STAGES: WorkflowStage[] = [
     id: "idea",
     number: 1,
     name: "Initiative",
+    purpose:
+      "Capture new requests with the minimum intake needed to register an initiative and route it into the pipeline.",
     nameNl: "Idee",
     owner: "Adsomnia Leadership Team",
     parties: ["adsomnia"],
@@ -90,6 +94,8 @@ export const STAGES: WorkflowStage[] = [
     id: "validation",
     number: 2,
     name: "Validation",
+    purpose:
+      "Turn the initiative into a business case with measurable value, effort estimate, and leadership sign-off.",
     nameNl: "Validatie",
     owner: "Adsomnia Leadership Team / Head of Production / Team Lead",
     parties: ["adsomnia"],
@@ -111,6 +117,8 @@ export const STAGES: WorkflowStage[] = [
     id: "scoping",
     number: 3,
     name: "Scoping",
+    purpose:
+      "Define delivery approach, timeline, hour estimates, and scope boundaries under a chosen lead party.",
     owner: "Head of Production (Coen)",
     parties: ["btr", "hn", "bbb", "as"],
     inputs: [
@@ -144,6 +152,8 @@ export const STAGES: WorkflowStage[] = [
     id: "go-nogo",
     number: 4,
     name: "Go / No-Go",
+    purpose:
+      "Decide whether to commit budget and capacity to proceed, hold, or close the initiative.",
     owner: "Adsomnia Leadership Team (Sietse & Coen)",
     parties: ["adsomnia"],
     inputs: [
@@ -160,6 +170,8 @@ export const STAGES: WorkflowStage[] = [
     id: "setup",
     number: 5,
     name: "Project Setup",
+    purpose:
+      "Stand up the project in Workspace and Jira, book resources, and link all governance documentation.",
     owner: "Head of Production (Coen)",
     parties: ["adsomnia", "btr", "hn", "bbb", "as"],
     inputs: [
@@ -183,6 +195,8 @@ export const STAGES: WorkflowStage[] = [
     id: "onboarding",
     number: 6,
     name: "Onboarding & Kickoff",
+    purpose:
+      "Align the team on scope, meeting cadence, and prioritized backlog before active production.",
     owner: "Head of Production (Coen)",
     parties: ["adsomnia"],
     inputs: [
@@ -204,6 +218,8 @@ export const STAGES: WorkflowStage[] = [
     id: "production",
     number: 7,
     name: "Production & Reporting",
+    purpose:
+      "Execute delivery in Jira under a lead party and report project governance to leadership.",
     nameNl: "Productie & Reporting",
     owner: "Head of Production + Project Managers",
     parties: ["adsomnia", "btr", "hn", "bbb", "as"],

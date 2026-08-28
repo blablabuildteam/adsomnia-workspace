@@ -12,10 +12,9 @@ import {
   Presentation,
   Users,
 } from "lucide-react";
-import { getPhaseProgressFill, getStageColor, PARTIES } from "@/data/workflow";
-import { BrandTexture } from "@/components/ui/BrandTexture";
+import { STAGES, getPhaseProgressFill, getStageColor, PARTIES } from "@/data/workflow";
 import { CornerTicks } from "@/components/ui/CornerTicks";
-import { PipelineStrip } from "@/components/pipeline/PipelineStrip";
+import { PipelineStageHeader } from "@/components/pipeline/PipelineStageHeader";
 import type { InitiativeWithUsers } from "@/lib/queries";
 import {
   createDefaultOnboardingData,
@@ -27,7 +26,8 @@ import {
 const hoverTicks =
   "opacity-0 transition-opacity duration-300 group-hover:opacity-100";
 
-const stageColor = getStageColor("onboarding");
+const stage = STAGES.find((s) => s.id === "onboarding")!;
+const stageColor = getStageColor(stage.id);
 
 type FilterKey = "all" | "briefing" | "action-items" | "complete";
 
@@ -193,26 +193,7 @@ export function OnboardingStageView({ initiatives }: Props) {
 
   return (
     <div className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-      <header className="relative mb-8 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
-        <BrandTexture variant="hero" />
-        <div className="min-w-0">
-          <div className="flex items-center gap-4">
-            <span
-              className="flex size-9 shrink-0 items-center justify-center border text-sm font-bold"
-              style={{ borderColor: stageColor, color: stageColor }}
-            >
-              06
-            </span>
-            <h1 className="font-display truncate text-4xl font-extrabold uppercase leading-[0.92] tracking-tight sm:text-5xl">
-              Onboarding
-            </h1>
-          </div>
-        </div>
-        <PipelineStrip
-          currentStageId="onboarding"
-          className="shrink-0 sm:mr-8 sm:w-[528px] lg:mr-12 lg:w-[672px]"
-        />
-      </header>
+      <PipelineStageHeader stage={stage} />
 
       <div className="mb-6 flex items-center gap-2 overflow-x-auto border-b border-border pb-px">
         <Filter className="mr-1 size-3.5 shrink-0 text-muted/60" />

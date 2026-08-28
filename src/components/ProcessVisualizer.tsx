@@ -52,10 +52,10 @@ export function ProcessVisualizer() {
             </div>
             <div className="flex flex-col items-start gap-3 sm:items-end">
               <Image
-                src="/brand/traffic-never-sleeps.png"
+                src="/logos/traffic-never-sleeps-logo.png"
                 alt="Traffic Never Sleeps"
-                width={806}
-                height={208}
+                width={716}
+                height={178}
                 priority
                 className="h-auto w-[220px] sm:w-[260px] lg:w-[300px]"
               />

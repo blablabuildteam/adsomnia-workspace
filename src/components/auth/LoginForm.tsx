@@ -154,9 +154,15 @@ export function LoginForm({ googleEnabled, errorCode }: LoginFormProps) {
           Contact your administrator for access credentials.
         </p>
 
-        <p className="mt-10 text-center font-display text-[9px] font-bold uppercase tracking-[0.45em] text-muted/40">
-          Traffic Never Sleeps
-        </p>
+        <div className="mx-auto mt-10 flex justify-center">
+          <Image
+            src="/logos/traffic-never-sleeps-logo.png"
+            alt="Traffic Never Sleeps"
+            width={716}
+            height={178}
+            className="animate-logo-write-in h-16 w-auto sm:h-20"
+          />
+        </div>
       </div>
     </div>
   );

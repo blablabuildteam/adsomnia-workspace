@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   getGoogleAuthorizeUrl,
+  getGoogleLoginRedirectOrigin,
   isGoogleLoginConfigured,
 } from "@/lib/integrations/google-login";
 import { createGoogleLoginOAuthState } from "@/lib/integrations/google-login-oauth-state";
@@ -25,8 +26,9 @@ export async function GET(request: Request) {
   }
 
   try {
-    const state = await createGoogleLoginOAuthState();
-    return NextResponse.redirect(getGoogleAuthorizeUrl(state));
+    const redirectOrigin = getGoogleLoginRedirectOrigin(request);
+    const state = await createGoogleLoginOAuthState(redirectOrigin);
+    return NextResponse.redirect(getGoogleAuthorizeUrl(state, redirectOrigin));
   } catch {
     const dest = new URL("/login", origin);
     dest.searchParams.set("error", "google_start_failed");

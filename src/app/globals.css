@@ -548,6 +548,29 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
   animation-delay: var(--enter-delay, 0ms);
 }
 
+@keyframes logo-write-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0.35;
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+    opacity: 0.75;
+  }
+}
+
+.animate-logo-write-in {
+  animation: logo-write-in 1.75s steps(32, end) 450ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-logo-write-in {
+    animation: fade-in 400ms ease both;
+    clip-path: inset(0 0 0 0);
+    opacity: 0.75;
+  }
+}
+
 /* Kickoff briefing slides — staged reveal each time a slide is shown */
 @keyframes briefing-rise {
   from {

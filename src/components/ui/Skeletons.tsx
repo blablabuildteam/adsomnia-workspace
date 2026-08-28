@@ -13,9 +13,13 @@ export function StageViewSkeleton() {
       aria-label="Loading"
     >
       <header className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
-        <div className="flex items-center gap-4">
+        <div className="flex items-start gap-4">
           <SkeletonBlock className="size-9 shrink-0" />
-          <SkeletonBlock className="h-10 w-64" />
+          <div className="space-y-3">
+            <SkeletonBlock className="h-10 w-64" />
+            <SkeletonBlock className="h-4 w-full max-w-xl" />
+            <SkeletonBlock className="h-4 w-5/6 max-w-lg" />
+          </div>
         </div>
         <SkeletonBlock className="hidden h-12 sm:block sm:w-[440px] lg:w-[560px]" />
       </header>
