@@ -27,7 +27,7 @@ type LoginFormProps = {
 };
 
 function loginDelay(ms: number): CSSProperties {
-  return { "--login-delay": `${ms}ms` };
+  return { "--login-delay": `${ms}ms` } as CSSProperties;
 }
 
 export function LoginForm({ googleEnabled, errorCode }: LoginFormProps) {
