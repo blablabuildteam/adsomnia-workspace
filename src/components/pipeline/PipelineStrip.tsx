@@ -25,7 +25,7 @@ function stageLabelOnFill(hex: string): string {
 }
 
 type Props = {
-  /** Highlight the active pipeline stage. Omit on multi-stage views (e.g. Kanban overview). */
+  /** Highlight the active pipeline stage. Omit on multi-stage views (e.g. overview). */
   currentStageId?: string;
   className?: string;
 };

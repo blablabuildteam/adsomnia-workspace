@@ -1,12 +1,12 @@
 "use client";
 
-import { Columns3 } from "lucide-react";
+import { ListTree } from "lucide-react";
 import { STAGES, getStageColor } from "@/data/workflow";
 import { WorkspaceChip } from "@/components/WorkspaceChip";
 import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStrip } from "@/components/pipeline/PipelineStrip";
-import { KanbanBoard } from "@/components/overview/KanbanBoard";
+import { PhaseList } from "@/components/overview/PhaseList";
 import type { InitiativeWithUsers } from "@/lib/queries";
 
 type OverviewProps = {
@@ -20,7 +20,7 @@ export function OverviewView({ initiatives }: OverviewProps) {
   ).length;
 
   return (
-    <div className="mx-auto flex w-full max-w-[2200px] flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+    <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <header className="relative mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <BrandTexture variant="hero" />
         <div>
@@ -28,11 +28,11 @@ export function OverviewView({ initiatives }: OverviewProps) {
             Pipeline Overview
           </p>
           <h1 className="font-display mt-2 text-4xl font-extrabold uppercase leading-[0.92] tracking-tight sm:text-5xl">
-            Stage Kanban
+            Phase List
           </h1>
           <p className="mt-3 max-w-lg text-sm text-muted">
-            Track initiatives as they flow through the Production Framework
-            stages — powered by the <WorkspaceChip />.
+            Workstreams nested under each Production Framework phase, from
+            Initiative through Production — powered by the <WorkspaceChip />.
           </p>
         </div>
         <div className="flex shrink-0 flex-col gap-5 sm:items-end">
@@ -51,7 +51,7 @@ export function OverviewView({ initiatives }: OverviewProps) {
 
       <div className="mb-4 flex flex-wrap items-center gap-4 text-[10px]">
         <div className="flex items-center gap-2">
-          <Columns3 className="size-4 text-muted" />
+          <ListTree className="size-4 text-muted" />
           <span className="font-display font-bold uppercase tracking-wide text-muted">
             Workflow Stages
           </span>
@@ -72,13 +72,12 @@ export function OverviewView({ initiatives }: OverviewProps) {
         })}
       </div>
 
-      <KanbanBoard initiatives={initiatives} className="flex-1" />
+      <PhaseList initiatives={initiatives} className="flex-1" />
 
       <div className="mt-4 border-t border-border pt-4">
         <p className="text-xs text-muted">
-          <span className="font-bold">Tip:</span> Click any initiative card to
-          view details and take action. Initiatives move through stages as they
-          progress from Initiative to Production.
+          <span className="font-bold">Tip:</span> Click a workstream to open
+          its detail view. Phase names jump to that stage&apos;s pipeline page.
         </p>
       </div>
     </div>
