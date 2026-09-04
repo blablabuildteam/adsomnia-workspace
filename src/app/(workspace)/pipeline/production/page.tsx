@@ -8,12 +8,21 @@ import {
   getCurrentUser,
 } from "@/lib/session";
 
-export default async function PipelineProductionPage() {
+type PageProps = {
+  searchParams: Promise<{ project?: string }>;
+};
+
+export default async function PipelineProductionPage({
+  searchParams,
+}: PageProps) {
   await connection();
-  const [data, user] = await Promise.all([
+  const [data, user, params] = await Promise.all([
     getProductionOverview(),
     getCurrentUser(),
+    searchParams,
   ]);
+  const parsed = Number.parseInt(params.project ?? "", 10);
+  const initialSelectedId = Number.isFinite(parsed) ? parsed : null;
 
   return (
     <ProductionOverview
@@ -22,6 +31,7 @@ export default async function PipelineProductionPage() {
       canArchive={Boolean(user && canManageOnboarding(user))}
       canAdjustPriority={Boolean(user && canAdjustProductionPriority(user))}
       canAddProject={Boolean(user && canAddProductionProject(user))}
+      initialSelectedId={initialSelectedId}
     />
   );
 }

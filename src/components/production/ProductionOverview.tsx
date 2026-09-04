@@ -46,6 +46,7 @@ type Props = {
   canArchive: boolean;
   canAdjustPriority: boolean;
   canAddProject: boolean;
+  initialSelectedId?: number | null;
 };
 
 export function ProductionOverview({
@@ -54,16 +55,34 @@ export function ProductionOverview({
   canArchive,
   canAdjustPriority,
   canAddProject,
+  initialSelectedId = null,
 }: Props) {
   const router = useRouter();
+  const initialSelected =
+    initialSelectedId != null
+      ? [...projects, ...archived].find(
+          (project) => project.id === initialSelectedId,
+        )
+      : undefined;
   const [layout, setLayout] = useState<LayoutMode>("timeline");
-  const [archiveView, setArchiveView] = useState(false);
+  const [archiveView, setArchiveView] = useState(
+    Boolean(initialSelected?.archivedAt),
+  );
   const [healthFilter, setHealthFilter] = useState<HealthFilter>("all");
   const [leadPartyFilter, setLeadPartyFilter] =
     useState<ProductionLeadParty | null>(null);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(
+    initialSelected?.id ?? null,
+  );
   const [addOpen, setAddOpen] = useState(false);
   const [refreshing, startRefresh] = useTransition();
+
+  function closeDrawer() {
+    setSelectedId(null);
+    if (initialSelectedId != null) {
+      router.replace("/pipeline/production", { scroll: false });
+    }
+  }
 
   const counts = useMemo(() => {
     const next: Record<HealthFilter, number> = {
@@ -347,9 +366,9 @@ export function ProductionOverview({
         project={selected}
         canArchive={canArchive}
         canAdjustPriority={canAdjustPriority}
-        onClose={() => setSelectedId(null)}
+        onClose={closeDrawer}
         onArchived={() => {
-          setSelectedId(null);
+          closeDrawer();
           router.refresh();
         }}
         onPriorityUpdated={() => router.refresh()}

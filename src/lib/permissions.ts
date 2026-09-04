@@ -77,6 +77,11 @@ export function canSeeJiraTokenReminder(user: PermissionUser): boolean {
   return isLeadership(user);
 }
 
+/** Leadership — live Production report for weekly updates. */
+export function canViewLeadershipReport(user: PermissionUser): boolean {
+  return isLeadership(user);
+}
+
 /**
  * Creator or leadership may change the original initiative fields while the
  * item is still in Initiative or Validation. Rejected items: creator only.

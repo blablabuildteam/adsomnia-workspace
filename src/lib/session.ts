@@ -101,4 +101,5 @@ export {
   canApprove,
   canManageOnboarding,
   canManageSetup,
+  canViewLeadershipReport,
 } from "./permissions";

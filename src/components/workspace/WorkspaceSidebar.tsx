@@ -8,10 +8,10 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   Columns3,
   LayoutDashboard,
   Lightbulb,
-  Map,
 } from "lucide-react";
 import { STAGE_COLORS, type StageId } from "@/data/workflow";
 import {
@@ -29,7 +29,7 @@ const PIPELINE_SUB_ITEMS: {
   label: string;
   stageId?: StageId;
 }[] = [
-  { href: "/overview", label: "Kanban Overview" },
+  { href: "/overview", label: "Overview" },
   { href: "/pipeline/initiatives", label: "01 Initiatives", stageId: "idea" },
   { href: "/pipeline/validation", label: "02 Validation", stageId: "validation" },
   { href: "/pipeline/scoping", label: "03 Scoping", stageId: "scoping" },
@@ -38,10 +38,6 @@ const PIPELINE_SUB_ITEMS: {
   { href: "/pipeline/onboarding", label: "06 Onboarding", stageId: "onboarding" },
   { href: "/pipeline/production", label: "07 Production", stageId: "production" },
 ];
-
-const REFERENCE_NAV_ITEMS = [
-  { href: "/framework", label: "Framework Map", icon: Map },
-] as const;
 
 type NavItem = {
   href: string;
@@ -55,8 +51,7 @@ function NavLink({
   icon: Icon,
   active,
   collapsed,
-  subdued = false,
-}: NavItem & { active: boolean; collapsed: boolean; subdued?: boolean }) {
+}: NavItem & { active: boolean; collapsed: boolean }) {
   return (
     <Link
       href={href}
@@ -66,9 +61,7 @@ function NavLink({
         collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5",
         active
           ? "border-foreground bg-foreground text-background"
-          : subdued
-            ? "border-transparent text-muted/70 hover:border-border hover:bg-surface-elevated hover:text-muted"
-            : "border-transparent text-muted hover:border-border hover:bg-surface-elevated hover:text-foreground",
+          : "border-transparent text-muted hover:border-border hover:bg-surface-elevated hover:text-foreground",
       ].join(" ")}
     >
       <Icon className="size-[18px] shrink-0" />
@@ -293,31 +286,17 @@ export function WorkspaceSidebar({ user, collapsed, onToggle }: Props) {
         </ul>
       </nav>
 
-      {/* Reference links — not core workspace views */}
-      <div
-        className={[
-          "border-t border-border px-2 py-3",
-          collapsed ? "space-y-1" : "space-y-2",
-        ].join(" ")}
-      >
-        {!collapsed && (
-          <p className="px-3 font-display text-[10px] font-bold uppercase tracking-[0.18em] text-muted/60">
-            Reference
-          </p>
-        )}
-        <ul className="space-y-1">
-          {REFERENCE_NAV_ITEMS.map((item) => (
-            <li key={item.href}>
-              <NavLink
-                {...item}
-                active={isActive(pathname, item.href)}
-                collapsed={collapsed}
-                subdued
-              />
-            </li>
-          ))}
-        </ul>
-      </div>
+      {user.role === "leadership" && (
+        <div className="border-t border-border px-2 py-3">
+          <NavLink
+            href="/report"
+            label="Report"
+            icon={ClipboardList}
+            active={isActive(pathname, "/report")}
+            collapsed={collapsed}
+          />
+        </div>
+      )}
 
       <SidebarProfile user={user} collapsed={collapsed} />
     </aside>

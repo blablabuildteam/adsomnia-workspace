@@ -32,6 +32,7 @@ export async function refreshProductionOverview() {
   const user = await getCurrentUser();
   if (!user) return;
   revalidatePath("/pipeline/production");
+  revalidatePath("/report");
 }
 
 export async function loadProductionJourney(
@@ -86,6 +87,7 @@ export async function setProductionArchived(
   });
 
   revalidatePath("/pipeline/production");
+  revalidatePath("/report");
   revalidatePath(`/workstreams/${initiativeId}`);
   revalidatePath("/overview");
   revalidatePath("/dashboard");
@@ -147,6 +149,7 @@ export async function updateProductionConsensusPriority(
   });
 
   revalidatePath("/pipeline/production");
+  revalidatePath("/report");
   revalidatePath(`/workstreams/${initiativeId}`);
   revalidatePath("/overview");
   revalidatePath("/dashboard");
@@ -294,6 +297,7 @@ export async function createManualProductionProject(
   });
 
   revalidatePath("/pipeline/production");
+  revalidatePath("/report");
   revalidatePath(`/workstreams/${created.id}`);
   revalidatePath("/overview");
   revalidatePath("/dashboard");
