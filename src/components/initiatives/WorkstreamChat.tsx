@@ -80,7 +80,9 @@ export function WorkstreamChat({
   const formRef = useRef<HTMLFormElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [showLatestPreview, setShowLatestPreview] = useState(false);
+  const [showLatestPreview, setShowLatestPreview] = useState(
+    () => comments.length > 0,
+  );
 
   const latest = optimisticComments[0] ?? null;
   const latestId = latest?.id ?? null;
@@ -88,7 +90,7 @@ export function WorkstreamChat({
   const thread = [...optimisticComments].reverse();
 
   useEffect(() => {
-    if (open || latestId == null) {
+    if (latestId == null) {
       setShowLatestPreview(false);
       return;
     }
@@ -97,7 +99,7 @@ export function WorkstreamChat({
       setShowLatestPreview(false);
     }, LATEST_PREVIEW_MS);
     return () => window.clearTimeout(timer);
-  }, [latestId, open]);
+  }, [latestId]);
 
   useEffect(() => {
     if (state.success) {
@@ -254,26 +256,32 @@ export function WorkstreamChat({
         </section>
       )}
 
-      <div className="flex items-end gap-3">
-        {!open && latest && showLatestPreview && (
+      <div className="flex flex-col items-end gap-3">
+        {latest && showLatestPreview ? (
           <button
+            key={latestId}
             type="button"
             onClick={() => setOpen(true)}
-            className="max-w-[min(220px,calc(100vw-6.5rem))] border border-border bg-surface/95 px-3 py-2 text-left shadow-[0_8px_24px_rgba(0,0,0,0.55)] backdrop-blur-sm animate-fade-in transition-colors hover:border-foreground"
+            className="w-[min(280px,calc(100vw-2rem))] border border-border-strong bg-surface px-3 pb-0 pt-2.5 text-left shadow-[0_12px_32px_rgba(0,0,0,0.65)] animate-fade-in transition-colors hover:border-foreground"
+            aria-label="Latest remark, opens chat"
           >
             <span className="flex items-center justify-between gap-3">
               <span className="font-display truncate text-[10px] font-bold uppercase tracking-wide text-foreground">
                 {latest.userName}
               </span>
-              <span className="shrink-0 text-[9px] text-muted">
-                {timeAgo(latest.createdAt)}
+              <span className="shrink-0 font-display text-[10px] font-bold tabular-nums text-muted">
+                5s
               </span>
             </span>
             <span className="mt-1 line-clamp-2 text-[11px] leading-snug text-foreground/80">
               {latest.body}
             </span>
+            <span
+              className="mt-2 block h-0.5 w-full origin-left bg-foreground animate-chat-preview-timer"
+              aria-hidden
+            />
           </button>
-        )}
+        ) : null}
 
         <button
           type="button"
