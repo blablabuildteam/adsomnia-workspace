@@ -39,6 +39,16 @@ import {
   createChannel,
   sanitizeChannelName,
 } from "@/lib/integrations/slack";
+import {
+  createEpics,
+  createProject,
+  getProjectUrl,
+  milestonesToEpicSeeds,
+  resolveSetupJiraInstance,
+  sanitizeEpicSeeds,
+  ticketIdToProjectKeyHint,
+  type JiraInstance,
+} from "@/lib/integrations/jira";
 
 const BUSINESS_VALUE_TYPE_IDS: BusinessValueType[] = [
   "speed",
@@ -1387,6 +1397,176 @@ export async function createAndCompleteSlackChannel(
     channelId: created.channelId,
     channelName: created.channelName,
     channelUrl: created.channelUrl,
+  };
+}
+
+/**
+ * Creates a Jira software project on the lead party's Cloud site, seeds
+ * the reviewed epics, then marks Create Jira complete.
+ */
+export async function createAndCompleteJiraBoard(
+  initiativeId: number,
+  input: {
+    name: string;
+    template?: "scrum" | "kanban";
+    epics?: {
+      name: string;
+      description?: string;
+      startDate?: string;
+      endDate?: string;
+      color?: string;
+    }[];
+  },
+): Promise<
+  SetupResult & {
+    boardUrl?: string;
+    projectKey?: string;
+    projectName?: string;
+    workspace?: JiraInstance;
+    createdEpics?: { key: string; name: string; url: string }[];
+    epicError?: string;
+  }
+> {
+  "use server";
+
+  const user = await getCurrentUser();
+  if (!user || !canManageSetup(user)) {
+    return { error: "Only the Head of Production can manage Project Setup." };
+  }
+
+  const name = input.name?.trim();
+  if (!name) return { error: "Space title is required." };
+  const template = input.template === "scrum" ? "scrum" : "kanban";
+
+  const [row] = await db
+    .select({
+      ticketId: initiatives.ticketId,
+      title: initiatives.title,
+      setupData: initiatives.setupData,
+      scopingData: initiatives.scopingData,
+      validationData: initiatives.validationData,
+      currentStage: initiatives.currentStage,
+    })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
+  if (!row) return { error: "Initiative not found." };
+  if (row.currentStage !== "setup") {
+    return { error: "Initiative is not in the Project Setup stage." };
+  }
+
+  const setup = (row.setupData as SetupData | null) ?? ({} as SetupData);
+  if (!isSetupPhaseUnlocked(setup, "A")) {
+    return { error: "Complete Environment Setup before Kickoff Preparation." };
+  }
+
+  const validation = row.validationData as ValidationData | null;
+  const target = resolveSetupJiraInstance(validation?.leadProductionParty);
+  if (!target) {
+    return {
+      error:
+        "No Jira site is connected for this lead production partner. Paste a board URL instead, or add that partner's Jira credentials.",
+    };
+  }
+
+  let created;
+  try {
+    created = await createProject(target.instance, {
+      key: ticketIdToProjectKeyHint(row.ticketId),
+      name,
+      description: `${row.ticketId} — ${row.title}`,
+      template,
+    });
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error ? err.message : "Failed to create Jira project.",
+    };
+  }
+
+  const boardUrl = getProjectUrl(target.instance, created.key);
+  const scoping = row.scopingData as ScopingData | null;
+  const seeds =
+    input.epics !== undefined
+      ? sanitizeEpicSeeds(input.epics)
+      : milestonesToEpicSeeds(scoping?.milestones ?? []);
+
+  let createdEpics: {
+    key: string;
+    name: string;
+    startDate?: string;
+    endDate?: string;
+    url: string;
+  }[] = [];
+  let epicError: string | undefined;
+  if (seeds.length > 0) {
+    try {
+      createdEpics = await createEpics(target.instance, created.key, seeds);
+    } catch (err) {
+      epicError =
+        err instanceof Error
+          ? err.message
+          : "The board was created, but epics could not be added automatically.";
+    }
+  }
+
+  const now = new Date().toISOString();
+  const updated: SetupData = {
+    ...setup,
+    jira: {
+      ...setup.jira,
+      status: "completed",
+      suggestedName: setup.jira?.suggestedName,
+      projectName: name,
+      projectKey: created.key,
+      projectId: created.id,
+      boardUrl,
+      projectUrl: boardUrl,
+      workspace: target.instance,
+      template,
+      completedAt: now,
+    },
+    jiraPlanning: {
+      ...setup.jiraPlanning,
+      status: setup.jiraPlanning?.status ?? "pending",
+      createdEpics,
+      epicError,
+    },
+  };
+
+  await db
+    .update(initiatives)
+    .set({
+      setupData: updated,
+      updatedAt: new Date(),
+    })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: "setup_task_completed",
+    details: {
+      taskId: "jira",
+      completedBy: user.name,
+      projectKey: created.key,
+      workspace: target.instance,
+      epicCount: createdEpics.length,
+    },
+  });
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/setup");
+  revalidatePath("/dashboard");
+  return {
+    success: true,
+    boardUrl,
+    projectKey: created.key,
+    projectName: name,
+    workspace: target.instance,
+    createdEpics,
+    epicError,
   };
 }
 

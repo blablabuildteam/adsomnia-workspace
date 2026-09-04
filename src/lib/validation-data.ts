@@ -341,9 +341,20 @@ export type JiraSetupData = {
   completedAt?: string;
 };
 
+export type JiraCreatedEpic = {
+  key: string;
+  name: string;
+  startDate?: string;
+  endDate?: string;
+  url?: string;
+  color?: string;
+};
+
 export type JiraPlanningData = {
   status: SetupTaskStatus;
   notes?: string;
+  createdEpics?: JiraCreatedEpic[];
+  epicError?: string;
   completedAt?: string;
 };
 
@@ -443,8 +454,8 @@ export const SETUP_TASKS: {
 }[] = [
   { id: "drive", dataKey: "drive", label: "Create Google Drive", phase: "A", logo: "/logos/google-drive.png" },
   { id: "documentation", dataKey: "documentation", label: "Set Up Google Drive With Documentation", phase: "A", logo: "/logos/google-drive.png" },
-  { id: "jira", dataKey: "jira", label: "Create Jira Board", phase: "A", logo: "/logos/jira.png" },
-  { id: "jira-planning", dataKey: "jiraPlanning", label: "Set Up Jira Epic Planning", phase: "A", logo: "/logos/jira.png" },
+  { id: "jira", dataKey: "jira", label: "Create Jira", phase: "A", logo: "/logos/jira.png" },
+  { id: "jira-planning", dataKey: "jiraPlanning", label: "Set Up Tickets per Epic", phase: "A", logo: "/logos/jira.png" },
   { id: "slack", dataKey: "slack", label: "Create Slack Channel", phase: "A", logo: "/logos/slack.png" },
   { id: "kickoff-meeting", dataKey: "kickoffMeeting", label: "Book Kickoff Meeting", phase: "C", logo: "/logos/google-calendar.png" },
   { id: "invite-team", dataKey: "inviteTeam", label: "Invite Team to Tools", phase: "C" },

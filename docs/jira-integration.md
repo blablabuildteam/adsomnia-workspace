@@ -6,9 +6,9 @@ Adsomnia Workspace talks to **up to three separate Jira Cloud sites** via REST A
 
 | Capability | Status | Notes |
 |------------|--------|-------|
-| **Create Jira project/board** in Project Setup | API ready; UI still manual paste | Mirror Slack/Drive “Create” once Adsomnia env is live |
+| **Create Jira** in Project Setup | Done | Review space title + epics, then create on the lead party’s Cloud site; paste URL remains as fallback |
 | **Store board link** on initiative | Done | `setupData.jira` (`boardUrl`, `projectKey`, `workspace`, …) |
-| **Epic planning confirm** | Manual | `JiraPlanningTask` — open board + confirm |
+| **Tickets per epic** | Manual confirm | Epics are seeded on create; this step is adding tickets/tasks under each epic |
 | **Production Overview** (cross-board progress) | Planned | Read epics + nested task status from each lead’s Jira |
 
 ## Three instances
@@ -73,7 +73,7 @@ Minimum for **board create** + **Production Overview reads**:
 | Permission / capability | Why |
 |-------------------------|-----|
 | **Browse projects** / view issues | List epics and child tasks |
-| **Create projects** (or Administer Jira) | Project Setup “Create board” |
+| **Create team-managed projects** (`CREATE_PROJECT`) | Project Setup “Create Jira” — uses the simplified create API, not Administer Jira |
 | **Browse users** (user picker) | Optional project lead search |
 | Issue create / edit (optional later) | Auto-create epics from Scoping milestones |
 
@@ -89,7 +89,8 @@ Client-facing steps: [`docs/jira-client-connect.md`](./jira-client-connect.md).
 | `GET /api/integrations/jira/workspaces` | Configured instances (`canManageSetup`) |
 | `POST /api/integrations/jira/create-project` | Create scrum/kanban software project |
 | `GET /api/integrations/jira/users?instance=&query=` | User search for project lead |
-| `src/components/initiatives/setup/JiraSetupTask.tsx` | UI — still paste board URL (wire Create next) |
+| `src/components/initiatives/setup/JiraSetupTask.tsx` | Create Board (lead party → site) + paste fallback |
+| `createAndCompleteJiraBoard` | Server action — create project, seed scoping epics, persist setup |
 
 Persisted on complete: `setupData.jira` (`workspace`, `projectKey`, `projectId`, `boardUrl`, `projectName`, `template`).
 
@@ -124,11 +125,11 @@ Date fields vary by site (Due date, Start date, Target start/end). Document the 
 
 ## Rollout order
 
-1. **Adsomnia** — client creates service user + API token; we set `JIRA_ADSOMNIA_*`, smoke-test create + epic read.
-2. Wire **Create Jira Board** UI (like Slack Create Channel), preselect Adsomnia instance from lead party.
+1. ~~**Adsomnia** — connect env and smoke-test auth / create-project permission.~~
+2. ~~Wire **Create Jira Board** UI (like Slack), preselect instance from lead party, seed scoping epics.~~
 3. Build **Production Overview** against Adsomnia boards first.
-4. Repeat connect guide for **BTR**, then **Harlem Next**; enable their env triplets.
-5. Optional: push Scoping milestones into Jira as epics (after create works reliably).
+4. Repeat connect guide for **BTR** (HN env is already present).
+5. Optional: push child tasks under seeded epics.
 
 ## Out of scope (v1)
 

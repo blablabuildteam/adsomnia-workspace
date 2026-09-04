@@ -52,6 +52,7 @@ export function SetupPhaseSection({
   scopingData,
   ticketId,
   projectTitle,
+  leadParty,
   readOnly,
   isCurrentStage = true,
 }: Props) {
@@ -238,6 +239,8 @@ export function SetupPhaseSection({
                 scopingData,
                 readOnly: readOnly || taskLocked,
                 suggestedDriveName: suggestedDriveName(projectTitle, ticketId),
+                ticketId,
+                leadParty,
                 slackChannelName,
                 onSlackChannelNameChange: setSlackChannelName,
                 jiraBoardUrl,
@@ -290,6 +293,8 @@ type TaskRenderContext = {
   scopingData?: ScopingData | null;
   readOnly?: boolean;
   suggestedDriveName: string;
+  ticketId: string;
+  leadParty?: string;
   slackChannelName: string;
   onSlackChannelNameChange: (value: string) => void;
   jiraBoardUrl: string;
@@ -398,18 +403,23 @@ function renderTaskContent(
     case "jira":
       return (
         <JiraSetupTask
+          initiativeId={ctx.initiativeId}
           data={setupData.jira}
           suggestedName={ctx.suggestedDriveName}
           boardUrl={ctx.jiraBoardUrl}
           onBoardUrlChange={ctx.onJiraBoardUrlChange}
+          leadParty={ctx.leadParty}
+          ticketId={ctx.ticketId}
+          milestones={scopingData?.milestones}
           readOnly={readOnly}
-          onComplete={(boardUrl, projectName) =>
+          onComplete={(payload) => {
+            if (payload.created) return;
             ctx.onComplete("jira", {
-              boardUrl,
-              projectUrl: boardUrl,
-              projectName,
-            })
-          }
+              boardUrl: payload.boardUrl,
+              projectUrl: payload.boardUrl,
+              projectName: payload.projectName,
+            });
+          }}
         />
       );
     case "jira-planning":
