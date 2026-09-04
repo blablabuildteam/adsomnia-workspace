@@ -1,18 +1,14 @@
 "use client";
 
-import { useActionState, useState, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import Image from "next/image";
-import { ArrowRight, AlertCircle, Eye, EyeOff } from "lucide-react";
-import { login, type LoginResult } from "@/lib/auth";
-import { inputClass } from "@/lib/form-styles";
+import { AlertCircle } from "lucide-react";
 import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 
-const initial: LoginResult = {};
-
 const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
   google_denied: "Google sign-in was cancelled.",
-  google_failed: "Google sign-in failed. Try again or use email and password.",
+  google_failed: "Google sign-in failed. Try again.",
   google_not_configured: "Google sign-in is not configured.",
   google_start_failed: "Could not start Google sign-in.",
   google_missing_code: "Google sign-in returned an incomplete response.",
@@ -31,16 +27,15 @@ function loginDelay(ms: number): CSSProperties {
 }
 
 export function LoginForm({ googleEnabled, errorCode }: LoginFormProps) {
-  const [state, formAction, pending] = useActionState(login, initial);
-  const [showPassword, setShowPassword] = useState(false);
-
   const googleError =
     errorCode && GOOGLE_ERROR_MESSAGES[errorCode]
       ? GOOGLE_ERROR_MESSAGES[errorCode]
       : errorCode
         ? GOOGLE_ERROR_MESSAGES.google_failed
         : undefined;
-  const error = state.error || googleError;
+  const error =
+    googleError ??
+    (!googleEnabled ? GOOGLE_ERROR_MESSAGES.google_not_configured : undefined);
 
   return (
     <div className="app-atmosphere relative flex min-h-screen items-center justify-center overflow-hidden px-4">
@@ -86,81 +81,18 @@ export function LoginForm({ googleEnabled, errorCode }: LoginFormProps) {
             </div>
           )}
 
-          <form action={formAction}>
-            <label className="block">
-              <span className="font-display text-sm font-bold uppercase tracking-wide">
-                Email
-              </span>
-              <input
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className={`${inputClass} mt-2`}
-                placeholder="name@adsomnia.com"
-              />
-            </label>
-
-            <label className="mt-4 block">
-              <span className="font-display text-sm font-bold uppercase tracking-wide">
-                Password
-              </span>
-              <div className="relative mt-2">
-                <input
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  required
-                  className={`${inputClass} pr-11`}
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  aria-pressed={showPassword}
-                  className="absolute inset-y-0 right-0 flex items-center px-3 text-muted transition-colors hover:text-foreground"
-                >
-                  {showPassword ? (
-                    <EyeOff className="size-4" />
-                  ) : (
-                    <Eye className="size-4" />
-                  )}
-                </button>
-              </div>
-            </label>
-
-            <button
-              type="submit"
-              disabled={pending}
-              className="group relative mt-6 inline-flex w-full items-center justify-center gap-2 overflow-hidden border border-foreground bg-foreground px-4 py-3 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors disabled:opacity-50"
+          {googleEnabled ? (
+            <a
+              href="/api/auth/google/start"
+              className="inline-flex w-full items-center justify-center gap-2 border border-foreground bg-foreground px-4 py-3 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors hover:bg-background hover:text-foreground"
             >
-              <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />
-              <span className="relative">
-                {pending ? "Signing in…" : "Sign In"}
-              </span>
-              <ArrowRight className="relative size-3.5" />
-            </button>
-          </form>
-
-          {googleEnabled && (
-            <>
-              <div className="my-5 flex items-center gap-3">
-                <div className="h-px flex-1 bg-border" />
-                <span className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-muted">
-                  Or
-                </span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
-
-              <a
-                href="/api/auth/google/start"
-                className="inline-flex w-full items-center justify-center gap-2 border border-border bg-background px-4 py-3 font-display text-xs font-bold uppercase tracking-wide text-foreground transition-colors hover:border-foreground"
-              >
-                <GoogleMark />
-                Continue with Google
-              </a>
-            </>
+              <GoogleMark />
+              Continue with Google
+            </a>
+          ) : (
+            <p className="text-center text-sm text-muted">
+              Contact your administrator to enable Google sign-in.
+            </p>
           )}
         </div>
 
@@ -168,7 +100,7 @@ export function LoginForm({ googleEnabled, errorCode }: LoginFormProps) {
           className="login-enter-rise mt-4 text-center text-xs text-muted"
           style={loginDelay(320)}
         >
-          Contact your administrator for access credentials.
+          Sign in with your work Google account.
         </p>
 
         <div className="mx-auto mt-10 flex justify-center">
