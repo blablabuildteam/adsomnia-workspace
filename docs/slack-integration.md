@@ -23,9 +23,9 @@ Later, Google login only changes how Adsomnia knows who you are; the Slack link 
    - `groups:read`
    - `chat:write`
    - `bookmarks:write` (channel bookmarks for Drive / Jira links)
-4. **Redirect URL** (HTTPS required for public distribution):
+4. **Redirect URL** (HTTPS required — Slack rejects `http://localhost`):
    - Production: `https://adsomnia-workspace.vercel.app/api/integrations/slack/oauth/callback`
-   - Local: use an HTTPS tunnel URL with the same path (bare `http://localhost` blocks Activate Public Distribution)
+   - Local: `https://localhost:3000/api/integrations/slack/oauth/callback` (`npm run dev` serves HTTPS)
 5. Copy **Client ID**, **Client Secret**, and **Signing Secret** into env (below).
 
 No Slack app setting changes are required for per-user linking beyond the scopes above — each user reuses the same OAuth install URL; Slack returns `authed_user.id` for whoever clicks Approve.
@@ -42,7 +42,7 @@ No Slack app setting changes are required for per-user linking beyond the scopes
 Example `.env.local` entries:
 
 ```bash
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=https://localhost:3000
 SLACK_CLIENT_ID=
 SLACK_CLIENT_SECRET=
 SLACK_SIGNING_SECRET=

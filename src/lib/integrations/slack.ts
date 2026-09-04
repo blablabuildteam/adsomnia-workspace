@@ -29,33 +29,42 @@ export type CreateChannelResult = {
   isPrivate: boolean;
 };
 
-function getAppCredentials(): {
-  clientId: string;
-  clientSecret: string;
-  redirectUri: string;
-} | null {
-  const clientId = process.env.SLACK_CLIENT_ID?.trim();
-  const clientSecret = process.env.SLACK_CLIENT_SECRET?.trim();
-  const appUrl = (
+function configuredAppOrigin(): string {
+  return (
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.APP_URL ||
     ""
   ).replace(/\/$/, "");
+}
 
-  if (!clientId || !clientSecret || !appUrl) return null;
+function getAppCredentials(): {
+  clientId: string;
+  clientSecret: string;
+} | null {
+  const clientId = process.env.SLACK_CLIENT_ID?.trim();
+  const clientSecret = process.env.SLACK_CLIENT_SECRET?.trim();
+  if (!clientId || !clientSecret || !configuredAppOrigin()) return null;
+  return { clientId, clientSecret };
+}
 
-  return {
-    clientId,
-    clientSecret,
-    redirectUri: `${appUrl}/api/integrations/slack/oauth/callback`,
-  };
+export function getSlackRedirectUri(origin: string): string {
+  return `${origin.replace(/\/$/, "")}/api/integrations/slack/oauth/callback`;
+}
+
+/** Prefer the live request origin in dev so HTTPS localhost matches Slack. */
+export function getSlackRedirectOrigin(request: Request): string {
+  const requestOrigin = new URL(request.url).origin;
+  if (process.env.NODE_ENV === "development") {
+    return requestOrigin;
+  }
+  return configuredAppOrigin() || requestOrigin;
 }
 
 export function isSlackAppConfigured(): boolean {
   return getAppCredentials() !== null;
 }
 
-export function getSlackAuthorizeUrl(state: string): string {
+export function getSlackAuthorizeUrl(state: string, redirectUri: string): string {
   const creds = getAppCredentials();
   if (!creds) {
     throw new Error(
@@ -66,7 +75,7 @@ export function getSlackAuthorizeUrl(state: string): string {
   const params = new URLSearchParams({
     client_id: creds.clientId,
     scope: SLACK_BOT_SCOPES.join(","),
-    redirect_uri: creds.redirectUri,
+    redirect_uri: redirectUri,
     state,
   });
 
@@ -200,6 +209,7 @@ async function upsertUserSlackLink(opts: {
 export async function exchangeOAuthCode(
   code: string,
   adsomniaUserId: string,
+  redirectUri: string,
 ): Promise<SlackWorkspaceSummary> {
   const creds = getAppCredentials();
   if (!creds) {
@@ -211,7 +221,7 @@ export async function exchangeOAuthCode(
     client_id: creds.clientId,
     client_secret: creds.clientSecret,
     code,
-    redirect_uri: creds.redirectUri,
+    redirect_uri: redirectUri,
   });
 
   if (!result.ok) {

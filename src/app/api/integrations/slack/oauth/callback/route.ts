@@ -7,13 +7,16 @@ import {
 } from "@/lib/integrations/slack-oauth-state";
 
 function appOrigin(request: Request): string {
+  const requestOrigin = new URL(request.url).origin;
+  if (process.env.NODE_ENV === "development") {
+    return requestOrigin;
+  }
   const configured = (
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.APP_URL ||
     ""
   ).replace(/\/$/, "");
-  if (configured) return configured;
-  return new URL(request.url).origin;
+  return configured || requestOrigin;
 }
 
 export async function GET(request: Request) {
@@ -46,7 +49,7 @@ export async function GET(request: Request) {
       throw new Error("OAuth state user mismatch.");
     }
 
-    await exchangeOAuthCode(code, user.id);
+    await exchangeOAuthCode(code, user.id, parsed.redirectUri);
 
     const dest = new URL(safeReturnTo(parsed.returnTo), origin);
     dest.searchParams.set("slack_connected", "1");

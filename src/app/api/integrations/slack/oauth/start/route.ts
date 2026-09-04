@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getCurrentUser, canManageSetup } from "@/lib/session";
 import {
   getSlackAuthorizeUrl,
+  getSlackRedirectOrigin,
+  getSlackRedirectUri,
   isSlackAppConfigured,
 } from "@/lib/integrations/slack";
 import {
@@ -27,12 +29,14 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const returnTo = safeReturnTo(searchParams.get("returnTo"));
+  const redirectUri = getSlackRedirectUri(getSlackRedirectOrigin(request));
 
   const state = await createSlackOAuthState({
     returnTo,
     userId: user.id,
+    redirectUri,
   });
 
-  const url = getSlackAuthorizeUrl(state);
+  const url = getSlackAuthorizeUrl(state, redirectUri);
   return NextResponse.redirect(url);
 }

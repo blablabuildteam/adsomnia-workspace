@@ -13,14 +13,28 @@ function getSecret(): Uint8Array {
 export type SlackOAuthState = {
   returnTo: string;
   userId: string;
+  redirectUri: string;
 };
+
+function isSlackCallbackUri(uri: string): boolean {
+  try {
+    const parsed = new URL(uri);
+    return parsed.pathname === "/api/integrations/slack/oauth/callback";
+  } catch {
+    return false;
+  }
+}
 
 export async function createSlackOAuthState(
   payload: SlackOAuthState,
 ): Promise<string> {
+  if (!isSlackCallbackUri(payload.redirectUri)) {
+    throw new Error("Invalid Slack OAuth redirect URI.");
+  }
   return new SignJWT({
     returnTo: payload.returnTo,
     userId: payload.userId,
+    redirectUri: payload.redirectUri,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -35,10 +49,12 @@ export async function verifySlackOAuthState(
   const returnTo =
     typeof payload.returnTo === "string" ? payload.returnTo : "";
   const userId = typeof payload.userId === "string" ? payload.userId : "";
-  if (!returnTo || !userId) {
+  const redirectUri =
+    typeof payload.redirectUri === "string" ? payload.redirectUri : "";
+  if (!returnTo || !userId || !isSlackCallbackUri(redirectUri)) {
     throw new Error("Invalid Slack OAuth state.");
   }
-  return { returnTo, userId };
+  return { returnTo, userId, redirectUri };
 }
 
 /** Only allow relative app paths (prevent open redirects). */
