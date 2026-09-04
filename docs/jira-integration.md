@@ -66,6 +66,14 @@ Sync to Vercel with `npm run env:sync-vercel` (keys are listed in `scripts/sync-
 
 Status check: `GET /api/integrations/status` → `jira.configured` and `jira.instances`.
 
+Optional (token rotation reminder):
+
+| Variable | Purpose |
+|----------|---------|
+| `JIRA_API_TOKEN_EXPIRES_AT` | `YYYY-MM-DD` expiry of the current token. Defaults to **2027-08-28** (token issued 2026-08-28, Atlassian max lifetime 1 year). Update this when the token is recycled. |
+
+Leadership accounts see a modal starting **30 days before** this date, telling them to contact blablabuild to recycle the token. The modal can be dismissed for the rest of the day and returns the next day until the expiry date is updated.
+
 ## Required Jira permissions (token user)
 
 Minimum for **board create** + **Production Overview reads**:

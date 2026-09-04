@@ -266,6 +266,7 @@ Each stage gate (Validation → Scoping, Scoping → Go/No-Go, etc.) will have i
 | `JIRA_ADSOMNIA_API_TOKEN` | Server | Jira | Adsomnia Atlassian API token |
 | `JIRA_BTR_HOST` / `_EMAIL` / `_API_TOKEN` | Server | Jira | Bending The Rules Jira Cloud (later) |
 | `JIRA_HN_HOST` / `_EMAIL` / `_API_TOKEN` | Server | Jira | Harlem Next Jira Cloud (later) |
+| `JIRA_API_TOKEN_EXPIRES_AT` | Server | Jira | Optional `YYYY-MM-DD` token expiry (default 2027-08-28) for the leadership rotation reminder |
 
 Local values live in `.env.local` (gitignored). Sync auth/session/login/Slack/Google/Jira vars to Vercel via `npm run env:sync-vercel`. When Resend and Gemini go live, add those keys to the sync script and Vercel Production/Preview/Development. Slack: [`slack-integration.md`](./slack-integration.md). Google login: [`google-login.md`](./google-login.md). Jira: [`jira-integration.md`](./jira-integration.md) · client handoff: [`jira-client-connect.md`](./jira-client-connect.md).
 

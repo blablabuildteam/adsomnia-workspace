@@ -38,7 +38,10 @@ If your security policy forbids a shared user, an admin personal account works f
 2. Open **Security** → **API tokens** (or go directly to [https://id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens))
 3. Click **Create API token**
 4. Label it clearly, e.g. `Adsomnia Workspace — production`
-5. Copy the token **immediately** (it is shown only once)
+5. Set expiry to the **longest option** (1 year). Atlassian no longer allows non-expiring tokens.
+6. Copy the token **immediately** (it is shown only once)
+
+Workspace leadership is reminded 30 days before expiry to contact blablabuild to recycle the token. After rotation, update `JIRA_API_TOKEN_EXPIRES_AT` on the server.
 
 Treat the token like a password. Do not put it in Slack channels, tickets, or email threads that are widely shared if you can avoid it — prefer a secure one-time channel (password manager share, encrypted note, or live handoff).
 

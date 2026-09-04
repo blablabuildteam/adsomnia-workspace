@@ -4,6 +4,8 @@ import {
   getCurrentUser,
   needsProfileCompletion,
 } from "@/lib/session";
+import { canSeeJiraTokenReminder } from "@/lib/permissions";
+import { getJiraTokenReminder } from "@/lib/integrations/jira-token-reminder";
 import { WorkspaceShell } from "@/components/workspace/WorkspaceShell";
 
 export default async function WorkspaceLayout({
@@ -20,6 +22,10 @@ export default async function WorkspaceLayout({
     redirect("/complete-profile");
   }
 
+  const jiraTokenReminder = canSeeJiraTokenReminder(user)
+    ? getJiraTokenReminder()
+    : null;
+
   return (
     <div className="app-atmosphere flex h-dvh min-h-0 flex-col overflow-hidden">
       <WorkspaceShell
@@ -31,6 +37,7 @@ export default async function WorkspaceLayout({
           email: user.email,
           role: user.role,
         }}
+        jiraTokenReminder={jiraTokenReminder}
       >
         {children}
       </WorkspaceShell>

@@ -35,6 +35,7 @@ const SYNC_KEYS = [
   "JIRA_HN_HOST",
   "JIRA_HN_EMAIL",
   "JIRA_HN_API_TOKEN",
+  "JIRA_API_TOKEN_EXPIRES_AT",
 ] as const;
 
 const SENSITIVE_KEYS = new Set([

@@ -2,16 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
+import { JiraTokenReminderModal } from "./JiraTokenReminderModal";
 import type { SidebarProfileUser } from "./SidebarProfile";
+import type { JiraTokenReminder } from "@/lib/integrations/jira-token-reminder";
 
 const STORAGE_KEY = "adsomnia-sidebar-collapsed";
 
 type Props = {
   user: SidebarProfileUser;
   children: React.ReactNode;
+  jiraTokenReminder?: JiraTokenReminder | null;
 };
 
-export function WorkspaceShell({ user, children }: Props) {
+export function WorkspaceShell({ user, children, jiraTokenReminder }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
@@ -47,6 +50,9 @@ export function WorkspaceShell({ user, children }: Props) {
       <main className="workspace-content min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
         {children}
       </main>
+      {jiraTokenReminder ? (
+        <JiraTokenReminderModal reminder={jiraTokenReminder} />
+      ) : null}
     </div>
   );
 }

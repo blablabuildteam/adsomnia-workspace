@@ -72,6 +72,11 @@ export function canAddProductionProject(user: PermissionUser): boolean {
   return isLeadership(user);
 }
 
+/** Leadership — Jira API token rotation reminder. */
+export function canSeeJiraTokenReminder(user: PermissionUser): boolean {
+  return isLeadership(user);
+}
+
 /**
  * Creator or leadership may change the original initiative fields while the
  * item is still in Initiative or Validation. Rejected items: creator only.
