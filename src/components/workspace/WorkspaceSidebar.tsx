@@ -279,9 +279,6 @@ export function WorkspaceSidebar({ user, collapsed, onToggle }: Props) {
             />
           </li>
           <li>
-            <PipelineNav collapsed={collapsed} pathname={pathname} />
-          </li>
-          <li>
             <NavLink
               href="/ideas/new"
               label="Submit Initiative"
@@ -289,6 +286,9 @@ export function WorkspaceSidebar({ user, collapsed, onToggle }: Props) {
               active={isActive(pathname, "/ideas/new")}
               collapsed={collapsed}
             />
+          </li>
+          <li>
+            <PipelineNav collapsed={collapsed} pathname={pathname} />
           </li>
         </ul>
       </nav>

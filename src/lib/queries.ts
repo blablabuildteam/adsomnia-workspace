@@ -6,7 +6,7 @@ import {
   activityLog,
   comments,
 } from "@/db/schema";
-import { eq, desc, asc, count, inArray, isNull } from "drizzle-orm";
+import { eq, desc, asc, count, inArray, isNull, notInArray } from "drizzle-orm";
 import { displayName } from "@/lib/session";
 import type {
   ValidationData,
@@ -263,6 +263,61 @@ export async function getActivityForInitiative(
     .orderBy(desc(activityLog.createdAt));
 
   return rows;
+}
+
+const NOISY_ACTIVITY = [
+  "validation_saved",
+  "scoping_saved",
+  "comment_added",
+  "setup_task_reset",
+  "onboarding_task_reset",
+] as const;
+
+export type WorkspaceActivityEntry = {
+  id: number;
+  action: string;
+  details: unknown;
+  createdAt: Date;
+  userName: string;
+  initiativeId: number;
+  ticketId: string;
+  title: string;
+};
+
+/** Recent workspace-wide activity for the dashboard launchpad. */
+export async function getRecentWorkspaceActivity(
+  limit = 12,
+): Promise<WorkspaceActivityEntry[]> {
+  const rows = await db
+    .select({
+      id: activityLog.id,
+      action: activityLog.action,
+      details: activityLog.details,
+      createdAt: activityLog.createdAt,
+      name: users.name,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      initiativeId: initiatives.id,
+      ticketId: initiatives.ticketId,
+      title: initiatives.title,
+    })
+    .from(activityLog)
+    .innerJoin(users, eq(activityLog.userId, users.id))
+    .innerJoin(initiatives, eq(activityLog.initiativeId, initiatives.id))
+    .where(notInArray(activityLog.action, [...NOISY_ACTIVITY]))
+    .orderBy(desc(activityLog.createdAt))
+    .limit(limit);
+
+  return rows.map((row) => ({
+    id: row.id,
+    action: row.action,
+    details: row.details,
+    createdAt: row.createdAt,
+    userName: displayName(row),
+    initiativeId: row.initiativeId,
+    ticketId: row.ticketId,
+    title: row.title,
+  }));
 }
 
 export async function getApprovalHistory(initiativeId: number) {
