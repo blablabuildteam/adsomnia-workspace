@@ -18,6 +18,11 @@ import {
   type IdeaUpdateResult,
 } from "@/app/(workspace)/workstreams/[id]/actions";
 import { inputClass } from "@/lib/form-styles";
+import { CharCount } from "@/components/ui/CharCount";
+import {
+  IDEA_FIELD_LIMITS,
+  type IdeaFieldName,
+} from "@/lib/field-limits";
 
 const initial: IdeaUpdateResult = {};
 
@@ -30,7 +35,7 @@ type IdeaFields = {
 };
 
 const FIELD_META: {
-  name: keyof Omit<IdeaFields, "title">;
+  name: Exclude<IdeaFieldName, "title">;
   label: string;
   icon: LucideIcon;
   required: boolean;
@@ -70,8 +75,21 @@ type Props = {
   canResubmit?: boolean;
 };
 
+type DraftFields = Record<IdeaFieldName, string>;
+
+function draftFromValues(values: IdeaFields): DraftFields {
+  return {
+    title: values.title,
+    problemStatement: values.problemStatement ?? "",
+    opportunitySolution: values.opportunitySolution ?? "",
+    expectedImpact: values.expectedImpact ?? "",
+    targetAudience: values.targetAudience ?? "",
+  };
+}
+
 export function IdeaDetailsSection({ initiativeId, values, canEdit, canResubmit = false }: Props) {
   const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<DraftFields>(() => draftFromValues(values));
 
   const boundUpdate = updateIdeaDetails.bind(null, initiativeId);
   const boundResubmit = resubmitIdea.bind(null, initiativeId);
@@ -94,7 +112,10 @@ export function IdeaDetailsSection({ initiativeId, values, canEdit, canResubmit 
         {canEdit && !editing && (
           <button
             type="button"
-            onClick={() => setEditing(true)}
+            onClick={() => {
+              setDraft(draftFromValues(values));
+              setEditing(true);
+            }}
             className="inline-flex items-center gap-1.5 border border-border px-2.5 py-1.5 font-display text-[10px] font-bold uppercase tracking-wide text-muted transition-colors hover:border-foreground hover:text-foreground"
           >
             <Pencil className="size-3" />
@@ -139,13 +160,24 @@ export function IdeaDetailsSection({ initiativeId, values, canEdit, canResubmit 
               type="text"
               name="title"
               required
-              defaultValue={values.title}
+              minLength={IDEA_FIELD_LIMITS.title.min}
+              maxLength={IDEA_FIELD_LIMITS.title.max}
+              value={draft.title}
+              onChange={(e) =>
+                setDraft((current) => ({ ...current, title: e.target.value }))
+              }
               className={`${inputClass} mt-1`}
+            />
+            <CharCount
+              value={draft.title}
+              min={IDEA_FIELD_LIMITS.title.min}
+              max={IDEA_FIELD_LIMITS.title.max}
             />
           </label>
 
           {FIELD_META.map((field) => {
             const Icon = field.icon;
+            const limits = IDEA_FIELD_LIMITS[field.name];
             return (
               <label key={field.name} className="block">
                 <span className="flex items-center gap-2 font-display text-xs font-bold uppercase tracking-wide text-muted">
@@ -156,9 +188,23 @@ export function IdeaDetailsSection({ initiativeId, values, canEdit, canResubmit 
                 <textarea
                   name={field.name}
                   required={field.required}
+                  minLength={limits.min}
+                  maxLength={limits.max}
                   rows={3}
-                  defaultValue={values[field.name] ?? ""}
+                  value={draft[field.name]}
+                  onChange={(e) =>
+                    setDraft((current) => ({
+                      ...current,
+                      [field.name]: e.target.value,
+                    }))
+                  }
                   className={`${inputClass} mt-1`}
+                />
+                <CharCount
+                  value={draft[field.name]}
+                  min={limits.min}
+                  max={limits.max}
+                  optional={!field.required}
                 />
               </label>
             );

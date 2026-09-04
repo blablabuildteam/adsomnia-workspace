@@ -27,6 +27,13 @@ import { Modal, ModalButton } from "@/components/ui/Modal";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { BrandTexture } from "@/components/ui/BrandTexture";
 import { inputClass, readOnlyFieldClass } from "@/lib/form-styles";
+import { CharCount } from "@/components/ui/CharCount";
+import {
+  IDEA_FIELD_LIMITS,
+  meetsFieldMin,
+  validateIdeaFields,
+  type IdeaFieldName,
+} from "@/lib/field-limits";
 
 const IDEA_STAGE = STAGES.find((s) => s.id === "idea")!;
 
@@ -34,12 +41,18 @@ const SPONSOR_OPTIONS = ["Sietse", "Jasper", "Oleg", "Coen"];
 
 const SHOW_FORM_PREFILL = true;
 
-const FORM_FIELDS = [
+const FORM_FIELDS: {
+  name: IdeaFieldName;
+  label: string;
+  hint: string;
+  type: "text" | "textarea";
+  placeholder: string;
+}[] = [
   {
     name: "title",
     label: "Title & Short Description",
     hint: "State the core initiative in 1–2 plain sentences (what are we building or changing?).",
-    type: "text" as const,
+    type: "text",
     placeholder:
       "e.g. Automate retargeting pixel deployment across affiliate landing pages.",
   },
@@ -47,7 +60,7 @@ const FORM_FIELDS = [
     name: "problemStatement",
     label: "Problem Statement",
     hint: "Name the concrete problem this solves — the pain, gap, or risk if we do nothing.",
-    type: "textarea" as const,
+    type: "textarea",
     placeholder:
       "e.g. Manual pixel placement causes delays and inconsistent tracking across partner sites.",
   },
@@ -55,7 +68,7 @@ const FORM_FIELDS = [
     name: "opportunitySolution",
     label: "Opportunity / Solution",
     hint: "Describe the opportunity or proposed solution direction in plain terms (what should we build or change?).",
-    type: "textarea" as const,
+    type: "textarea",
     placeholder:
       "e.g. A self-serve pixel deployment tool that partners can configure without Affil Ops support.",
   },
@@ -63,7 +76,7 @@ const FORM_FIELDS = [
     name: "expectedImpact",
     label: "Expected Impact / Value (Hypothesis)",
     hint: "Describe the intended outcome and how you would recognise success (revenue, efficiency, data quality, churn, etc.).",
-    type: "textarea" as const,
+    type: "textarea",
     placeholder:
       "e.g. ~40% less setup time for pixels; fewer tracking gaps in retargeting data.",
   },
@@ -71,7 +84,7 @@ const FORM_FIELDS = [
     name: "targetAudience",
     label: "Target Audience / Stakeholder",
     hint: "Who is this for, and who is affected (internal team, end user, business unit)?",
-    type: "text" as const,
+    type: "text",
     placeholder: "e.g. Affiliate Ops & Media Buying",
   },
 ];
@@ -210,8 +223,8 @@ const DEV_PREFILL: FormValues = {
   sponsor: "Sietse",
 };
 
-function isFieldComplete(value: string): boolean {
-  return value.trim().length > 0;
+function isIdeaFieldComplete(name: IdeaFieldName, value: string): boolean {
+  return meetsFieldMin(value, IDEA_FIELD_LIMITS[name]);
 }
 
 const FORM_PROGRESS_TOTAL = 7;
@@ -219,12 +232,12 @@ const FORM_PROGRESS_TOTAL = 7;
 function getFormProgress(values: FormValues): number {
   const completed = [
     true, // submitter (auto-filled)
-    isFieldComplete(values.title),
-    isFieldComplete(values.problemStatement),
-    isFieldComplete(values.opportunitySolution),
-    isFieldComplete(values.expectedImpact),
-    isFieldComplete(values.targetAudience),
-    isFieldComplete(values.sponsor),
+    isIdeaFieldComplete("title", values.title),
+    isIdeaFieldComplete("problemStatement", values.problemStatement),
+    isIdeaFieldComplete("opportunitySolution", values.opportunitySolution),
+    isIdeaFieldComplete("expectedImpact", values.expectedImpact),
+    isIdeaFieldComplete("targetAudience", values.targetAudience),
+    values.sponsor.trim().length > 0,
   ].filter(Boolean).length;
 
   return completed / FORM_PROGRESS_TOTAL;
@@ -255,16 +268,17 @@ export function IdeaFormView({ submitterName }: { submitterName: string }) {
   };
 
   const formProgress = getFormProgress(values);
-  const canSubmit = (
-    [
-      values.title,
-      values.problemStatement,
-      values.opportunitySolution,
-      values.expectedImpact,
-      values.targetAudience,
-      values.sponsor,
-    ] as const
-  ).every(isFieldComplete);
+  const canSubmit =
+    (
+      [
+        "title",
+        "problemStatement",
+        "opportunitySolution",
+        "expectedImpact",
+        "targetAudience",
+      ] as const
+    ).every((name) => isIdeaFieldComplete(name, values[name])) &&
+    values.sponsor.trim().length > 0;
 
   const handlePreSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     if (bypassAnalysis) {
@@ -294,6 +308,18 @@ export function IdeaFormView({ submitterName }: { submitterName: string }) {
       !targetAudience ||
       !sponsor
     ) {
+      form.reportValidity();
+      return;
+    }
+
+    const limitError = validateIdeaFields({
+      title,
+      problemStatement,
+      opportunitySolution,
+      expectedImpact,
+      targetAudience,
+    });
+    if (limitError) {
       form.reportValidity();
       return;
     }
@@ -444,7 +470,7 @@ export function IdeaFormView({ submitterName }: { submitterName: string }) {
               <FieldRow
                 key={field.name}
                 number={fieldNumber(index + 1)}
-                complete={isFieldComplete(values[field.name as keyof FormValues])}
+                complete={isIdeaFieldComplete(field.name, values[field.name])}
               >
                 <label
                   htmlFor={field.name}
@@ -461,12 +487,12 @@ export function IdeaFormView({ submitterName }: { submitterName: string }) {
                       name={field.name}
                       required
                       rows={3}
+                      minLength={IDEA_FIELD_LIMITS[field.name].min}
+                      maxLength={IDEA_FIELD_LIMITS[field.name].max}
                       className={inputClass}
                       placeholder={field.placeholder}
-                      value={values[field.name as keyof FormValues]}
-                      onChange={(e) =>
-                        updateField(field.name as keyof FormValues, e.target.value)
-                      }
+                      value={values[field.name]}
+                      onChange={(e) => updateField(field.name, e.target.value)}
                     />
                   ) : (
                     <input
@@ -474,14 +500,19 @@ export function IdeaFormView({ submitterName }: { submitterName: string }) {
                       name={field.name}
                       type="text"
                       required
+                      minLength={IDEA_FIELD_LIMITS[field.name].min}
+                      maxLength={IDEA_FIELD_LIMITS[field.name].max}
                       className={inputClass}
                       placeholder={field.placeholder}
-                      value={values[field.name as keyof FormValues]}
-                      onChange={(e) =>
-                        updateField(field.name as keyof FormValues, e.target.value)
-                      }
+                      value={values[field.name]}
+                      onChange={(e) => updateField(field.name, e.target.value)}
                     />
                   )}
+                  <CharCount
+                    value={values[field.name]}
+                    min={IDEA_FIELD_LIMITS[field.name].min}
+                    max={IDEA_FIELD_LIMITS[field.name].max}
+                  />
                 </div>
               </FieldRow>
             ))}
@@ -489,7 +520,7 @@ export function IdeaFormView({ submitterName }: { submitterName: string }) {
             {/* Sponsor */}
             <FieldRow
               number={fieldNumber(FORM_FIELDS.length + 1)}
-              complete={isFieldComplete(values.sponsor)}
+              complete={values.sponsor.trim().length > 0}
             >
               <label
                 htmlFor="sponsor"
@@ -547,7 +578,7 @@ export function IdeaFormView({ submitterName }: { submitterName: string }) {
           <button
             type="submit"
             disabled={isSubmitting || !canSubmit}
-            title={!canSubmit ? "Fill in all required fields to submit" : undefined}
+            title={!canSubmit ? "Fill in all required fields to the minimum length to submit" : undefined}
             className="group inline-flex items-center justify-center gap-2 border border-foreground bg-foreground px-6 py-3 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {analyzing ? (

@@ -6,6 +6,7 @@ import { initiatives, activityLog, users } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/session";
 import { canSubmitInitiative } from "@/lib/permissions";
+import { readIdeaFields, validateIdeaFields } from "@/lib/field-limits";
 
 export type SubmitIdeaResult = {
   error?: string;
@@ -20,24 +21,28 @@ export async function submitIdea(
     return { error: "You must be logged in to submit an initiative." };
   }
 
-  const title = (formData.get("title") as string)?.trim();
-  const problemStatement = (formData.get("problemStatement") as string)?.trim();
-  const opportunitySolution = (
-    formData.get("opportunitySolution") as string
-  )?.trim();
-  const expectedImpact = (formData.get("expectedImpact") as string)?.trim();
-  const targetAudience = (formData.get("targetAudience") as string)?.trim();
+  const {
+    title,
+    problemStatement,
+    opportunitySolution,
+    expectedImpact,
+    targetAudience,
+  } = readIdeaFields(formData);
   const sponsorName = (formData.get("sponsor") as string)?.trim();
 
-  if (
-    !title ||
-    !problemStatement ||
-    !opportunitySolution ||
-    !expectedImpact ||
-    !targetAudience ||
-    !sponsorName
-  ) {
+  if (!sponsorName) {
     return { error: "All required fields must be filled in." };
+  }
+
+  const limitError = validateIdeaFields({
+    title,
+    problemStatement,
+    opportunitySolution,
+    expectedImpact,
+    targetAudience,
+  });
+  if (limitError) {
+    return { error: limitError };
   }
 
   const [sponsor] = await db

@@ -32,6 +32,12 @@ import {
   type ValidationResult,
 } from "@/app/(workspace)/workstreams/[id]/actions";
 import { inputClass } from "@/lib/form-styles";
+import { CharCount } from "@/components/ui/CharCount";
+import {
+  VALIDATION_FIELD_LIMITS,
+  meetsFieldMin,
+  meetsOptionalFieldMin,
+} from "@/lib/field-limits";
 import {
   BUSINESS_VALUE_TYPES,
   IMPACT_DEFAULT,
@@ -293,16 +299,20 @@ export function ValidationPhaseSection({
     businessValueTypes.length > 0 &&
     businessValueTypes.every((type) => businessValueImpacts[type] !== null);
   const leadPartyComplete = isOtherLead
-    ? leadPartyOther.trim().length > 0
+    ? meetsFieldMin(leadPartyOther, VALIDATION_FIELD_LIMITS.leadPartyOther)
     : leadPartySelect.length > 0;
+  const solutionComplete = meetsFieldMin(
+    solutionDirection,
+    VALIDATION_FIELD_LIMITS.solutionDirection,
+  );
   const canSubmit =
     businessValueComplete &&
     leadPartyComplete &&
-    solutionDirection.trim().length > 0 &&
+    solutionComplete &&
     tShirtSize.length > 0 &&
     priority.length > 0 &&
-    dependencies.trim().length > 0 &&
-    risks.trim().length > 0;
+    meetsOptionalFieldMin(dependencies, VALIDATION_FIELD_LIMITS.dependencies) &&
+    meetsOptionalFieldMin(risks, VALIDATION_FIELD_LIMITS.risks);
 
   function toggleBusinessValueType(type: BusinessValueType) {
     markFormDirty();
@@ -514,18 +524,27 @@ export function ValidationPhaseSection({
                 />
               )}
               {isOtherLead && (
-                <input
-                  type="text"
-                  name="leadProductionParty"
-                  required
-                  value={leadPartyOther}
-                  onChange={(e) => {
-                    markFormDirty();
-                    setLeadPartyOther(e.target.value);
-                  }}
-                  className={inputClass}
-                  placeholder="Enter the lead party or team name…"
-                />
+                <>
+                  <input
+                    type="text"
+                    name="leadProductionParty"
+                    required
+                    minLength={VALIDATION_FIELD_LIMITS.leadPartyOther.min}
+                    maxLength={VALIDATION_FIELD_LIMITS.leadPartyOther.max}
+                    value={leadPartyOther}
+                    onChange={(e) => {
+                      markFormDirty();
+                      setLeadPartyOther(e.target.value);
+                    }}
+                    className={inputClass}
+                    placeholder="Enter the lead party or team name…"
+                  />
+                  <CharCount
+                    value={leadPartyOther}
+                    min={VALIDATION_FIELD_LIMITS.leadPartyOther.min}
+                    max={VALIDATION_FIELD_LIMITS.leadPartyOther.max}
+                  />
+                </>
               )}
             </div>
           </PhaseSectionCard>
@@ -535,7 +554,7 @@ export function ValidationPhaseSection({
               <FieldLabel
                 field="solutionDirection"
                 required
-                complete={solutionDirection.trim().length > 0}
+                complete={solutionComplete}
               >
                 High-Level Approach of the Solution
               </FieldLabel>
@@ -545,6 +564,8 @@ export function ValidationPhaseSection({
               name="solutionDirection"
               required
               rows={3}
+              minLength={VALIDATION_FIELD_LIMITS.solutionDirection.min}
+              maxLength={VALIDATION_FIELD_LIMITS.solutionDirection.max}
               value={solutionDirection}
               onChange={(e) => {
                 markFormDirty();
@@ -552,6 +573,11 @@ export function ValidationPhaseSection({
               }}
               className={inputClass}
               placeholder="e.g. Shared config service + templates; push via CMS API; HN owns build."
+            />
+            <CharCount
+              value={solutionDirection}
+              min={VALIDATION_FIELD_LIMITS.solutionDirection.min}
+              max={VALIDATION_FIELD_LIMITS.solutionDirection.max}
             />
           </PhaseSectionCard>
 
@@ -601,7 +627,10 @@ export function ValidationPhaseSection({
             header={
               <FieldLabel
                 field="dependencies"
-                complete={dependencies.trim().length > 0}
+                complete={meetsFieldMin(
+                  dependencies,
+                  VALIDATION_FIELD_LIMITS.dependencies,
+                )}
               >
                 Risks, Dependencies & Blockers
               </FieldLabel>
@@ -610,6 +639,8 @@ export function ValidationPhaseSection({
             <textarea
               name="dependencies"
               rows={2}
+              minLength={VALIDATION_FIELD_LIMITS.dependencies.min}
+              maxLength={VALIDATION_FIELD_LIMITS.dependencies.max}
               value={dependencies}
               onChange={(e) => {
                 markFormDirty();
@@ -617,6 +648,12 @@ export function ValidationPhaseSection({
               }}
               className={inputClass}
               placeholder="Optional — risks, blockers, or required access (include ticket refs if known)."
+            />
+            <CharCount
+              value={dependencies}
+              min={VALIDATION_FIELD_LIMITS.dependencies.min}
+              max={VALIDATION_FIELD_LIMITS.dependencies.max}
+              optional
             />
           </PhaseSectionCard>
 
@@ -640,12 +677,17 @@ export function ValidationPhaseSection({
             bodyClassName="space-y-4 p-4"
           >
             <label className="block">
-              <FieldLabel field="risks" complete={risks.trim().length > 0}>
+              <FieldLabel
+                field="risks"
+                complete={meetsFieldMin(risks, VALIDATION_FIELD_LIMITS.risks)}
+              >
                 Other Notes
               </FieldLabel>
               <textarea
                 name="risks"
                 rows={2}
+                minLength={VALIDATION_FIELD_LIMITS.risks.min}
+                maxLength={VALIDATION_FIELD_LIMITS.risks.max}
                 value={risks}
                 onChange={(e) => {
                   markFormDirty();
@@ -653,6 +695,12 @@ export function ValidationPhaseSection({
                 }}
                 className={`${inputClass} mt-1`}
                 placeholder="Optional — leftover context, open questions, or anything leadership should see."
+              />
+              <CharCount
+                value={risks}
+                min={VALIDATION_FIELD_LIMITS.risks.min}
+                max={VALIDATION_FIELD_LIMITS.risks.max}
+                optional
               />
             </label>
             <div>
@@ -716,7 +764,7 @@ export function ValidationPhaseSection({
               type="submit"
               formAction={submitAction}
               disabled={pending || !canSubmit}
-              title={!canSubmit ? "Fill in all required fields to submit" : undefined}
+              title={!canSubmit ? "Fill in all required fields to the minimum length to submit" : undefined}
               className="group relative inline-flex items-center gap-2 overflow-hidden border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />

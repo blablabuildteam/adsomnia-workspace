@@ -47,6 +47,11 @@ import {
   type OnboardingTaskId,
 } from "@/lib/queries";
 import {
+  readIdeaFields,
+  validateIdeaFields,
+  validateValidationNarratives,
+} from "@/lib/field-limits";
+import {
   createChannel,
   sanitizeChannelName,
 } from "@/lib/integrations/slack";
@@ -119,6 +124,20 @@ function parseValidationFormData(formData: FormData): ValidationData {
   };
 }
 
+function validationSubmitError(data: ValidationData): string | null {
+  const required: (keyof ValidationData)[] = [
+    "solutionDirection",
+    "tShirtSize",
+    "priority",
+    "leadProductionParty",
+  ];
+  const missing = required.filter((k) => !data[k]);
+  if (missing.length > 0 || !isBusinessValueComplete(data.businessValue)) {
+    return "All validation fields must be completed before submitting. Select at least one business value type and set its impact score (1–10).";
+  }
+  return validateValidationNarratives(data, "submit");
+}
+
 export type IdeaUpdateResult = {
   error?: string;
   success?: boolean;
@@ -164,26 +183,22 @@ export async function updateIdeaDetails(
     };
   }
 
-  const title = (formData.get("title") as string)?.trim();
-  const problemStatement = (formData.get("problemStatement") as string)?.trim();
-  const opportunitySolution = (
-    formData.get("opportunitySolution") as string
-  )?.trim();
-  const expectedImpact = (formData.get("expectedImpact") as string)?.trim();
-  const targetAudience = (formData.get("targetAudience") as string)?.trim();
-
-  if (!title || !problemStatement || !opportunitySolution || !expectedImpact) {
-    return { error: "Title, problem, solution, and impact are required." };
+  const fields = readIdeaFields(formData);
+  const limitError = validateIdeaFields(fields, {
+    targetAudienceRequired: false,
+  });
+  if (limitError) {
+    return { error: limitError };
   }
 
   await db
     .update(initiatives)
     .set({
-      title,
-      problemStatement,
-      opportunitySolution,
-      expectedImpact,
-      targetAudience: targetAudience || null,
+      title: fields.title,
+      problemStatement: fields.problemStatement,
+      opportunitySolution: fields.opportunitySolution,
+      expectedImpact: fields.expectedImpact,
+      targetAudience: fields.targetAudience || null,
       updatedAt: new Date(),
     })
     .where(eq(initiatives.id, initiativeId));
@@ -240,26 +255,22 @@ export async function resubmitIdea(
     };
   }
 
-  const title = (formData.get("title") as string)?.trim();
-  const problemStatement = (formData.get("problemStatement") as string)?.trim();
-  const opportunitySolution = (
-    formData.get("opportunitySolution") as string
-  )?.trim();
-  const expectedImpact = (formData.get("expectedImpact") as string)?.trim();
-  const targetAudience = (formData.get("targetAudience") as string)?.trim();
-
-  if (!title || !problemStatement || !opportunitySolution || !expectedImpact) {
-    return { error: "Title, problem, solution, and impact are required." };
+  const fields = readIdeaFields(formData);
+  const limitError = validateIdeaFields(fields, {
+    targetAudienceRequired: false,
+  });
+  if (limitError) {
+    return { error: limitError };
   }
 
   await db
     .update(initiatives)
     .set({
-      title,
-      problemStatement,
-      opportunitySolution,
-      expectedImpact,
-      targetAudience: targetAudience || null,
+      title: fields.title,
+      problemStatement: fields.problemStatement,
+      opportunitySolution: fields.opportunitySolution,
+      expectedImpact: fields.expectedImpact,
+      targetAudience: fields.targetAudience || null,
       status: "submitted",
       updatedAt: new Date(),
     })
@@ -304,6 +315,9 @@ export async function addComment(
   const body = (formData.get("body") as string)?.trim();
   if (!body) {
     return { error: "Comment cannot be empty." };
+  }
+  if (body.length > 2000) {
+    return { error: "Comment must be 2000 characters or fewer." };
   }
 
   await db.insert(comments).values({
@@ -695,6 +709,10 @@ export async function resubmitValidation(
   }
 
   const data = parseValidationFormData(formData);
+  const readyError = validationSubmitError(data);
+  if (readyError) {
+    return { error: readyError };
+  }
 
   await db
     .update(initiatives)
@@ -754,6 +772,10 @@ export async function saveValidationData(
   }
 
   const data = parseValidationFormData(formData);
+  const lengthError = validateValidationNarratives(data, "save");
+  if (lengthError) {
+    return { error: lengthError };
+  }
 
   // Only transition from "approved" to "draft" on first save;
   // preserve on-hold / rejected status until explicit resubmission.
@@ -815,19 +837,9 @@ export async function submitValidationForApproval(
   }
 
   const data = parseValidationFormData(formData);
-
-  const required: (keyof ValidationData)[] = [
-    "solutionDirection",
-    "tShirtSize",
-    "priority",
-    "leadProductionParty",
-  ];
-  const missing = required.filter((k) => !data[k]);
-  if (missing.length > 0 || !isBusinessValueComplete(data.businessValue)) {
-    return {
-      error:
-        "All validation fields must be completed before submitting. Select at least one business value type and set its impact score (1–10).",
-    };
+  const readyError = validationSubmitError(data);
+  if (readyError) {
+    return { error: readyError };
   }
 
   await db
