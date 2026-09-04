@@ -5,9 +5,9 @@ import Link from "next/link";
 import {
   ArrowRight,
   Building2,
+  Check,
   CheckCircle2,
   Clock,
-  ExternalLink,
   Filter,
   Settings,
   Users,
@@ -33,32 +33,30 @@ type SetupTool = {
 };
 
 function setupToolChips(setup: SetupData | null): SetupTool[] {
-  const slackName = setup?.slack.channelName?.replace(/^#/, "");
+  const slackName = setup?.slack.channelName;
   const slackUrl = setup?.slack.channelUrl;
-  const jiraName = setup?.jira.projectName || setup?.jira.projectKey;
   const jiraUrl = setup?.jira.boardUrl || setup?.jira.projectUrl;
-  const driveName = setup?.drive.driveName;
   const driveUrl = setup?.drive.driveUrl;
 
   return [
     {
       key: "drive",
       logo: "/logos/google-drive.png",
-      label: driveName || "Google Drive",
+      label: "Google Drive",
       href: driveUrl,
       ready: !!(driveUrl || setup?.drive.status === "completed"),
     },
     {
       key: "jira",
       logo: "/logos/jira.png",
-      label: jiraName || "Jira",
+      label: "Jira",
       href: jiraUrl,
       ready: !!(jiraUrl || setup?.jira.status === "completed"),
     },
     {
       key: "slack",
       logo: "/logos/slack.png",
-      label: slackName ? `#${slackName}` : "Slack",
+      label: "Slack",
       href: slackUrl,
       ready: !!(slackUrl || slackName || setup?.slack.status === "completed"),
     },
@@ -66,6 +64,7 @@ function setupToolChips(setup: SetupData | null): SetupTool[] {
 }
 
 function SetupToolChip({ logo, label, href, ready }: Omit<SetupTool, "key">) {
+  const status = ready ? "set up" : "not set up";
   const inner = (
     <>
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -77,17 +76,15 @@ function SetupToolChip({ logo, label, href, ready }: Omit<SetupTool, "key">) {
           ready ? "" : "opacity-40",
         ].join(" ")}
       />
-      <span className="min-w-0 truncate">{label}</span>
-      {href && (
-        <ExternalLink className="size-2.5 shrink-0 text-muted/50 transition-colors group-hover/tool:text-foreground" />
-      )}
+      <span>{label}</span>
+      {ready && <Check className="size-3 shrink-0 text-success" strokeWidth={2.5} />}
     </>
   );
 
   const cls = [
-    "group/tool inline-flex max-w-full items-center gap-1.5 px-2 py-1 text-[10px]",
+    "inline-flex shrink-0 items-center gap-1.5 px-2 py-1 text-[10px]",
     ready
-      ? "border border-border text-foreground/80"
+      ? "border border-success text-foreground"
       : "border border-dashed border-border text-muted/50",
   ].join(" ");
 
@@ -97,15 +94,20 @@ function SetupToolChip({ logo, label, href, ready }: Omit<SetupTool, "key">) {
         href={href}
         target="_blank"
         rel="noopener noreferrer"
+        aria-label={`${label} — ${status}`}
         onClick={(event) => event.stopPropagation()}
-        className={`${cls} transition-colors hover:border-foreground/40 hover:text-foreground`}
+        className={`${cls} transition-opacity hover:opacity-80`}
       >
         {inner}
       </a>
     );
   }
 
-  return <span className={cls}>{inner}</span>;
+  return (
+    <span className={cls} aria-label={`${label} — ${status}`}>
+      {inner}
+    </span>
+  );
 }
 
 const hoverTicks =
@@ -239,32 +241,31 @@ function SetupCard({ item }: { item: InitiativeWithUsers }) {
         </div>
       </Link>
 
-      <div className="flex flex-wrap items-center gap-1.5 border-t border-border px-5 py-2.5">
-        {tools.map((tool) => (
-          <SetupToolChip
-            key={tool.key}
-            logo={tool.logo}
-            label={tool.label}
-            href={tool.href}
-            ready={tool.ready}
-          />
-        ))}
-      </div>
-
-      <Link
-        href={href}
-        className="flex items-center justify-between border-t border-border px-5 py-3"
-      >
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-3 border-t border-border px-5 py-2.5">
+        <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto">
+          {tools.map((tool) => (
+            <SetupToolChip
+              key={tool.key}
+              logo={tool.logo}
+              label={tool.label}
+              href={tool.href}
+              ready={tool.ready}
+            />
+          ))}
+        </div>
+        <Link
+          href={href}
+          className="flex shrink-0 items-center gap-2"
+        >
           {leadPartyLabel && (
             <span className="inline-flex items-center gap-1 font-display text-[10px] font-bold uppercase tracking-wide text-foreground">
               <Building2 className="size-3" />
               {leadPartyLabel}
             </span>
           )}
-        </div>
-        <ArrowRight className="size-3.5 text-muted transition-transform group-hover:translate-x-0.5" />
-      </Link>
+          <ArrowRight className="size-3.5 text-muted transition-transform group-hover:translate-x-0.5" />
+        </Link>
+      </div>
     </div>
   );
 }
