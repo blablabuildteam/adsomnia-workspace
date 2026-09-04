@@ -6,7 +6,7 @@ import {
   activityLog,
   comments,
 } from "@/db/schema";
-import { eq, desc, asc, count, inArray, isNull, notInArray } from "drizzle-orm";
+import { eq, desc, asc, count, inArray, isNull, notInArray, and } from "drizzle-orm";
 import { displayName } from "@/lib/session";
 import type {
   ValidationData,
@@ -67,6 +67,9 @@ export type InitiativeWithUsers = {
   onboardingData: OnboardingData | null;
   currentStage: string;
   status: string;
+  isFastTrack: boolean;
+  fastTrackJiraKey: string | null;
+  fastTrackJiraUrl: string | null;
   archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -89,6 +92,9 @@ const initiativeSelect = {
   onboardingData: initiatives.onboardingData,
   currentStage: initiatives.currentStage,
   status: initiatives.status,
+  isFastTrack: initiatives.isFastTrack,
+  fastTrackJiraKey: initiatives.fastTrackJiraKey,
+  fastTrackJiraUrl: initiatives.fastTrackJiraUrl,
   archivedAt: initiatives.archivedAt,
   createdAt: initiatives.createdAt,
   updatedAt: initiatives.updatedAt,
@@ -111,6 +117,9 @@ type InitiativeRow = {
   onboardingData: unknown;
   currentStage: string;
   status: string;
+  isFastTrack: boolean;
+  fastTrackJiraKey: string | null;
+  fastTrackJiraUrl: string | null;
   archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -148,6 +157,9 @@ async function hydrateInitiatives(
     onboardingData: (r.onboardingData as OnboardingData) ?? null,
     currentStage: r.currentStage,
     status: r.status,
+    isFastTrack: r.isFastTrack,
+    fastTrackJiraKey: r.fastTrackJiraKey,
+    fastTrackJiraUrl: r.fastTrackJiraUrl,
     archivedAt: r.archivedAt,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
@@ -163,9 +175,12 @@ export async function getInitiativesByStage(
     .select(initiativeSelect)
     .from(initiatives)
     .where(
-      eq(
-        initiatives.currentStage,
-        stage as (typeof initiatives.$inferSelect)["currentStage"],
+      and(
+        eq(
+          initiatives.currentStage,
+          stage as (typeof initiatives.$inferSelect)["currentStage"],
+        ),
+        eq(initiatives.isFastTrack, false),
       ),
     )
     .orderBy(desc(initiatives.updatedAt));
@@ -177,9 +192,49 @@ export async function getAllInitiatives(): Promise<InitiativeWithUsers[]> {
   const rows = await db
     .select(initiativeSelect)
     .from(initiatives)
+    .where(eq(initiatives.isFastTrack, false))
     .orderBy(desc(initiatives.updatedAt));
 
   return hydrateInitiatives(rows);
+}
+
+export async function getFastTrackInitiatives(): Promise<InitiativeWithUsers[]> {
+  const rows = await db
+    .select(initiativeSelect)
+    .from(initiatives)
+    .where(eq(initiatives.isFastTrack, true))
+    .orderBy(desc(initiatives.updatedAt));
+
+  return hydrateInitiatives(rows);
+}
+
+export async function getFastTrackRemarks(
+  initiativeIds: number[],
+): Promise<Map<number, string>> {
+  if (initiativeIds.length === 0) return new Map();
+
+  const rows = await db
+    .select({
+      initiativeId: activityLog.initiativeId,
+      details: activityLog.details,
+    })
+    .from(activityLog)
+    .where(
+      and(
+        inArray(activityLog.initiativeId, initiativeIds),
+        eq(activityLog.action, "converted_to_fast_track"),
+      ),
+    )
+    .orderBy(desc(activityLog.createdAt));
+
+  const remarks = new Map<number, string>();
+  for (const row of rows) {
+    if (remarks.has(row.initiativeId)) continue;
+    const details = row.details as { comment?: string } | null;
+    const comment = details?.comment?.trim();
+    if (comment) remarks.set(row.initiativeId, comment);
+  }
+  return remarks;
 }
 
 export async function getInitiativeById(
@@ -201,6 +256,9 @@ export async function getInitiativeById(
       onboardingData: initiatives.onboardingData,
       currentStage: initiatives.currentStage,
       status: initiatives.status,
+      isFastTrack: initiatives.isFastTrack,
+      fastTrackJiraKey: initiatives.fastTrackJiraKey,
+      fastTrackJiraUrl: initiatives.fastTrackJiraUrl,
       archivedAt: initiatives.archivedAt,
       createdAt: initiatives.createdAt,
       updatedAt: initiatives.updatedAt,
@@ -435,7 +493,7 @@ export async function getStageCounts(): Promise<Record<string, number>> {
       count: count(),
     })
     .from(initiatives)
-    .where(isNull(initiatives.archivedAt))
+    .where(and(isNull(initiatives.archivedAt), eq(initiatives.isFastTrack, false)))
     .groupBy(initiatives.currentStage);
 
   const result: Record<string, number> = {};
@@ -452,6 +510,7 @@ export async function getStatusCounts(): Promise<Record<string, number>> {
       count: count(),
     })
     .from(initiatives)
+    .where(eq(initiatives.isFastTrack, false))
     .groupBy(initiatives.status);
 
   const result: Record<string, number> = {};

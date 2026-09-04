@@ -57,7 +57,7 @@ const DECISION_META: Record<
   rejected: {
     label: "Rejected",
     description: "Business case rejected",
-    badge: "border-btr bg-btr/10 text-btr",
+    badge: "border-danger bg-danger/10 text-danger",
     icon: XCircle,
   },
 };
@@ -229,7 +229,7 @@ export function ValidationApprovalPanel({
           <button
             type="button"
             onClick={() => setSelectedAction("reject")}
-            className="inline-flex items-center gap-2 border border-btr bg-btr/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-btr transition-colors hover:bg-btr/20"
+            className="inline-flex items-center gap-2 border border-danger bg-danger/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-danger transition-colors hover:bg-danger/20"
           >
             <XCircle className="size-3.5" />
             Reject
@@ -278,7 +278,7 @@ export function ValidationApprovalPanel({
                     ? "border-feedback bg-feedback text-background"
                     : selectedAction === "hold"
                       ? "border-hn bg-hn text-background"
-                      : "border-btr bg-btr text-background",
+                      : "border-danger bg-danger text-background",
               ].join(" ")}
             >
               <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />

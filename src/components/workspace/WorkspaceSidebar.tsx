@@ -12,6 +12,7 @@ import {
   Columns3,
   LayoutDashboard,
   Lightbulb,
+  Rocket,
 } from "lucide-react";
 import { STAGE_COLORS, type StageId } from "@/data/workflow";
 import {
@@ -282,6 +283,15 @@ export function WorkspaceSidebar({ user, collapsed, onToggle }: Props) {
           </li>
           <li>
             <PipelineNav collapsed={collapsed} pathname={pathname} />
+          </li>
+          <li>
+            <NavLink
+              href="/fast-track"
+              label="Fast Track"
+              icon={Rocket}
+              active={isActive(pathname, "/fast-track")}
+              collapsed={collapsed}
+            />
           </li>
         </ul>
       </nav>

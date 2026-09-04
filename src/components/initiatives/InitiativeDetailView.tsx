@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { Check } from "lucide-react";
+import { ArrowUpRight, Check, Rocket } from "lucide-react";
 import { STAGES, getStageColor, type WorkflowStage } from "@/data/workflow";
 import type {
   InitiativeWithUsers,
@@ -464,7 +464,31 @@ export function InitiativeDetailView({
                 canResubmit={ideaCanResubmit}
               />
 
-              {showApprovalPanel && (
+              {initiative.isFastTrack && (
+                <div className="flex flex-wrap items-center gap-3 border-t border-border bg-bbb/5 px-4 py-3 sm:px-5">
+                  <span className="inline-flex items-center gap-1.5 border border-bbb bg-bbb/10 px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-wide text-bbb">
+                    <Rocket className="size-3.5" />
+                    Fast-Track
+                  </span>
+                  <p className="text-xs text-muted">
+                    This initiative skipped the pipeline and is tracked on the
+                    Fast Track board.
+                  </p>
+                  {initiative.fastTrackJiraUrl && (
+                    <a
+                      href={initiative.fastTrackJiraUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="ml-auto inline-flex items-center gap-1 font-display text-[11px] font-bold uppercase tracking-wide text-bbb hover:underline"
+                    >
+                      {initiative.fastTrackJiraKey ?? "Open in Jira"}
+                      <ArrowUpRight className="size-3" />
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {showApprovalPanel && !initiative.isFastTrack && (
                 <ApprovalPanel
                   initiativeId={initiative.id}
                   decision={

@@ -11,3 +11,11 @@
 - [ ] **Switch Jira account** to the generic email (service account)
 - [ ] **Verify production on Vercel** — smoke-test that everything works on the Vercel URL
 - [ ] **Set up a Jira board for blablabuild** (instance connect + board / project)
+- [ ] Check **edit / update flexibility** for workstreams in the funnel — as owner or leadership
+
+# Overall testing topics
+
+- [ ] Manually add a **Jira board** in the Production view
+- [ ] Go through the **full pipeline** with an Adsomnia account
+- [ ] Review the experience for a **non-leadership** (team) account
+- [ ] Check the **statuses** on the Fast-Track Jira board

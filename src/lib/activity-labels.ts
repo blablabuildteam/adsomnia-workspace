@@ -8,6 +8,7 @@ const ACTION_LABELS: Record<string, string> = {
   idea_on_hold: "put an initiative on hold",
   idea_feedback: "sent initiative feedback",
   approved_to_validation: "advanced to Validation",
+  converted_to_fast_track: "sent an initiative to Fast-Track",
   stage_advanced: "advanced a phase",
   validation_submitted: "submitted Validation",
   validation_approved: "approved Validation",

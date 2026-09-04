@@ -6,6 +6,7 @@ import {
   timestamp,
   serial,
   jsonb,
+  boolean,
   pgEnum,
   unique,
 } from "drizzle-orm/pg-core";
@@ -77,6 +78,10 @@ export const initiatives = pgTable("initiatives", {
   onboardingData: jsonb("onboarding_data"),
   currentStage: stageEnum("current_stage").notNull().default("idea"),
   status: statusEnum("status").notNull().default("draft"),
+  /** Leadership sent this off the pipeline onto the Fast Track Jira board. */
+  isFastTrack: boolean("is_fast_track").notNull().default(false),
+  fastTrackJiraKey: varchar("fast_track_jira_key", { length: 32 }),
+  fastTrackJiraUrl: varchar("fast_track_jira_url", { length: 500 }),
   /** Set when a Production workstream is archived off the active board. */
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })

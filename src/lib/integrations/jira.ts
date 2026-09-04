@@ -863,3 +863,182 @@ export async function getProjectEpicProgress(
 
   return epics;
 }
+
+/** Shared Adsomnia Kanban board for Fast-Track tasks. */
+export const FAST_TRACK_JIRA_INSTANCE: JiraInstance = "adsomnia";
+export const FAST_TRACK_JIRA_PROJECT_KEY = "KAN";
+
+export function getFastTrackBoardUrl(): string | null {
+  const config = getInstanceConfig(FAST_TRACK_JIRA_INSTANCE);
+  if (!config) return null;
+  return `${normalizeHost(config.host)}/jira/software/projects/${FAST_TRACK_JIRA_PROJECT_KEY}/list`;
+}
+
+export function getFastTrackIssueUrl(key: string): string | null {
+  const config = getInstanceConfig(FAST_TRACK_JIRA_INSTANCE);
+  if (!config) return null;
+  return `${normalizeHost(config.host)}/browse/${key}`;
+}
+
+function adfFromParagraphs(paragraphs: string[]) {
+  const content = paragraphs
+    .map((text) => text.trim())
+    .filter(Boolean)
+    .map((text) => ({
+      type: "paragraph" as const,
+      content: [{ type: "text" as const, text }],
+    }));
+  if (content.length === 0) return undefined;
+  return { type: "doc" as const, version: 1 as const, content };
+}
+
+function flattenAdf(node: unknown): string {
+  if (!node) return "";
+  if (typeof node === "string") return node;
+  if (typeof node !== "object") return "";
+  const value = node as { type?: string; text?: string; content?: unknown[] };
+  if (typeof value.text === "string") return value.text;
+  const parts = (value.content ?? []).map(flattenAdf);
+  const join =
+    value.type === "paragraph" ||
+    value.type === "heading" ||
+    value.type === "listItem"
+      ? "\n"
+      : "";
+  return parts.join(join).replace(/\n{3,}/g, "\n\n").trim();
+}
+
+export type FastTrackJiraIssue = {
+  key: string;
+  title: string;
+  status: string;
+  statusCategory: JiraStatusCategoryKey;
+  priority: string;
+  assignee: string | null;
+  reporter: string | null;
+  description: string;
+  created: string | null;
+  updated: string | null;
+  url: string;
+};
+
+function mapFastTrackIssue(
+  issue: { key?: string; fields?: IssueFields },
+  host: string,
+): FastTrackJiraIssue {
+  const fields = issue.fields ?? {};
+  const key = issue.key ?? "";
+  const priority = fields.priority;
+  const priorityName =
+    priority && typeof priority === "object" && "name" in priority
+      ? String((priority as { name?: string }).name ?? "None")
+      : "None";
+  const reporter = fields.reporter;
+  const reporterName =
+    reporter && typeof reporter === "object" && "displayName" in reporter
+      ? String((reporter as { displayName?: string }).displayName ?? "").trim()
+      : "";
+
+  return {
+    key,
+    title: fields.summary ?? key,
+    status: fields.status?.name ?? "Unknown",
+    statusCategory: statusCategoryKey(fields),
+    priority: priorityName || "None",
+    assignee: assigneeName(fields) ?? null,
+    reporter: reporterName || null,
+    description: flattenAdf(fields.description),
+    created: typeof fields.created === "string" ? fields.created : null,
+    updated: typeof fields.updated === "string" ? fields.updated : null,
+    url: `${normalizeHost(host)}/browse/${key}`,
+  };
+}
+
+export async function listFastTrackIssues(): Promise<FastTrackJiraIssue[]> {
+  const { client, config } = requireClient(FAST_TRACK_JIRA_INSTANCE);
+  const fields = [
+    "summary",
+    "status",
+    "priority",
+    "assignee",
+    "reporter",
+    "description",
+    "created",
+    "updated",
+  ];
+  let issues: { key?: string; fields?: IssueFields }[];
+  try {
+    issues = await searchIssues(
+      client,
+      `project = "${FAST_TRACK_JIRA_PROJECT_KEY}" ORDER BY created DESC`,
+      fields,
+      200,
+    );
+  } catch {
+    issues = await searchIssues(
+      client,
+      `project = ${FAST_TRACK_JIRA_PROJECT_KEY}`,
+      fields,
+      200,
+    );
+  }
+  return issues
+    .filter((issue) => issue.key)
+    .map((issue) => mapFastTrackIssue(issue, config.host));
+}
+
+export async function createFastTrackIssue(input: {
+  title: string;
+  problemStatement?: string | null;
+  opportunitySolution?: string | null;
+  expectedImpact?: string | null;
+  targetAudience?: string | null;
+  ticketId?: string;
+  remark?: string | null;
+}): Promise<{ key: string; url: string }> {
+  const { client, config } = requireClient(FAST_TRACK_JIRA_INSTANCE);
+  const meta = await client.issues.getCreateIssueMetaIssueTypes({
+    projectIdOrKey: FAST_TRACK_JIRA_PROJECT_KEY,
+    maxResults: 50,
+  });
+  const types = [
+    ...(meta.issueTypes ?? []),
+    ...(meta.createMetaIssueType ?? []),
+  ];
+  const skip = new Set(["epic", "sub-task", "subtask"]);
+  const issueType =
+    types.find((t) => (t.name ?? "").toLowerCase() === "task") ??
+    types.find((t) => (t.name ?? "").toLowerCase() === "story") ??
+    types.find((t) => !skip.has((t.name ?? "").toLowerCase()));
+  if (!issueType?.id) {
+    throw new Error("Could not find a Task issue type on the Fast Track board.");
+  }
+
+  const description = adfFromParagraphs([
+    input.ticketId ? `Workspace ticket: ${input.ticketId}` : "",
+    input.problemStatement ? `Problem: ${input.problemStatement}` : "",
+    input.opportunitySolution
+      ? `Opportunity / solution: ${input.opportunitySolution}`
+      : "",
+    input.expectedImpact ? `Expected impact: ${input.expectedImpact}` : "",
+    input.targetAudience ? `Target audience: ${input.targetAudience}` : "",
+    input.remark ? `Leadership remark: ${input.remark}` : "",
+  ]);
+
+  const fieldsPayload: Record<string, unknown> = {
+    project: { key: FAST_TRACK_JIRA_PROJECT_KEY },
+    summary: input.title.trim().slice(0, JIRA_ISSUE_SUMMARY_MAX),
+    issuetype: { id: issueType.id },
+  };
+  if (description) fieldsPayload.description = description;
+
+  const issue = await client.issues.createIssue({ fields: fieldsPayload });
+  const key = issue.key;
+  if (!key) {
+    throw new Error("Jira created the Fast-Track task but did not return a key.");
+  }
+  return {
+    key,
+    url: `${normalizeHost(config.host)}/browse/${key}`,
+  };
+}

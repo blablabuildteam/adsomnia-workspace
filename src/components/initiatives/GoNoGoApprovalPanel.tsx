@@ -43,7 +43,7 @@ const DECISION_META: Record<
   },
   rejected: {
     label: "NO-GO — Closed",
-    badge: "border-btr bg-btr/10 text-btr",
+    badge: "border-danger bg-danger/10 text-danger",
     icon: Ban,
   },
   feedback: {
@@ -209,7 +209,7 @@ export function GoNoGoApprovalPanel({
           <button
             type="button"
             onClick={() => setSelectedAction("no-go")}
-            className="inline-flex items-center gap-2 border border-btr bg-btr/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-btr transition-colors hover:bg-btr/20"
+            className="inline-flex items-center gap-2 border border-danger bg-danger/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-danger transition-colors hover:bg-danger/20"
           >
             <Ban className="size-3.5" />
             NO-GO — Reject
@@ -255,7 +255,7 @@ export function GoNoGoApprovalPanel({
                 selectedAction === "go"
                   ? "border-success bg-success text-background"
                   : selectedAction === "no-go"
-                    ? "border-btr bg-btr text-background"
+                    ? "border-danger bg-danger text-background"
                     : "border-feedback bg-feedback text-background",
               ].join(" ")}
             >
