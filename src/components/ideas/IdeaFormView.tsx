@@ -4,6 +4,7 @@ import { useActionState, useState, useRef } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
+  ArrowUpRight,
   AlertCircle,
   Zap,
   AlertTriangle,
@@ -11,7 +12,9 @@ import {
   Sparkles,
   FlaskConical,
 } from "lucide-react";
-import { STAGES } from "@/data/workflow";
+import { statusLabel } from "@/components/dashboard/shared";
+import type { SimilarityMatch, WorkLocation } from "@/lib/idea-analysis";
+import { STAGES, getStageColor } from "@/data/workflow";
 import { PipelineStrip } from "@/components/pipeline/PipelineStrip";
 import { WorkspaceChip } from "@/components/WorkspaceChip";
 import {
@@ -241,6 +244,86 @@ function getFormProgress(values: FormValues): number {
   ].filter(Boolean).length;
 
   return completed / FORM_PROGRESS_TOTAL;
+}
+
+function LocationBadge({ location }: { location: WorkLocation }) {
+  if (location === "production") {
+    return (
+      <span className="border border-success/40 bg-success/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-success">
+        In production
+      </span>
+    );
+  }
+
+  return (
+    <span className="border border-hn/30 bg-hn/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-hn">
+      In the funnel
+    </span>
+  );
+}
+
+function SimilarWorkSnapshot({ match }: { match: SimilarityMatch }) {
+  return (
+    <div className="border border-border bg-surface p-3">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <LocationBadge location={match.location} />
+        <span
+          className="border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+          style={{
+            borderColor: getStageColor(match.stageId),
+            color: getStageColor(match.stageId),
+          }}
+        >
+          {match.stageLabel}
+        </span>
+        <span className="border border-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted">
+          {statusLabel(match.status)}
+        </span>
+        <span className="ml-auto shrink-0 border border-hn/30 bg-hn/10 px-2 py-0.5 text-[10px] font-bold text-hn">
+          {Math.round(match.similarityScore * 100)}% match
+        </span>
+      </div>
+
+      <div className="mt-2.5 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-display text-[10px] font-bold uppercase tracking-wider text-muted">
+            {match.ticketId}
+          </p>
+          <p className="mt-0.5 text-sm font-medium leading-snug text-foreground">
+            {match.title}
+          </p>
+        </div>
+        <Link
+          href={`/workstreams/${match.id}`}
+          target="_blank"
+          className="inline-flex shrink-0 items-center gap-1 font-display text-[10px] font-bold uppercase tracking-wide text-muted hover:text-foreground"
+        >
+          Open
+          <ArrowUpRight className="size-3" />
+        </Link>
+      </div>
+
+      {match.summary && (
+        <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted">
+          {match.summary}
+        </p>
+      )}
+
+      <p className="mt-2 text-xs leading-relaxed text-foreground/80">
+        {match.reason}
+      </p>
+
+      {(match.leadPartyLabel || match.sponsorName) && (
+        <p className="mt-2 text-[11px] text-muted">
+          {match.location === "production" && match.leadPartyLabel
+            ? `Lead · ${match.leadPartyLabel}`
+            : match.sponsorName
+              ? `Sponsor · ${match.sponsorName}`
+              : null}
+        </p>
+      )}
+    </div>
+  );
 }
 
 export function IdeaFormView({ submitterName }: { submitterName: string }) {
@@ -573,7 +656,7 @@ export function IdeaFormView({ submitterName }: { submitterName: string }) {
           <p className="flex items-center gap-2 text-xs text-muted">
             <Sparkles className="size-3.5 shrink-0 opacity-70" aria-hidden />
             Each submission is checked for Fast-Track fit and overlap with
-            existing initiatives.
+            work already in the funnel or in production.
           </p>
           <button
             type="submit"
@@ -642,7 +725,8 @@ export function IdeaFormView({ submitterName }: { submitterName: string }) {
       <Modal
         open={showSimilarityModal}
         onClose={() => setShowSimilarityModal(false)}
-        title="Similar Initiatives Found"
+        title="This may already exist"
+        size="lg"
         actions={
           <>
             <ModalButton
@@ -663,44 +747,21 @@ export function IdeaFormView({ submitterName }: { submitterName: string }) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm text-foreground">
-              We found existing initiatives that may overlap with your submission.
-              Please review before proceeding.
+              Could this already exist in the funnel or in production? Review
+              the closest matches before you register a new initiative.
             </p>
 
             {analysisResult?.analysis?.similarity.matches &&
               analysisResult.analysis.similarity.matches.length > 0 && (
-                <div className="mt-4 space-y-3">
+                <div className="mt-4 max-h-[50vh] space-y-3 overflow-y-auto pr-0.5">
                   {analysisResult.analysis.similarity.matches.map((match) => (
-                    <div
-                      key={match.id}
-                      className="border border-border bg-surface p-3"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <Link
-                            href={`/workstreams/${match.id}`}
-                            className="font-display text-xs font-bold uppercase tracking-wide text-foreground hover:underline"
-                            target="_blank"
-                          >
-                            {match.ticketId}
-                          </Link>
-                          <p className="mt-1 truncate text-sm text-muted">
-                            {match.title}
-                          </p>
-                        </div>
-                        <span className="shrink-0 border border-hn/30 bg-hn/10 px-2 py-0.5 text-[10px] font-bold text-hn">
-                          {Math.round(match.similarityScore * 100)}% match
-                        </span>
-                      </div>
-                      <p className="mt-2 text-xs text-muted">{match.reason}</p>
-                    </div>
+                    <SimilarWorkSnapshot key={match.id} match={match} />
                   ))}
                 </div>
               )}
 
             <p className="mt-4 text-xs text-muted">
-              If this is intentionally a new initiative, you can proceed with
-              submission.
+              If this is intentionally a new initiative, you can submit anyway.
             </p>
           </div>
         </div>

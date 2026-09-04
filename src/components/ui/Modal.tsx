@@ -9,9 +9,17 @@ type ModalProps = {
   title: string;
   children: React.ReactNode;
   actions?: React.ReactNode;
+  size?: "md" | "lg";
 };
 
-export function Modal({ open, onClose, title, children, actions }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  actions,
+  size = "md",
+}: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,7 +54,10 @@ export function Modal({ open, onClose, title, children, actions }: ModalProps) {
 
       <div
         ref={dialogRef}
-        className="workspace-content relative z-10 w-full max-w-lg border border-border-strong bg-surface-elevated shadow-[0_16px_48px_rgba(0,0,0,0.8)] animate-fade-in"
+        className={[
+          "workspace-content relative z-10 w-full border border-border-strong bg-surface-elevated shadow-[0_16px_48px_rgba(0,0,0,0.8)] animate-fade-in",
+          size === "lg" ? "max-w-xl" : "max-w-lg",
+        ].join(" ")}
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h2
