@@ -285,6 +285,7 @@ export type CommentEntry = {
   id: number;
   body: string;
   createdAt: Date;
+  userId: string;
   userName: string;
 };
 
@@ -296,6 +297,7 @@ export async function getCommentsForInitiative(
       id: comments.id,
       body: comments.body,
       createdAt: comments.createdAt,
+      userId: comments.userId,
       userName: users.name,
     })
     .from(comments)

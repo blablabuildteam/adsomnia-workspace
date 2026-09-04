@@ -3,7 +3,6 @@ import { Check } from "lucide-react";
 import { STAGES, getStageColor, type WorkflowStage } from "@/data/workflow";
 import type {
   InitiativeWithUsers,
-  ActivityEntry,
   CommentEntry,
 } from "@/lib/queries";
 import { ApprovalPanel, type ApprovalDecision } from "./ApprovalPanel";
@@ -15,7 +14,7 @@ import {
   GoNoGoApprovalPanel,
   type GoNoGoDecision,
 } from "./GoNoGoApprovalPanel";
-import { CommentSection } from "./CommentSection";
+import { WorkstreamChat } from "./WorkstreamChat";
 import { ValidationPhaseSection } from "./ValidationPhaseSection";
 import { ScopingPhaseSection } from "./ScopingPhaseSection";
 import { SetupPhaseSection } from "./SetupPhaseSection";
@@ -35,9 +34,6 @@ import {
 
 const STAGE_INDEX: Record<string, number> = {};
 for (const s of STAGES) STAGE_INDEX[s.id] = s.number;
-
-/** Re-enable when comment UI is ready for the detail view. */
-const SHOW_COMMENT_SECTION = false;
 
 /** Re-enable when the pipeline stepper returns to the detail view. */
 const SHOW_PIPELINE_STEPPER = false;
@@ -130,11 +126,13 @@ function StageStepper({ currentStageId }: { currentStageId: string }) {
 
 type Props = {
   initiative: InitiativeWithUsers;
-  activity: ActivityEntry[];
   comments: CommentEntry[];
   canUserApprove: boolean;
   canComment: boolean;
   currentUserName: string;
+  currentUserId?: string;
+  /** Hide on public share links — chat is for signed-in workspace users. */
+  showChat?: boolean;
   latestDecision?: ApprovalDecision | null;
   validationDecision?: ValidationDecision | null;
   goNoGoDecision?: GoNoGoDecision | null;
@@ -149,11 +147,12 @@ type Props = {
 
 export function InitiativeDetailView({
   initiative,
-  activity,
   comments,
   canUserApprove,
   canComment,
   currentUserName,
+  currentUserId,
+  showChat = false,
   latestDecision = null,
   validationDecision = null,
   goNoGoDecision = null,
@@ -614,16 +613,17 @@ export function InitiativeDetailView({
             )}
         </div>
 
-        {SHOW_COMMENT_SECTION && (
-          <CommentSection
-            initiativeId={initiative.id}
-            comments={comments}
-            activity={activity}
-            currentUserName={currentUserName}
-            canComment={canComment}
-          />
-        )}
       </div>
+      {showChat && (
+        <WorkstreamChat
+          initiativeId={initiative.id}
+          comments={comments}
+          currentUserName={currentUserName}
+          currentUserId={currentUserId}
+          canComment={canComment}
+          dockAbovePhaseBar={currentNum >= 4}
+        />
+      )}
       {currentNum >= 4 && currentPhaseBarStatus && (
         <CurrentPhaseBar
           stageId={initiative.currentStage}

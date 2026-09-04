@@ -5,8 +5,6 @@ import type { ApprovalDecision } from "@/components/initiatives/ApprovalPanel";
 import type { ValidationDecision } from "@/components/initiatives/ValidationApprovalPanel";
 import {
   getInitiativeById,
-  getActivityForInitiative,
-  getCommentsForInitiative,
   getApprovalHistory,
 } from "@/lib/queries";
 import { verifyShareToken } from "@/lib/share";
@@ -46,11 +44,7 @@ export default async function SharedInitiativePage({ params }: Props) {
     notFound();
   }
 
-  const [activity, comments, approvals] = await Promise.all([
-    getActivityForInitiative(initiative.id),
-    getCommentsForInitiative(initiative.id),
-    getApprovalHistory(initiative.id),
-  ]);
+  const approvals = await getApprovalHistory(initiative.id);
 
   const latestIdea = approvals.find((a) => a.fromStage === "idea");
   const latestDecision: ApprovalDecision | null =
@@ -78,8 +72,7 @@ export default async function SharedInitiativePage({ params }: Props) {
   return (
     <InitiativeDetailView
       initiative={initiative}
-      activity={activity}
-      comments={comments}
+      comments={[]}
       canUserApprove={false}
       canComment={false}
       currentUserName=""

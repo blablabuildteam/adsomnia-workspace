@@ -2,12 +2,12 @@ import { notFound } from "next/navigation";
 import { InitiativeDetailView } from "@/components/initiatives/InitiativeDetailView";
 import {
   getInitiativeById,
-  getActivityForInitiative,
   getCommentsForInitiative,
   getApprovalHistory,
 } from "@/lib/queries";
 import {
   getCurrentUser,
+  displayName,
   canApprove,
   canManageSetup,
   canManageOnboarding,
@@ -47,8 +47,7 @@ export default async function InitiativePage({ params }: Props) {
     );
   }
 
-  const [activity, comments, approvals] = await Promise.all([
-    getActivityForInitiative(initiative.id),
+  const [comments, approvals] = await Promise.all([
     getCommentsForInitiative(initiative.id),
     getApprovalHistory(initiative.id),
   ]);
@@ -93,11 +92,12 @@ export default async function InitiativePage({ params }: Props) {
   return (
     <InitiativeDetailView
       initiative={initiative}
-      activity={activity}
       comments={comments}
       canUserApprove={canUserApprove}
       canComment={!!user}
-      currentUserName={user?.name ?? "Unknown"}
+      currentUserName={user ? displayName(user) : "Unknown"}
+      currentUserId={user?.id}
+      showChat={!!user}
       latestDecision={latestDecision}
       validationDecision={validationDecision}
       goNoGoDecision={goNoGoDecision}
