@@ -18,6 +18,7 @@ import {
   setProductionArchived,
 } from "@/app/(workspace)/pipeline/production/actions";
 import { Modal, ModalButton } from "@/components/ui/Modal";
+import { ProductionBriefHero } from "@/components/production/ProductionBriefHero";
 import { ProductionHealthBadge } from "@/components/production/ProductionHealthBadge";
 import {
   EpicTicketGroups,
@@ -67,7 +68,7 @@ const TOOL_ORDER = [
   },
 ];
 
-function ToolChip({
+function ToolIcon({
   logo,
   label,
   href,
@@ -76,15 +77,10 @@ function ToolChip({
   label: string;
   href?: string;
 }) {
-  const inner = (
-    <>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={logo} alt="" className="size-3.5 shrink-0 object-contain" />
-      <span className="truncate">{label}</span>
-    </>
+  const icon = (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={logo} alt="" className="size-4 object-contain" />
   );
-  const cls =
-    "inline-flex max-w-full items-center gap-1.5 border px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-wide";
 
   if (href) {
     return (
@@ -92,16 +88,22 @@ function ToolChip({
         href={href}
         target="_blank"
         rel="noreferrer"
-        className={`${cls} border-border text-foreground transition-colors hover:border-foreground`}
+        title={label}
+        aria-label={`Open ${label}`}
+        className="inline-flex size-8 items-center justify-center border border-border text-foreground transition-colors hover:border-foreground"
       >
-        {inner}
+        {icon}
       </a>
     );
   }
 
   return (
-    <span className={`${cls} border-dashed border-border text-muted/50`}>
-      {inner}
+    <span
+      title={`${label} not linked`}
+      aria-label={`${label} not linked`}
+      className="inline-flex size-8 items-center justify-center border border-dashed border-border opacity-40"
+    >
+      {icon}
     </span>
   );
 }
@@ -362,11 +364,11 @@ export function ProductionDetailDrawer({
             </button>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="mt-4 flex items-center gap-2">
             {TOOL_ORDER.map((tool) => {
               const linked = project.tools[tool.key];
               return (
-                <ToolChip
+                <ToolIcon
                   key={tool.key}
                   logo={tool.logo}
                   label={linked?.label ?? tool.fallback}
@@ -394,6 +396,10 @@ export function ProductionDetailDrawer({
               </div>
             )}
           </section>
+
+          <div className="mt-8">
+            <ProductionBriefHero brief={project.brief} />
+          </div>
 
           <section className="mt-8">
             <h3 className="font-display mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
@@ -502,12 +508,10 @@ export function ProductionDetailDrawer({
                     <dd>{project.brief.tShirtSize ?? "—"}</dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] text-muted">Priority</dt>
-                    <dd>
-                      {project.brief.consensusPriority ??
-                        project.brief.priority ??
-                        "—"}
-                    </dd>
+                    <dt className="text-[11px] text-muted">
+                      Adsomnia priority
+                    </dt>
+                    <dd>{project.brief.priority ?? "—"}</dd>
                   </div>
                 </dl>
                 {project.brief.solutionDirection && (

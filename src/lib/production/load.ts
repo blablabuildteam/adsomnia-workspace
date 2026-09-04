@@ -9,7 +9,11 @@ import {
   type ActivityEntry,
   type InitiativeWithUsers,
 } from "@/lib/queries";
-import type { JiraSetupData } from "@/lib/validation-data";
+import { summarizeTeamCost } from "@/data/role-rates";
+import {
+  formatBusinessValueSummary,
+  type JiraSetupData,
+} from "@/lib/validation-data";
 import {
   buildProjectHealth,
   isTrackedLeadParty,
@@ -65,14 +69,38 @@ export function resolveJiraTarget(jira: JiraSetupData | undefined): {
 }
 
 function toBrief(item: InitiativeWithUsers) {
+  const team = item.scopingData?.team ?? [];
+  const teamCost = team.length ? summarizeTeamCost(team) : null;
+  const setupBudget = item.setupData?.budget;
+  const adjusted = setupBudget?.adjustedBudget;
+  const original = setupBudget?.originalBudget ?? teamCost?.total;
+  const budget = adjusted ?? original ?? undefined;
+  const dates = (item.scopingData?.milestones ?? [])
+    .flatMap((milestone) => [milestone.startDate, milestone.endDate])
+    .filter((value): value is string => Boolean(value))
+    .sort();
+
   return {
     tShirtSize: item.validationData?.tShirtSize,
     priority: item.validationData?.priority,
     consensusPriority: item.scopingData?.consensusPriority,
     solutionDirection: item.validationData?.solutionDirection,
+    problemStatement: item.problemStatement,
+    expectedImpact: item.expectedImpact,
+    businessValueSummary:
+      formatBusinessValueSummary(item.validationData?.businessValue) ??
+      undefined,
+    budget,
+    originalBudget: original ?? undefined,
+    budgetConfirmed: setupBudget?.status === "completed",
+    budgetUsesAssumedRates:
+      adjusted == null ? Boolean(teamCost?.usesAssumedRates) : false,
+    teamHours: team.reduce((sum, member) => sum + (member.totalHours || 0), 0),
+    timelineStart: dates[0],
+    timelineEnd: dates.length > 1 ? dates[dates.length - 1] : undefined,
     submitterName: item.submitter.name,
     sponsorName: item.sponsor.name,
-    team: (item.scopingData?.team ?? []).map((member) => ({
+    team: team.map((member) => ({
       name: member.name,
       role: member.role,
       party: member.party,

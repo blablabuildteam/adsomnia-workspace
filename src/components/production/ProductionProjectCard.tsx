@@ -1,5 +1,6 @@
 import { AlertTriangle, ArrowRight, Calendar, Flag } from "lucide-react";
 import { CornerTicks } from "@/components/ui/CornerTicks";
+import { ConsensusPriorityChip } from "@/components/production/ConsensusPriorityChip";
 import { ProductionHealthBadge } from "@/components/production/ProductionHealthBadge";
 import {
   STATUS_COLORS,
@@ -122,6 +123,9 @@ export function ProductionProjectCard({ project, onOpen }: Props) {
             {project.ticketId}
           </span>
           <ProductionHealthBadge health={project.health} />
+          <ConsensusPriorityChip
+            value={project.brief.consensusPriority}
+          />
         </div>
         {party && (
           <span

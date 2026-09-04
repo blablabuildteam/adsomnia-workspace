@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef, useState, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { Calendar } from "lucide-react";
 import { CornerTicks } from "@/components/ui/CornerTicks";
+import { ConsensusPriorityChip } from "@/components/production/ConsensusPriorityChip";
 import { ProductionHealthBadge } from "@/components/production/ProductionHealthBadge";
 import {
   EpicTicketGroups,
@@ -283,7 +284,7 @@ export function ProductionTimelineView({ projects, onOpen }: Props) {
   return (
     <div className="space-y-4">
     <div className="border border-border bg-surface">
-      <div className="grid grid-cols-[minmax(12rem,18rem)_1fr] border-b border-border">
+      <div className="grid grid-cols-[minmax(14rem,20rem)_1fr] border-b border-border">
         <div className="flex items-end justify-between gap-3 border-r border-border px-4 py-3">
           <p className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
             Project title
@@ -322,7 +323,7 @@ export function ProductionTimelineView({ projects, onOpen }: Props) {
           return (
             <li
               key={project.id}
-              className="grid grid-cols-[minmax(12rem,18rem)_1fr] border-b border-border last:border-b-0"
+              className="grid grid-cols-[minmax(14rem,20rem)_1fr] border-b border-border last:border-b-0"
             >
               <button
                 type="button"
@@ -339,7 +340,13 @@ export function ProductionTimelineView({ projects, onOpen }: Props) {
                 </div>
                 <div className="mt-2 border border-border px-2.5 py-2">
                   <div className="flex items-center justify-between gap-2">
-                    <ProductionHealthBadge health={project.health} compact />
+                    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                      <ProductionHealthBadge health={project.health} compact />
+                      <ConsensusPriorityChip
+                        value={project.brief.consensusPriority}
+                        compact
+                      />
+                    </div>
                     <span className="font-display text-[11px] font-bold tabular-nums">
                       {Math.round(project.ticketsDonePct)}%
                     </span>
@@ -457,7 +464,13 @@ export function ProductionTimelineView({ projects, onOpen }: Props) {
                   </span>
                   <span className="ml-2 text-sm font-semibold">{project.title}</span>
                 </span>
-                <ProductionHealthBadge health={project.health} compact />
+                <span className="flex shrink-0 items-center gap-1.5">
+                  <ConsensusPriorityChip
+                    value={project.brief.consensusPriority}
+                    compact
+                  />
+                  <ProductionHealthBadge health={project.health} compact />
+                </span>
               </button>
             </li>
           ))}

@@ -40,6 +40,16 @@ export type ProductionProjectBrief = {
   priority?: string;
   consensusPriority?: string;
   solutionDirection?: string;
+  problemStatement?: string | null;
+  expectedImpact?: string | null;
+  businessValueSummary?: string;
+  budget?: number;
+  originalBudget?: number;
+  budgetConfirmed?: boolean;
+  budgetUsesAssumedRates?: boolean;
+  teamHours?: number;
+  timelineStart?: string;
+  timelineEnd?: string;
   submitterName: string;
   sponsorName: string;
   team: { name: string; role: string; party?: string }[];
