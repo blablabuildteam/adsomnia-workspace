@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Columns3, Lightbulb } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import {
   PARTIES,
   STAGES,
@@ -10,6 +10,7 @@ import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { ConsensusPriorityChip } from "@/components/production/ConsensusPriorityChip";
 import { DashboardGreeting } from "@/components/dashboard/DashboardGreeting";
+import { KanbanFullscreen } from "@/components/dashboard/KanbanFullscreen";
 import { formatActivityLabel } from "@/lib/activity-labels";
 import { headlinePriority } from "@/lib/validation-data";
 import type {
@@ -19,8 +20,10 @@ import type {
 import {
   STAGE_HREF,
   SectionHeading,
+  StageChip,
   StatusBadge,
   hoverTicks,
+  nextStage,
   timeAgo,
 } from "./shared";
 
@@ -39,57 +42,93 @@ export function LeadershipDashboard({
 }: Props) {
   const items = rawItems.filter((item) => !item.archivedAt);
   const inProduction = items.filter((item) => item.currentStage === "production");
-  const reviewCount = items.filter((item) => item.status === "submitted").length;
+  const readyForReview = items
+    .filter((item) => item.status === "submitted")
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
   return (
     <div className="mx-auto w-full max-w-[1800px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <header className="relative mb-8">
         <BrandTexture variant="hero" />
-        <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="relative z-10">
           <DashboardGreeting
             firstName={firstName}
             role={role}
             subtitle="What's moving through the pipeline, and what's live in production."
           />
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <Link
-              href="/ideas/new"
-              className="inline-flex items-center gap-2 border border-foreground bg-foreground px-3 py-2 font-display text-[10px] font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90"
-            >
-              <Lightbulb className="size-3.5" />
-              Submit
-            </Link>
-            <Link
-              href="/overview"
-              className="inline-flex items-center gap-2 border border-border bg-surface px-3 py-2 font-display text-[10px] font-bold uppercase tracking-wide text-muted transition-colors hover:border-border-strong hover:text-foreground"
-            >
-              <Columns3 className="size-3.5" />
-              Full kanban
-            </Link>
-          </div>
         </div>
-        {reviewCount > 0 && (
-          <p className="relative z-10 mt-4 text-sm text-muted">
-            <span className="font-display font-bold tabular-nums text-foreground">
-              {reviewCount}
-            </span>{" "}
-            {reviewCount === 1 ? "item is" : "items are"} waiting on review
-            across the pipeline.
-          </p>
-        )}
       </header>
 
       <section className="mb-10">
         <SectionHeading
-          kicker="All phases"
+          kicker="Leadership queue"
           trailing={
-            <Link
-              href="/overview"
-              className="font-display text-[10px] font-bold uppercase tracking-wide text-muted transition-colors hover:text-foreground"
-            >
-              Open kanban
-            </Link>
+            <span className="font-display text-xs font-bold tabular-nums text-muted">
+              {readyForReview.length}
+            </span>
           }
+        >
+          Ready for review
+        </SectionHeading>
+        {readyForReview.length === 0 ? (
+          <div className="border border-border bg-surface px-4 py-4 text-sm text-muted">
+            No workstreams are waiting on a decision. Anything submitted for
+            approval will land here.
+          </div>
+        ) : (
+          <ul className="border border-border">
+            {readyForReview.map((item, index) => {
+              const destination = nextStage(item.currentStage);
+              return (
+                <li key={item.id}>
+                  <Link
+                    href={`/workstreams/${item.id}`}
+                    className={[
+                      "group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-white/[0.03]",
+                      index > 0 ? "border-t border-border" : "",
+                    ].join(" ")}
+                  >
+                    <span
+                      aria-hidden
+                      className="h-8 w-0.5 shrink-0"
+                      style={{
+                        backgroundColor: getStageColor(item.currentStage),
+                      }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-display text-[10px] font-bold uppercase tracking-wider text-muted">
+                          {item.ticketId}
+                        </span>
+                        <span className="truncate text-sm font-medium">
+                          {item.title}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-muted">
+                        {item.submitter.name}
+                        {destination
+                          ? ` · Advance to ${destination.name}`
+                          : " · Ready to approve"}
+                        <span className="text-muted/70">
+                          {" "}
+                          · {timeAgo(item.updatedAt)}
+                        </span>
+                      </p>
+                    </div>
+                    <StageChip stageId={item.currentStage} />
+                    <ArrowRight className="size-4 shrink-0 text-muted transition-transform group-hover:translate-x-1" />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      <section className="mb-10">
+        <SectionHeading
+          kicker="All phases"
+          trailing={<KanbanFullscreen initiatives={rawItems} />}
         >
           Pipeline
         </SectionHeading>

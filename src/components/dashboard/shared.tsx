@@ -87,6 +87,12 @@ export function StatusBadge({ status }: { status: string }) {
   );
 }
 
+export function nextStage(stageId: string) {
+  const index = STAGES.findIndex((stage) => stage.id === stageId);
+  if (index < 0 || index >= STAGES.length - 1) return null;
+  return STAGES[index + 1];
+}
+
 export function StageChip({ stageId }: { stageId: string }) {
   const stage = STAGES.find((item) => item.id === stageId);
   const color = getStageColor(stageId);

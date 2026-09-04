@@ -1,139 +1,22 @@
 "use client";
 
-import Link from "next/link";
-import { Columns3, ChevronRight } from "lucide-react";
+import { Columns3 } from "lucide-react";
 import { STAGES, getStageColor } from "@/data/workflow";
 import { WorkspaceChip } from "@/components/WorkspaceChip";
 import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStrip } from "@/components/pipeline/PipelineStrip";
+import { KanbanBoard } from "@/components/overview/KanbanBoard";
 import type { InitiativeWithUsers } from "@/lib/queries";
-
-const hoverTicks = "opacity-0 transition-opacity duration-300 group-hover:opacity-100";
-
-const STATUS_COLORS: Record<string, string> = {
-  submitted: "#FFFFFF",
-  approved: "#22c55e",
-  rejected: "#FF3B1F",
-  "on-hold": "#7E90A3",
-  draft: "#666666",
-};
-
-function StatusBadge({ status }: { status: string }) {
-  const color = STATUS_COLORS[status] ?? "#FFFFFF";
-  const label =
-    status === "submitted"
-      ? "Submitted"
-      : status === "approved"
-        ? "Approved"
-        : status === "rejected"
-          ? "Rejected"
-          : status === "on-hold"
-            ? "On Hold"
-            : status;
-
-  return (
-    <span
-      className="border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
-      style={{ borderColor: color, color }}
-    >
-      {label}
-    </span>
-  );
-}
-
-function InitiativeCard({ initiative }: { initiative: InitiativeWithUsers }) {
-  return (
-    <Link
-      href={`/workstreams/${initiative.id}`}
-      className="group relative block border border-border bg-surface-elevated p-3 transition-colors hover:border-border-strong hover:bg-white/[0.04]"
-    >
-      <CornerTicks className={hoverTicks} />
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-display text-[10px] font-bold uppercase tracking-wider text-muted">
-          {initiative.ticketId}
-        </span>
-        <StatusBadge status={initiative.status} />
-      </div>
-      <p className="mt-2 text-sm font-medium leading-snug group-hover:text-foreground">
-        {initiative.title}
-      </p>
-      <p className="mt-1.5 text-[11px] text-muted">
-        by {initiative.submitter.name}
-      </p>
-    </Link>
-  );
-}
-
-function StageColumn({
-  stageId,
-  stageName,
-  stageNumber,
-  items,
-  accentColor,
-}: {
-  stageId: string;
-  stageName: string;
-  stageNumber: number;
-  items: InitiativeWithUsers[];
-  accentColor: string;
-}) {
-  return (
-    <div className="flex min-w-[260px] flex-1 flex-col border border-border bg-surface">
-      <div
-        className="border-b border-border px-4 py-3"
-        style={{ borderTopWidth: 3, borderTopColor: accentColor }}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span
-              className="flex size-5 items-center justify-center border text-[10px] font-bold"
-              style={{ borderColor: accentColor, color: accentColor }}
-            >
-              {stageNumber}
-            </span>
-            <p className="font-display text-xs font-bold uppercase tracking-wide">
-              {stageName}
-            </p>
-          </div>
-          <span className="font-display text-lg font-extrabold tabular-nums text-muted">
-            {items.length}
-          </span>
-        </div>
-      </div>
-      <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
-        {items.map((init) => (
-          <InitiativeCard key={init.id} initiative={init} />
-        ))}
-        {items.length === 0 && (
-          <p className="py-6 text-center text-xs text-muted">No initiatives</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function FlowArrow() {
-  return (
-    <div className="flex shrink-0 items-center justify-center px-1">
-      <ChevronRight className="size-5 text-border-strong" />
-    </div>
-  );
-}
 
 type OverviewProps = {
   initiatives: InitiativeWithUsers[];
 };
 
 export function OverviewView({ initiatives }: OverviewProps) {
-  const byStage = (stageId: string) =>
-    initiatives.filter(
-      (i) => i.currentStage === stageId && !i.archivedAt,
-    );
-
   const totalActive = initiatives.filter(
-    (i) =>
-      i.status !== "rejected" && i.status !== "on-hold" && !i.archivedAt,
+    (item) =>
+      item.status !== "rejected" && item.status !== "on-hold" && !item.archivedAt,
   ).length;
 
   return (
@@ -166,7 +49,6 @@ export function OverviewView({ initiatives }: OverviewProps) {
         </div>
       </header>
 
-      {/* Legend */}
       <div className="mb-4 flex flex-wrap items-center gap-4 text-[10px]">
         <div className="flex items-center gap-2">
           <Columns3 className="size-4 text-muted" />
@@ -190,27 +72,8 @@ export function OverviewView({ initiatives }: OverviewProps) {
         })}
       </div>
 
-      {/* Kanban Board */}
-      <div className="flex flex-1 gap-1 overflow-x-auto pb-4">
-        {STAGES.map((stage, idx) => {
-          const accentColor = getStageColor(stage.id);
+      <KanbanBoard initiatives={initiatives} className="flex-1" />
 
-          return (
-            <div key={stage.id} className="flex items-stretch">
-              <StageColumn
-                stageId={stage.id}
-                stageName={stage.name}
-                stageNumber={stage.number}
-                items={byStage(stage.id)}
-                accentColor={accentColor}
-              />
-              {idx < STAGES.length - 1 && <FlowArrow />}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Footer hint */}
       <div className="mt-4 border-t border-border pt-4">
         <p className="text-xs text-muted">
           <span className="font-bold">Tip:</span> Click any initiative card to
