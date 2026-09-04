@@ -51,7 +51,7 @@ export function getSlackRedirectUri(origin: string): string {
   return `${origin.replace(/\/$/, "")}/api/integrations/slack/oauth/callback`;
 }
 
-/** Prefer the live request origin in dev so HTTPS localhost matches Slack. */
+/** Prefer the live request origin in dev so the port and scheme you are on are used. */
 export function getSlackRedirectOrigin(request: Request): string {
   const requestOrigin = new URL(request.url).origin;
   if (process.env.NODE_ENV === "development") {

@@ -209,7 +209,7 @@ async function main() {
       if (
         key === "NEXT_PUBLIC_APP_URL" &&
         target !== "development" &&
-        localValue.startsWith("http://localhost")
+        localValue.includes("localhost")
       ) {
         console.log(
           `Using ${productionAppUrl} for ${key} (${target}) instead of localhost`,

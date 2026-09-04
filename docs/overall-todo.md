@@ -18,3 +18,9 @@
 - [ ] **Fast-Track recognition & overview** — staged Fast-Track view (status, priority, assignee, title, description from Jira), including control to push; backed by a Fast-Track Jira board
   - Option to convert **Fast-Track ↔ full project** (and vice versa)
 - [ ] **Fix Slack channel creation**
+- [ ] **Reporting support for Coen** — tooling / views that help Coen do reporting
+- [ ] **Rework the Dashboard view**
+- [ ] Build in **max length for Jira spaces** (names / keys)
+- [ ] **Add project from Production view** — create a project directly in Production; Slack and Drive optional
+- [ ] **Switch Jira account** to the generic email (service account)
+- [ ] **Verify production on Vercel** — smoke-test that everything works on the Vercel URL

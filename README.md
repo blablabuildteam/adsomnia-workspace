@@ -15,7 +15,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). Use `npm run dev:https` only when testing Slack OAuth locally.
 
 ## Source docs
 

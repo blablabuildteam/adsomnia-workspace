@@ -65,6 +65,7 @@ Sync to Vercel with `npm run env:sync-vercel` after the keys are in `.env.local`
 
 | Problem | What to try |
 |---------|-------------|
+| `Error 400: redirect_uri_mismatch` | Google received a callback URL that is not on the OAuth client. Local login uses `http://localhost:3000/api/auth/google/callback` (`npm run dev` is HTTP). Add that exact URI (and `http://localhost:3000` as a JavaScript origin) on the **Adsomnia Workspace Login** client. Click **error details** on the Google page to see the URI that was sent. |
 | `This action with HTTP GET is not supported by NextAuth.js` | Another app is running on port 3000 (often a different Next.js project with NextAuth). Stop it and restart this app on `:3000`, **or** add `http://localhost:3001/api/auth/google/callback` to the Google OAuth client redirect URIs and use `http://localhost:3001` locally. In dev, OAuth now uses the port you are actually on. |
 | Google sign-in fails after account picker | Confirm the redirect URI in Google Cloud matches the port you use (`3000` vs `3001`). |
 | Domain not allowed | Add the email domain to `GOOGLE_ALLOWED_DOMAINS`. |
