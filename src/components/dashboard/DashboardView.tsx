@@ -162,10 +162,11 @@ type DashboardProps = {
 };
 
 export function DashboardView({
-  initiatives: items,
+  initiatives: rawItems,
   stageCounts,
   statusCounts,
 }: DashboardProps) {
+  const items = rawItems.filter((item) => !item.archivedAt);
   const total = items.length;
   const submittedCount = statusCounts["submitted"] ?? 0;
   const approvedCount = statusCounts["approved"] ?? 0;

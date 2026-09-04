@@ -6,7 +6,7 @@ import {
   activityLog,
   comments,
 } from "@/db/schema";
-import { eq, desc, count, inArray } from "drizzle-orm";
+import { eq, desc, count, inArray, isNull } from "drizzle-orm";
 import type {
   ValidationData,
   ScopingData,
@@ -65,37 +65,60 @@ export type InitiativeWithUsers = {
   onboardingData: OnboardingData | null;
   currentStage: string;
   status: string;
+  archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   submitter: { id: string; name: string };
   sponsor: { id: string; name: string };
 };
 
-export async function getAllInitiatives(): Promise<InitiativeWithUsers[]> {
-  const rows = await db
-    .select({
-      id: initiatives.id,
-      ticketId: initiatives.ticketId,
-      title: initiatives.title,
-      description: initiatives.description,
-      problemStatement: initiatives.problemStatement,
-      opportunitySolution: initiatives.opportunitySolution,
-      expectedImpact: initiatives.expectedImpact,
-      targetAudience: initiatives.targetAudience,
-      validationData: initiatives.validationData,
-      scopingData: initiatives.scopingData,
-      setupData: initiatives.setupData,
-      onboardingData: initiatives.onboardingData,
-      currentStage: initiatives.currentStage,
-      status: initiatives.status,
-      createdAt: initiatives.createdAt,
-      updatedAt: initiatives.updatedAt,
-      submitterId: initiatives.submitterId,
-      sponsorId: initiatives.sponsorId,
-    })
-    .from(initiatives)
-    .orderBy(desc(initiatives.updatedAt));
+const initiativeSelect = {
+  id: initiatives.id,
+  ticketId: initiatives.ticketId,
+  title: initiatives.title,
+  description: initiatives.description,
+  problemStatement: initiatives.problemStatement,
+  opportunitySolution: initiatives.opportunitySolution,
+  expectedImpact: initiatives.expectedImpact,
+  targetAudience: initiatives.targetAudience,
+  validationData: initiatives.validationData,
+  scopingData: initiatives.scopingData,
+  setupData: initiatives.setupData,
+  onboardingData: initiatives.onboardingData,
+  currentStage: initiatives.currentStage,
+  status: initiatives.status,
+  archivedAt: initiatives.archivedAt,
+  createdAt: initiatives.createdAt,
+  updatedAt: initiatives.updatedAt,
+  submitterId: initiatives.submitterId,
+  sponsorId: initiatives.sponsorId,
+};
 
+type InitiativeRow = {
+  id: number;
+  ticketId: string;
+  title: string;
+  description: string | null;
+  problemStatement: string | null;
+  opportunitySolution: string | null;
+  expectedImpact: string | null;
+  targetAudience: string | null;
+  validationData: unknown;
+  scopingData: unknown;
+  setupData: unknown;
+  onboardingData: unknown;
+  currentStage: string;
+  status: string;
+  archivedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  submitterId: string;
+  sponsorId: string;
+};
+
+async function hydrateInitiatives(
+  rows: InitiativeRow[],
+): Promise<InitiativeWithUsers[]> {
   if (rows.length === 0) return [];
 
   const userIds = [
@@ -123,11 +146,38 @@ export async function getAllInitiatives(): Promise<InitiativeWithUsers[]> {
     onboardingData: (r.onboardingData as OnboardingData) ?? null,
     currentStage: r.currentStage,
     status: r.status,
+    archivedAt: r.archivedAt,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
     submitter: userMap.get(r.submitterId) ?? { id: r.submitterId, name: "Unknown" },
     sponsor: userMap.get(r.sponsorId) ?? { id: r.sponsorId, name: "Unknown" },
   }));
+}
+
+export async function getInitiativesByStage(
+  stage: string,
+): Promise<InitiativeWithUsers[]> {
+  const rows = await db
+    .select(initiativeSelect)
+    .from(initiatives)
+    .where(
+      eq(
+        initiatives.currentStage,
+        stage as (typeof initiatives.$inferSelect)["currentStage"],
+      ),
+    )
+    .orderBy(desc(initiatives.updatedAt));
+
+  return hydrateInitiatives(rows);
+}
+
+export async function getAllInitiatives(): Promise<InitiativeWithUsers[]> {
+  const rows = await db
+    .select(initiativeSelect)
+    .from(initiatives)
+    .orderBy(desc(initiatives.updatedAt));
+
+  return hydrateInitiatives(rows);
 }
 
 export async function getInitiativeById(
@@ -149,6 +199,7 @@ export async function getInitiativeById(
       onboardingData: initiatives.onboardingData,
       currentStage: initiatives.currentStage,
       status: initiatives.status,
+      archivedAt: initiatives.archivedAt,
       createdAt: initiatives.createdAt,
       updatedAt: initiatives.updatedAt,
       submitterId: initiatives.submitterId,
@@ -292,6 +343,7 @@ export async function getStageCounts(): Promise<Record<string, number>> {
       count: count(),
     })
     .from(initiatives)
+    .where(isNull(initiatives.archivedAt))
     .groupBy(initiatives.currentStage);
 
   const result: Record<string, number> = {};

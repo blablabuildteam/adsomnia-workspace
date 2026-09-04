@@ -77,6 +77,8 @@ export const initiatives = pgTable("initiatives", {
   onboardingData: jsonb("onboarding_data"),
   currentStage: stageEnum("current_stage").notNull().default("idea"),
   status: statusEnum("status").notNull().default("draft"),
+  /** Set when a Production workstream is archived off the active board. */
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

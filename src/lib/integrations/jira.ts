@@ -450,12 +450,23 @@ export type JiraEpicSummary = {
   statusCategory?: JiraStatusCategoryKey;
 };
 
+export type JiraEpicTask = {
+  key: string;
+  name: string;
+  status?: string;
+  statusCategory: JiraStatusCategoryKey;
+  assignee?: string;
+  /** ISO timestamp from Jira `updated` — used to pick latest done tickets. */
+  updated?: string;
+};
+
 export type JiraEpicTaskProgress = {
   epicKey: string;
   total: number;
   todo: number;
   inProgress: number;
   done: number;
+  tasks: JiraEpicTask[];
 };
 
 type IssueFields = {
@@ -581,22 +592,145 @@ export async function getEpicTaskProgress(
     todo,
     inProgress,
     done,
+    tasks: [],
   };
+}
+
+type SearchClient = ReturnType<typeof createClient>;
+
+async function searchIssues(
+  client: SearchClient,
+  jql: string,
+  fields: string[],
+  maxResults = 100,
+): Promise<{ key?: string; fields?: IssueFields }[]> {
+  const collected: { key?: string; fields?: IssueFields }[] = [];
+  let nextPageToken: string | undefined;
+
+  for (let page = 0; page < 5; page += 1) {
+    const result = await client.issueSearch.searchAndReconsileIssuesUsingJqlPost({
+      jql,
+      maxResults,
+      fields,
+      nextPageToken,
+    });
+    const issues = result.issues ?? [];
+    for (const issue of issues) {
+      collected.push({
+        key: issue.key,
+        fields: (issue.fields ?? {}) as IssueFields,
+      });
+    }
+    if (!result.nextPageToken || issues.length === 0) break;
+    nextPageToken = result.nextPageToken;
+  }
+
+  return collected;
+}
+
+function emptyProgress(epicKey: string): JiraEpicTaskProgress {
+  return { epicKey, total: 0, todo: 0, inProgress: 0, done: 0, tasks: [] };
+}
+
+function assigneeName(fields: IssueFields): string | undefined {
+  const assignee = fields.assignee;
+  if (!assignee || typeof assignee !== "object") return undefined;
+  const name = (assignee as { displayName?: string }).displayName?.trim();
+  return name || undefined;
+}
+
+function addStatusCount(
+  progress: JiraEpicTaskProgress,
+  category: JiraStatusCategoryKey,
+) {
+  progress.total += 1;
+  switch (category) {
+    case "done":
+      progress.done += 1;
+      break;
+    case "indeterminate":
+      progress.inProgress += 1;
+      break;
+    default:
+      progress.todo += 1;
+      break;
+  }
+}
+
+function parentEpicKey(fields: IssueFields): string | undefined {
+  const parent = fields.parent;
+  if (parent && typeof parent === "object" && "key" in parent) {
+    const key = (parent as { key?: string }).key;
+    if (key) return key;
+  }
+  const epicLink = fields.customfield_10014;
+  return typeof epicLink === "string" && epicLink ? epicLink : undefined;
 }
 
 /**
  * Convenience for Production Overview: all epics in a project with task progress.
+ * Loads child issues in one project-wide search instead of one request per epic.
  */
 export async function getProjectEpicProgress(
   instance: JiraInstance,
   projectKey: string,
 ): Promise<(JiraEpicSummary & { progress: JiraEpicTaskProgress })[]> {
-  const epics = await listProjectEpics(instance, projectKey);
-  const withProgress = await Promise.all(
-    epics.map(async (epic) => ({
-      ...epic,
-      progress: await getEpicTaskProgress(instance, epic.key),
-    })),
-  );
-  return withProgress;
+  const config = getInstanceConfig(instance);
+  if (!config) {
+    throw new Error(`Jira instance "${instance}" is not configured.`);
+  }
+
+  const client = createClient(config);
+  const safeKey = projectKey.replace(/"/g, '\\"');
+  const [epicIssues, childIssues] = await Promise.all([
+    searchIssues(
+      client,
+      `project = "${safeKey}" AND issuetype = Epic ORDER BY created ASC`,
+      ["summary", "status", "duedate", "customfield_10015"],
+    ),
+    searchIssues(
+      client,
+      `project = "${safeKey}" AND issuetype != Epic ORDER BY created ASC`,
+      ["summary", "status", "assignee", "updated", "parent", "customfield_10014"],
+      200,
+    ),
+  ]);
+
+  const epics: (JiraEpicSummary & { progress: JiraEpicTaskProgress })[] =
+    epicIssues.map((issue) => {
+      const fields = issue.fields ?? {};
+      const { startDate, endDate } = pickEpicDates(fields);
+      const key = issue.key ?? "";
+      return {
+        key,
+        name: fields.summary ?? key,
+        startDate,
+        endDate,
+        status: fields.status?.name,
+        statusCategory: statusCategoryKey(fields),
+        progress: emptyProgress(key),
+      };
+    });
+
+  const byKey = new Map(epics.map((epic) => [epic.key, epic]));
+  for (const issue of childIssues) {
+    const fields = issue.fields ?? {};
+    const epicKey = parentEpicKey(fields);
+    if (!epicKey) continue;
+    const epic = byKey.get(epicKey);
+    if (!epic) continue;
+    const category = statusCategoryKey(fields);
+    addStatusCount(epic.progress, category);
+    epic.progress.tasks.push({
+      key: issue.key ?? "",
+      name: fields.summary ?? issue.key ?? "Untitled",
+      status: fields.status?.name,
+      statusCategory: category,
+      assignee: assigneeName(fields),
+      updated:
+        typeof fields.updated === "string" ? fields.updated : undefined,
+    });
+  }
+
+  return epics;
 }

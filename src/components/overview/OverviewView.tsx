@@ -127,10 +127,13 @@ type OverviewProps = {
 
 export function OverviewView({ initiatives }: OverviewProps) {
   const byStage = (stageId: string) =>
-    initiatives.filter((i) => i.currentStage === stageId);
+    initiatives.filter(
+      (i) => i.currentStage === stageId && !i.archivedAt,
+    );
 
   const totalActive = initiatives.filter(
-    (i) => i.status !== "rejected" && i.status !== "on-hold",
+    (i) =>
+      i.status !== "rejected" && i.status !== "on-hold" && !i.archivedAt,
   ).length;
 
   return (
