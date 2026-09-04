@@ -19,7 +19,7 @@ import { STAGES, getStageColor, PARTIES } from "@/data/workflow";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStageHeader } from "@/components/pipeline/PipelineStageHeader";
 import type { InitiativeWithUsers } from "@/lib/queries";
-import { type ScopingData } from "@/lib/validation-data";
+import { PRIORITY_META, consensusPriority, type ScopingData } from "@/lib/validation-data";
 import { formatEuro, summarizeTeamCost } from "@/data/role-rates";
 
 const hoverTicks =
@@ -253,6 +253,7 @@ function GoNoGoCard({ item, hasFeedback }: { item: InitiativeWithUsers; hasFeedb
   const teamCost = getTeamCostLabel(sd);
   const dateRange = getDateRange(sd);
   const tShirtSize = item.validationData?.tShirtSize;
+  const consensus = consensusPriority(sd);
 
   return (
     <Link
@@ -271,6 +272,15 @@ function GoNoGoCard({ item, hasFeedback }: { item: InitiativeWithUsers; hasFeedb
           {tShirtSize && (
             <span className="shrink-0 border border-border px-1.5 py-0.5 font-display text-[10px] font-bold text-muted">
               {tShirtSize}
+            </span>
+          )}
+          {consensus && (
+            <span
+              className="shrink-0 font-display text-[10px] font-bold uppercase tracking-wide"
+              style={{ color: PRIORITY_META[consensus]?.color }}
+              title="Consensus priority"
+            >
+              {consensus}
             </span>
           )}
         </div>

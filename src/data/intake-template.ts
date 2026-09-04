@@ -161,9 +161,9 @@ export const INTAKE_SECTIONS: IntakeStageSection[] = [
       },
       {
         id: "priority",
-        label: "Strategic Fit & Priority",
+        label: "Adsomnia Priority",
         expectation:
-          "Explain why this belongs in the portfolio now, and propose placement: Now / Next / Later / Rollout.",
+          "Adsomnia's own portfolio placement (Now / Near / Later / Backlog). This is not yet agreed with the lead production party — consensus is reached in Scoping.",
         type: "select",
         required: true,
         options: [...PRIORITY_OPTIONS],
@@ -222,6 +222,15 @@ export const INTAKE_SECTIONS: IntakeStageSection[] = [
     purpose:
       "Produce a Scoping Proposal that Project Setup can turn into Jira Epics, Milestones, and booked resources. Incomplete timeline or role hours will block setup.",
     fields: [
+      {
+        id: "consensusPriority",
+        label: "Consensus Priority",
+        expectation:
+          "Agreed Now / Near / Later / Backlog placement between Adsomnia and the lead production party. Show Adsomnia's Validation assignment as the starting point, then confirm or adjust.",
+        type: "select",
+        required: true,
+        options: ["Now", "Near", "Later", "Backlog"],
+      },
       {
         id: "leadParty",
         label: "Lead Party (Scoping)",

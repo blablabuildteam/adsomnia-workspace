@@ -17,6 +17,8 @@ import { formatEuro, summarizeTeamCost } from "@/data/role-rates";
 import type { InitiativeWithUsers } from "@/lib/queries";
 import {
   BUSINESS_VALUE_TYPES,
+  adsomniaPriority,
+  consensusPriority,
   formatBusinessValueSummary,
   isBusinessValueData,
   parseImpactScore,
@@ -62,7 +64,8 @@ export function ProjectBriefCard({
   const leadPartyId = vd?.leadProductionParty;
   const leadParty = PARTIES.find((p) => p.id === leadPartyId);
   const tShirtSize = vd?.tShirtSize;
-  const priority = vd?.priority;
+  const adsomnia = adsomniaPriority(vd);
+  const consensus = consensusPriority(sd);
 
   const teamCount = sd?.team?.length ?? 0;
   const totalHours = sd?.team?.reduce((s, t) => s + (t.totalHours || 0), 0) ?? 0;
@@ -134,12 +137,17 @@ export function ProjectBriefCard({
                 {tShirtSize}
               </span>
             )}
-            {priority && (
-              <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                {priority}
+            {consensus && (
+              <span className="font-display text-[10px] font-bold uppercase tracking-wide text-foreground">
+                Consensus {consensus}
               </span>
             )}
-            {!tShirtSize && !priority && "—"}
+            {adsomnia && (
+              <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+                Adsomnia {adsomnia}
+              </span>
+            )}
+            {!tShirtSize && !consensus && !adsomnia && "—"}
           </div>
         </Stat>
       </div>

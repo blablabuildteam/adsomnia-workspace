@@ -12,6 +12,9 @@ import type { InitiativeWithUsers } from "@/lib/queries";
 import {
   BUSINESS_VALUE_TYPES,
   IMPACT_MAX,
+  PRIORITY_META,
+  adsomniaPriority,
+  consensusPriority,
   formatBusinessValueSummary,
   impactScoreLabel,
   isBusinessValueData,
@@ -26,13 +29,6 @@ function scoreTone(score: number, max = IMPACT_MAX): string {
   const v = Math.round(90 + t * 165);
   return `rgb(${v} ${v} ${v})`;
 }
-
-const PRIORITY_META: Record<string, { color: string; hint: string }> = {
-  Now: { color: "#FF3B1F", hint: "Urgent / blocking" },
-  Near: { color: "#EAB308", hint: "Next up" },
-  Later: { color: "#7E90A3", hint: "Lower priority" },
-  Backlog: { color: "#FFFFFF80", hint: "On the radar" },
-};
 
 const STAGE_NUM: Record<string, number> = {
   idea: 1,
@@ -251,7 +247,8 @@ export function DetailsQuickView({
 
   const leadParty = PARTIES.find((p) => p.id === vd?.leadProductionParty);
   const tShirtSize = vd?.tShirtSize;
-  const priority = vd?.priority;
+  const adsomnia = adsomniaPriority(vd);
+  const consensus = consensusPriority(sd);
 
   const teamCount = sd?.team?.length ?? 0;
   const totalHours =
@@ -284,7 +281,6 @@ export function DetailsQuickView({
   const pastScoping = currentNum > 3;
   const hasGoNoGo = currentNum >= 4;
   const hasSetup = currentNum >= 5 && !!setup;
-  const priorityMeta = priority ? PRIORITY_META[priority] : undefined;
 
   const slackName = setup?.slack.channelName;
   const jiraName = setup?.jira.projectName;
@@ -309,14 +305,29 @@ export function DetailsQuickView({
       className={["mb-10 bg-black", className].filter(Boolean).join(" ")}
       style={style}
     >
-      {/* Hero stats — from Scoping onward. Priority leads; t-shirt sizing drops out. */}
+      {/* Hero stats — from Scoping onward. Consensus priority leads; t-shirt sizing drops out. */}
       {hasScoping && (
         <div className="grid divide-y divide-foreground/10 border-t border-foreground/10 sm:grid-cols-2 sm:divide-y-0 sm:divide-x lg:grid-cols-4">
           <Hero
-            label="Priority"
-            value={priority ?? "TBD"}
-            accent={priorityMeta?.color}
-            sub={priorityMeta?.hint}
+            label="Consensus Priority"
+            value={consensus ?? "TBD"}
+            accent={consensus ? PRIORITY_META[consensus]?.color : undefined}
+            sub={
+              consensus
+                ? [
+                    PRIORITY_META[consensus]?.hint,
+                    adsomnia && adsomnia !== consensus
+                      ? `Adsomnia: ${adsomnia}`
+                      : adsomnia && adsomnia === consensus
+                        ? "Matches Adsomnia"
+                        : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || undefined
+                : adsomnia
+                  ? `Adsomnia: ${adsomnia}`
+                  : undefined
+            }
           />
           <Hero
             label="Timeline"
@@ -430,14 +441,14 @@ export function DetailsQuickView({
             </span>
           </span>
         )}
-        {!hasScoping && priority && (
+        {!hasScoping && adsomnia && (
           <span className="inline-flex items-center gap-1.5">
-            <span className="text-foreground/30">Priority</span>
+            <span className="text-foreground/30">Adsomnia Priority</span>
             <span
               className="font-display text-[9px] font-bold uppercase"
-              style={{ color: priorityMeta?.color }}
+              style={{ color: PRIORITY_META[adsomnia]?.color }}
             >
-              {priority}
+              {adsomnia}
             </span>
           </span>
         )}

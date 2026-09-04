@@ -7,6 +7,7 @@ import {
   Building2,
   CheckCircle2,
   Clock,
+  ExternalLink,
   Filter,
   Settings,
   Users,
@@ -15,8 +16,97 @@ import { STAGES, getPhaseProgressFill, getStageColor, PARTIES } from "@/data/wor
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStageHeader } from "@/components/pipeline/PipelineStageHeader";
 import type { InitiativeWithUsers } from "@/lib/queries";
-import { getSetupProgress, type SetupData } from "@/lib/validation-data";
+import {
+  PRIORITY_META,
+  consensusPriority,
+  getSetupProgress,
+  type SetupData,
+} from "@/lib/validation-data";
 import { formatEuro, summarizeTeamCost } from "@/data/role-rates";
+
+type SetupToolChip = {
+  key: string;
+  logo: string;
+  label: string;
+  href?: string;
+  ready: boolean;
+};
+
+function setupToolChips(setup: SetupData | null): SetupToolChip[] {
+  const slackName = setup?.slack.channelName?.replace(/^#/, "");
+  const slackUrl = setup?.slack.channelUrl;
+  const jiraName = setup?.jira.projectName || setup?.jira.projectKey;
+  const jiraUrl = setup?.jira.boardUrl || setup?.jira.projectUrl;
+  const driveName = setup?.drive.driveName;
+  const driveUrl = setup?.drive.driveUrl;
+
+  return [
+    {
+      key: "drive",
+      logo: "/logos/google-drive.png",
+      label: driveName || "Google Drive",
+      href: driveUrl,
+      ready: !!(driveUrl || setup?.drive.status === "completed"),
+    },
+    {
+      key: "jira",
+      logo: "/logos/jira.png",
+      label: jiraName || "Jira",
+      href: jiraUrl,
+      ready: !!(jiraUrl || setup?.jira.status === "completed"),
+    },
+    {
+      key: "slack",
+      logo: "/logos/slack.png",
+      label: slackName ? `#${slackName}` : "Slack",
+      href: slackUrl,
+      ready: !!(slackUrl || slackName || setup?.slack.status === "completed"),
+    },
+  ];
+}
+
+function SetupToolChip({ logo, label, href, ready }: Omit<SetupToolChip, "key">) {
+  const inner = (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={logo}
+        alt=""
+        className={[
+          "size-3.5 shrink-0 object-contain",
+          ready ? "" : "opacity-40",
+        ].join(" ")}
+      />
+      <span className="min-w-0 truncate">{label}</span>
+      {href && (
+        <ExternalLink className="size-2.5 shrink-0 text-muted/50 transition-colors group-hover/tool:text-foreground" />
+      )}
+    </>
+  );
+
+  const cls = [
+    "group/tool inline-flex max-w-full items-center gap-1.5 px-2 py-1 font-display text-[10px] font-bold uppercase tracking-wide",
+    ready
+      ? "border border-border text-foreground/80"
+      : "border border-dashed border-border text-muted/50",
+  ].join(" ");
+
+  if (href) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(event) => event.stopPropagation()}
+        className={`${cls} transition-colors hover:border-foreground/40 hover:text-foreground`}
+      >
+        {inner}
+      </a>
+    );
+  }
+
+  return <span className={cls}>{inner}</span>;
+}
 
 const hoverTicks =
   "opacity-0 transition-opacity duration-300 group-hover:opacity-100";
@@ -52,6 +142,7 @@ function SetupCard({ item }: { item: InitiativeWithUsers }) {
     ? PARTIES.find((p) => p.id === leadParty)?.label ?? leadParty
     : undefined;
   const tShirtSize = item.validationData?.tShirtSize;
+  const consensus = consensusPriority(sd);
   const teamCount = sd?.team?.length ?? 0;
   const teamCost = sd?.team?.length ? summarizeTeamCost(sd.team) : null;
 
@@ -82,6 +173,15 @@ function SetupCard({ item }: { item: InitiativeWithUsers }) {
           {tShirtSize && (
             <span className="shrink-0 border border-border px-1.5 py-0.5 font-display text-[10px] font-bold text-muted">
               {tShirtSize}
+            </span>
+          )}
+          {consensus && (
+            <span
+              className="shrink-0 font-display text-[10px] font-bold uppercase tracking-wide"
+              style={{ color: PRIORITY_META[consensus]?.color }}
+              title="Consensus priority"
+            >
+              {consensus}
             </span>
           )}
         </div>

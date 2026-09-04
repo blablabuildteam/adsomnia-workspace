@@ -12,8 +12,8 @@
 - [ ] **Submitter notifications** for feedback remarks and when an initiative advances through phases
 - [ ] **Remarks on projects** — add remarks to initiatives/projects
 - [ ] **General feedback button** — users can log issues when they hit something; when admins (Siets, Oleg, Coen, Erin) are online they can give live feedback
-- [ ] **Dual priorities:** Adsomnia priority + consensus priority
-  - Adsomnia priority via sliders, with option to override
+- [x] **Dual priorities:** Adsomnia priority (Validation) + consensus priority (Scoping)
+  - Adsomnia priority via sliders; Scoping shows that assignment and records the agreed consensus
 - [ ] Projects in **Production** (and earlier stages) can **adjust priorities**
 - [ ] **Fast-Track recognition & overview** — staged Fast-Track view (status, priority, assignee, title, description from Jira), including control to push; backed by a Fast-Track Jira board
   - Option to convert **Fast-Track ↔ full project** (and vice versa)

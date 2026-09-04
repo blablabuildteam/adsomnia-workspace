@@ -21,6 +21,8 @@ import type { InitiativeWithUsers } from "@/lib/queries";
 import {
   BUSINESS_VALUE_TYPES,
   IMPACT_MAX,
+  adsomniaPriority,
+  consensusPriority,
   impactScoreLabel,
   isBusinessValueData,
   parseImpactScore,
@@ -335,7 +337,7 @@ export function ValidationBriefBody({
           <Chip presenting={presenting}>Size {vd.tShirtSize}</Chip>
         )}
         {vd?.priority && (
-          <Chip presenting={presenting}>Priority {vd.priority}</Chip>
+          <Chip presenting={presenting}>Adsomnia Priority {vd.priority}</Chip>
         )}
       </div>
 
@@ -380,6 +382,8 @@ export function ScopingBriefBody({
   presenting,
 }: BriefingBodyProps) {
   const sd = initiative.scopingData;
+  const consensus = consensusPriority(sd);
+  const adsomnia = adsomniaPriority(initiative.validationData);
   const milestones = sd?.milestones ?? [];
   const team = sd?.team ?? [];
   const inScope = sd?.scopeItems?.filter((item) => item.inScope) ?? [];
@@ -391,6 +395,17 @@ export function ScopingBriefBody({
 
   return (
     <div className={presenting ? REVEAL_CLASS + " space-y-6" : "space-y-5"}>
+      {(consensus || adsomnia) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {consensus && (
+            <Chip presenting={presenting}>Consensus Priority {consensus}</Chip>
+          )}
+          {adsomnia && (
+            <Chip presenting={presenting}>Adsomnia {adsomnia}</Chip>
+          )}
+        </div>
+      )}
+
       {/* Timeline */}
       <div className="space-y-2">
         <SubHeading

@@ -37,6 +37,7 @@ import {
   IMPACT_DEFAULT,
   IMPACT_MAX,
   IMPACT_MIN,
+  PRIORITY_OPTIONS,
   impactScoreLabel,
   isBusinessValueData,
   parseImpactScore,
@@ -59,13 +60,6 @@ const TSHIRT_OPTIONS = [
   { value: "M", label: "M", hint: "40–80h" },
   { value: "L", label: "L", hint: "80–160h" },
   { value: "XL", label: "XL", hint: "160h+" },
-];
-
-const PRIORITY_OPTIONS = [
-  { value: "Now", label: "NOW", hint: "High priority" },
-  { value: "Near", label: "NEAR", hint: "Medium priority" },
-  { value: "Later", label: "LATER", hint: "Lower priority" },
-  { value: "Backlog", label: "BACKLOG", hint: "On the radar" },
 ];
 
 const OTHER_PARTY_VALUE = "other";
@@ -134,7 +128,7 @@ const FIELD_HELP: Record<string, string> = {
   tShirtSize:
     "Estimate effort: S (<40h), M (40–80h), L (80–160h), XL (160h+). Consider complexity, unknowns, and team capacity.",
   priority:
-    "NOW = urgent/blocking. NEAR = next up. LATER = lower priority. BACKLOG = on the radar for now.",
+    "Adsomnia's own placement — not yet agreed with the lead production party. NOW = urgent/blocking. NEAR = next up. LATER = lower priority. BACKLOG = on the radar for now. Consensus is reached later in Scoping.",
   leadProductionParty:
     "Which party will most likely lead Production for this initiative? Choose Other if it is someone outside the listed parties.",
   dependencies:
@@ -587,7 +581,7 @@ export function ValidationPhaseSection({
           <PhaseSectionCard
             header={
               <FieldLabel field="priority" required complete={priority.length > 0}>
-                Priority
+                Adsomnia Priority
               </FieldLabel>
             }
           >
@@ -918,7 +912,7 @@ function ValidationReadOnly({ data }: { data: ValidationData | null }) {
             <div className="flex items-center gap-2 text-muted">
               <Flag className="size-3.5 shrink-0" />
               <p className="font-display text-[10px] font-bold uppercase tracking-wide">
-                Priority
+                Adsomnia Priority
               </p>
             </div>
           }

@@ -103,7 +103,7 @@ export const STAGES: WorkflowStage[] = [
       "Expected Business Value — turn the impact hypothesis into measurable value (KPI, baseline, and rough upside where possible)",
       "High-Level Approach of the Solution — outline the preferred approach and main building blocks (systems, integrations, build vs buy) without detailed design",
       "Investment Estimate — T-shirt size S / M / L / XL for overall effort, with a one-line rationale for the chosen size",
-      "Strategic Fit & Priority — explain why this belongs in the portfolio now, and propose Now / Next / Later / Rollout placement",
+      "Adsomnia Priority — Adsomnia's own placement (Now / Near / Later / Backlog). Consensus with the lead production party is reached later in Scoping",
       "Risks, Dependencies & Blockers (optional) — risks if we proceed, plus other initiatives, teams, vendors, or systems this depends on",
       "Other Notes (optional) — leftover context, open questions, or anything leadership should see",
     ],
@@ -122,7 +122,8 @@ export const STAGES: WorkflowStage[] = [
     owner: "Head of Production (Coen)",
     parties: ["btr", "hn", "bbb", "as"],
     inputs: [
-      "Approved Business Case — problem, expected value, solution direction, T-shirt size, and leadership sign-off confirming the initiative may be scoped",
+      "Approved Business Case — problem, expected value, solution direction, T-shirt size, Adsomnia priority, and leadership sign-off confirming the initiative may be scoped",
+      "Consensus Priority — agreed Now / Near / Later / Backlog placement between Adsomnia and the lead production party (Adsomnia's Validation assignment is the starting point)",
       "Lead party decision — choose which party owns Scoping (BTR, Harlem Next, blablabuild, or Adsomnia Internal); collaborators may support but do not replace the lead",
       "Epic & Milestone Timeline — break the delivery into Epics and Milestones with target start/end dates (or sprint windows) so Project Setup can create the Jira structure and book capacity",
       "Role-based Production Hour Estimates — for each person/role: free-format role description, name, total hours, hours per day, and active period — so resources can be booked and Go/No-Go can weigh cost vs value",
@@ -132,7 +133,7 @@ export const STAGES: WorkflowStage[] = [
     outputs: [
       "Lead party is recorded: one party owns Scoping; additional parties may collaborate when needed",
       `The ticket in the ${WORKSPACE_SYSTEM} is updated by the lead party with a complete Scoping Proposal`,
-      "Scoping Proposal includes: Epic & Milestone Timeline, role-based production hour estimates, scope boundaries, and identified dependencies — ready for Go/No-Go and Jira Project Setup",
+      "Scoping Proposal includes: consensus priority, Epic & Milestone Timeline, role-based production hour estimates, scope boundaries, and identified dependencies — ready for Go/No-Go and Jira Project Setup",
     ],
     leadPartyChoice: {
       title: "Choose lead party",
@@ -158,7 +159,7 @@ export const STAGES: WorkflowStage[] = [
     parties: ["adsomnia"],
     inputs: [
       "Scoping Proposal — Epic & Milestone Timeline, role-based production hour estimates, scope boundaries, dependencies & risks",
-      "Business Case — expected business value / ROI and strategic priority",
+      "Business Case — expected business value / ROI and consensus priority (with Adsomnia's original assignment as reference)",
     ],
     outputs: [
       `Formal status change of the ticket in the ${WORKSPACE_SYSTEM} to GO (proceed to Project Setup), NO-GO (closed), or ON-HOLD (back to backlog)`,

@@ -21,6 +21,8 @@ import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStageHeader } from "@/components/pipeline/PipelineStageHeader";
 import type { InitiativeWithUsers } from "@/lib/queries";
 import {
+  PRIORITY_META,
+  consensusPriority,
   isBusinessValueComplete,
   isScopingComplete,
   type ScopingData,
@@ -65,7 +67,7 @@ const PARTY_LOGOS: Record<string, string> = {
   bbb: "/logos/blablabuild.png",
 };
 
-const SCOPING_SECTION_TOTAL = 4;
+const SCOPING_SECTION_TOTAL = 5;
 
 const STATUS_META: Record<
   string,
@@ -102,6 +104,7 @@ function getScopingSectionCount(data: ScopingData | null): number {
   if ((data.milestones?.length ?? 0) > 0) count++;
   if ((data.team?.length ?? 0) > 0) count++;
   if (isBusinessValueComplete(data.impact)) count++;
+  if (data.consensusPriority?.trim()) count++;
   if ((data.scopeItems?.length ?? 0) > 0) count++;
   return count;
 }
@@ -279,6 +282,7 @@ function ScopingCard({ item }: { item: InitiativeWithUsers }) {
   const teamCost = getTeamCostLabel(sd);
   const dateRange = getDateRange(sd);
   const complete = isScopingComplete(sd);
+  const consensus = consensusPriority(sd);
 
   return (
     <Link
@@ -447,6 +451,15 @@ function ScopingCard({ item }: { item: InitiativeWithUsers }) {
               {leadPartyLabel}
             </span>
           ) : null}
+          {consensus && (
+            <span
+              className="font-display text-[10px] font-bold uppercase tracking-wide"
+              style={{ color: PRIORITY_META[consensus]?.color }}
+              title="Consensus priority"
+            >
+              {consensus}
+            </span>
+          )}
           {complete && (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-success">
               <GitBranch className="size-3" />

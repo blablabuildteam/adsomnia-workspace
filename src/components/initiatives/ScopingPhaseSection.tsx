@@ -27,6 +27,8 @@ import {
   DollarSign,
   Paperclip,
   TrendingUp,
+  Handshake,
+  Flag,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -50,6 +52,7 @@ import {
   IMPACT_DEFAULT,
   IMPACT_MAX,
   IMPACT_MIN,
+  PRIORITY_OPTIONS,
   buildBusinessValueData,
   impactScoreLabel,
   isBusinessValueData,
@@ -59,6 +62,7 @@ import {
 import { PARTIES } from "@/data/workflow";
 import { formatEuro, getRoleById } from "@/data/role-rates";
 import { BusinessValueTypeButton, ImpactSlider } from "./ImpactSlider";
+import { BallparkSlider } from "./BallparkSlider";
 import { AttachmentZone, AttachmentChip } from "./AttachmentZone";
 import { PhaseSectionCard, PhaseSectionStack } from "./PhaseSectionCard";
 import { RoleCombobox } from "./RoleCombobox";
@@ -79,6 +83,8 @@ const FIELD_HELP: Record<string, string> = {
     "Pick a company and catalog role (or search all roles), then add who, hours, and period. Hours × rate feed the cost estimate below.",
   impact:
     "Carried forward from Validation. Refine the impact scores if scoping changes the picture.",
+  consensusPriority:
+    "Agreed placement between Adsomnia and the lead production party. Adsomnia's Validation assignment is shown as the starting point — confirm it or adjust to the consensus.",
   scope:
     "Define what's in scope for the first delivery slice, and what's explicitly out. Flip items between in and out.",
   notes:
@@ -91,6 +97,7 @@ const FIELD_ICONS: Record<string, LucideIcon> = {
   milestones: Calendar,
   team: Users,
   impact: TrendingUp,
+  consensusPriority: Handshake,
   scope: SplitSquareVertical,
   notes: StickyNote,
   attachments: Paperclip,
@@ -201,6 +208,7 @@ const DEV_PREFILL: ScopingData = {
     types: ["speed", "growth"],
     expectations: { speed: 8, growth: 7 },
   },
+  consensusPriority: "Near",
   dependencies:
     "Requires partner API v3 access (pending contract). Calendar dependency: design team on partial leave Sep 20–27. Assumes current infrastructure can handle 2× throughput.",
 };
@@ -863,8 +871,9 @@ function ScopingHeader({
             Scoping Proposal
           </h3>
           <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted">
-            Define the delivery plan — milestones, team, and scope boundaries.
-            This feeds directly into the Go/No-Go decision and Jira project setup.
+            Define the delivery plan — consensus priority, milestones, team, and
+            scope boundaries. This feeds directly into the Go/No-Go decision and
+            Jira project setup.
           </p>
         </div>
       </div>
@@ -1074,6 +1083,24 @@ export function ScopingPhaseSection({
     setScopeItems((prev) => prev.filter((_, idx) => idx !== i));
   };
 
+  // ── Consensus priority (starts from Adsomnia's Validation assignment)
+  const adsomniaPriorityValue = validationData?.priority ?? "";
+  const [consensusPriority, setConsensusPriority] = useState(
+    data?.consensusPriority ?? adsomniaPriorityValue,
+  );
+  const consensusReady = consensusPriority.length > 0;
+  const consensusMatchesAdsomnia =
+    consensusReady &&
+    adsomniaPriorityValue.length > 0 &&
+    consensusPriority === adsomniaPriorityValue;
+  const leadPartyId = validationData?.leadProductionParty;
+  const leadPartyLabel =
+    PARTIES.find((p) => p.id === leadPartyId)?.label ??
+    (leadPartyId && leadPartyId !== "as" ? leadPartyId : null);
+  const adsomniaPriorityHint = PRIORITY_OPTIONS.find(
+    (o) => o.value === adsomniaPriorityValue,
+  )?.hint;
+
   // ── Dependencies state
   const [dependencies, setDependencies] = useState(data?.dependencies ?? "");
   const [attachments, setAttachments] = useState<Attachment[]>(data?.attachments ?? []);
@@ -1091,12 +1118,14 @@ export function ScopingPhaseSection({
   const scopeReady =
     scopeItems.length > 0 && scopeItems.every((s) => s.label.trim());
   const notesReady = dependencies.trim().length > 0;
-  const canSubmit = milestonesReady && teamReady && valueReady && scopeReady;
+  const canSubmit =
+    milestonesReady && teamReady && valueReady && scopeReady && consensusReady;
 
   const sections = [
     { done: milestonesReady, label: "Milestones" },
     { done: teamReady, label: "Team" },
     { done: valueReady, label: "Impact" },
+    { done: consensusReady, label: "Priority" },
     { done: scopeReady, label: "Scope" },
   ];
 
@@ -1111,6 +1140,7 @@ export function ScopingPhaseSection({
       DEV_PREFILL.scopeItems!.map((s) => ({ ...s, id: uid() })),
     );
     setDependencies(DEV_PREFILL.dependencies!);
+    setConsensusPriority(DEV_PREFILL.consensusPriority ?? "Near");
   }
 
   const inScopeItems = scopeItems.filter((s) => s.inScope);
@@ -1302,7 +1332,70 @@ export function ScopingPhaseSection({
             )}
           </PhaseSectionCard>
 
-          {/* ─── 4. Scope Boundaries (toggle chips) ────────── */}
+          {/* ─── 4. Consensus Priority ─────────────────────── */}
+          <PhaseSectionCard
+            header={
+              <div className="flex flex-wrap items-center gap-2">
+                <ScopingFieldLabel
+                  field="consensusPriority"
+                  required
+                  complete={consensusReady}
+                >
+                  Consensus Priority
+                </ScopingFieldLabel>
+                {consensusMatchesAdsomnia && (
+                  <span className="border border-border px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-muted">
+                    Matches Adsomnia
+                  </span>
+                )}
+                {consensusReady &&
+                  adsomniaPriorityValue &&
+                  !consensusMatchesAdsomnia && (
+                    <span className="border border-bbb/40 px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-widest text-bbb">
+                      Adjusted from Adsomnia
+                    </span>
+                  )}
+              </div>
+            }
+          >
+            <p className="text-[11px] leading-relaxed text-muted">
+              Agreed placement between Adsomnia and{" "}
+              {leadPartyLabel ?? "the lead production party"}. Confirm
+              Adsomnia&apos;s Validation assignment or move it to the consensus.
+            </p>
+
+            {adsomniaPriorityValue && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted">
+                  <Flag className="size-3 text-muted/60" />
+                  Adsomnia assigned
+                </span>
+                <span className="inline-flex items-baseline gap-2 border border-foreground/40 bg-foreground/[0.06] px-2.5 py-1">
+                  <span className="font-display text-xs font-bold uppercase tracking-wide text-foreground">
+                    {adsomniaPriorityValue}
+                  </span>
+                  {adsomniaPriorityHint && (
+                    <span className="text-[10px] text-muted">
+                      {adsomniaPriorityHint}
+                    </span>
+                  )}
+                </span>
+              </div>
+            )}
+
+            <BallparkSlider
+              name="consensusPriority"
+              value={consensusPriority}
+              onChange={(value) => {
+                markDirty();
+                setConsensusPriority(value);
+              }}
+              options={PRIORITY_OPTIONS}
+              required
+            />
+          </PhaseSectionCard>
+
+          {/* ─── 5. Scope Boundaries (toggle chips) ────────── */}
           <PhaseSectionCard
             header={
               <ScopingFieldLabel field="scope" required complete={scopeReady}>
@@ -1714,6 +1807,58 @@ function ScopingReadOnly({
               );
             })}
           </div>
+        ) : (
+          <p className="text-sm text-foreground/90">—</p>
+        )}
+      </PhaseSectionCard>
+
+      {/* Consensus Priority */}
+      <PhaseSectionCard
+        header={
+          <div className="flex items-center gap-2 text-muted">
+            <Handshake className="size-3.5 shrink-0" />
+            <p className="font-display text-[10px] font-bold uppercase tracking-wide">
+              Consensus Priority
+            </p>
+          </div>
+        }
+        bodyClassName="p-4"
+      >
+        {data?.consensusPriority ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-baseline gap-2 border border-foreground/40 bg-foreground/[0.06] px-2.5 py-1">
+              <span className="font-display text-xs font-bold uppercase tracking-wide text-foreground">
+                {data.consensusPriority}
+              </span>
+              {PRIORITY_OPTIONS.find((o) => o.value === data.consensusPriority)
+                ?.hint && (
+                <span className="text-[10px] text-muted">
+                  {
+                    PRIORITY_OPTIONS.find(
+                      (o) => o.value === data.consensusPriority,
+                    )?.hint
+                  }
+                </span>
+              )}
+            </span>
+            {validationData?.priority && (
+              <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted">
+                <Flag className="size-3 text-muted/60" />
+                Adsomnia{" "}
+                <span className="font-display font-bold text-foreground/70">
+                  {validationData.priority}
+                </span>
+              </span>
+            )}
+          </div>
+        ) : validationData?.priority ? (
+          <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted">
+            <Flag className="size-3 text-muted/60" />
+            Consensus not set · Adsomnia{" "}
+            <span className="font-display font-bold text-foreground/70">
+              {validationData.priority}
+            </span>
+          </span>
         ) : (
           <p className="text-sm text-foreground/90">—</p>
         )}

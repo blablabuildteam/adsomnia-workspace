@@ -296,7 +296,7 @@ function ValidationCard({ item, hasFeedback }: { item: InitiativeWithUsers; hasF
             <div className="mb-1 flex items-center gap-1.5 text-muted">
               <Shirt className="size-3" />
               <p className="font-display text-[9px] font-bold uppercase tracking-wide text-muted/60">
-                Investment & Priority
+                Investment & Adsomnia Priority
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -501,7 +501,7 @@ export function ValidationStageView({ initiatives, feedbackIds = [] }: Props) {
         <div className="flex items-center gap-2">
           <Flag className="size-3.5 shrink-0 text-muted/60" />
           <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-            Priority
+            Adsomnia Priority
           </span>
           <div className="flex items-center gap-1.5">
             {PRIORITY_FILTERS.map((priority) => {

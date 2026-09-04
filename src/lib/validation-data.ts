@@ -11,11 +11,33 @@ export type BusinessValueData = {
   expectations: Partial<Record<BusinessValueType, BusinessValueImpact | string>>;
 };
 
+export const PRIORITY_LEVELS = ["Now", "Near", "Later", "Backlog"] as const;
+export type PriorityLevel = (typeof PRIORITY_LEVELS)[number];
+
+export const PRIORITY_OPTIONS: {
+  value: PriorityLevel;
+  label: string;
+  hint: string;
+}[] = [
+  { value: "Now", label: "NOW", hint: "High priority" },
+  { value: "Near", label: "NEAR", hint: "Medium priority" },
+  { value: "Later", label: "LATER", hint: "Lower priority" },
+  { value: "Backlog", label: "BACKLOG", hint: "On the radar" },
+];
+
+export const PRIORITY_META: Record<string, { color: string; hint: string }> = {
+  Now: { color: "#FF3B1F", hint: "Urgent / blocking" },
+  Near: { color: "#EAB308", hint: "Next up" },
+  Later: { color: "#7E90A3", hint: "Lower priority" },
+  Backlog: { color: "#FFFFFF80", hint: "On the radar" },
+};
+
 export type ValidationData = {
   /** Structured value types + impact scores; legacy free-text string still supported. */
   businessValue?: BusinessValueData | string;
   solutionDirection?: string;
   tShirtSize?: string;
+  /** Adsomnia's own priority assignment from Validation. */
   priority?: string;
   leadProductionParty?: string;
   dependencies?: string;
@@ -273,6 +295,8 @@ export type ScopingData = {
   /** @deprecated Replaced by `impact`. Kept so existing drafts still parse. */
   valueMetrics?: ScopingValueMetric[];
   scopeItems?: ScopingScopeItem[];
+  /** Agreed priority between Adsomnia and the lead production party. */
+  consensusPriority?: string;
   dependencies?: string;
   attachments?: Attachment[];
 };
@@ -285,7 +309,38 @@ export function isScopingComplete(data: ScopingData | null | undefined): boolean
     data.team!.every((t) => t.role.trim() && t.name.trim() && t.totalHours > 0);
   const hasImpact = isBusinessValueComplete(data.impact);
   const hasScope = (data.scopeItems?.length ?? 0) > 0;
-  return hasMilestones && hasTeam && hasImpact && hasScope;
+  const hasConsensus = Boolean(data.consensusPriority?.trim());
+  return hasMilestones && hasTeam && hasImpact && hasScope && hasConsensus;
+}
+
+/** Adsomnia's own assignment from Validation. */
+export function adsomniaPriority(
+  data: ValidationData | null | undefined,
+): string | undefined {
+  const value = data?.priority?.trim();
+  return value || undefined;
+}
+
+/** Agreed priority from Scoping (Adsomnia + lead production party). */
+export function consensusPriority(
+  data: ScopingData | null | undefined,
+): string | undefined {
+  const value = data?.consensusPriority?.trim();
+  return value || undefined;
+}
+
+/**
+ * Headline priority: consensus once Scoping has set it, otherwise Adsomnia's.
+ */
+export function headlinePriority(
+  validation: ValidationData | null | undefined,
+  scoping: ScopingData | null | undefined,
+): { value: string; kind: "adsomnia" | "consensus" } | null {
+  const consensus = consensusPriority(scoping);
+  if (consensus) return { value: consensus, kind: "consensus" };
+  const adsomnia = adsomniaPriority(validation);
+  if (adsomnia) return { value: adsomnia, kind: "adsomnia" };
+  return null;
 }
 
 /* ─── Project Setup Data (Phase 5) ─────────────────────── */
