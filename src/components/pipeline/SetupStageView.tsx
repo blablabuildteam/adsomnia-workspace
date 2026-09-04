@@ -24,7 +24,7 @@ import {
 } from "@/lib/validation-data";
 import { formatEuro, summarizeTeamCost } from "@/data/role-rates";
 
-type SetupToolChip = {
+type SetupTool = {
   key: string;
   logo: string;
   label: string;
@@ -32,7 +32,7 @@ type SetupToolChip = {
   ready: boolean;
 };
 
-function setupToolChips(setup: SetupData | null): SetupToolChip[] {
+function setupToolChips(setup: SetupData | null): SetupTool[] {
   const slackName = setup?.slack.channelName?.replace(/^#/, "");
   const slackUrl = setup?.slack.channelUrl;
   const jiraName = setup?.jira.projectName || setup?.jira.projectKey;
@@ -65,7 +65,7 @@ function setupToolChips(setup: SetupData | null): SetupToolChip[] {
   ];
 }
 
-function SetupToolChip({ logo, label, href, ready }: Omit<SetupToolChip, "key">) {
+function SetupToolChip({ logo, label, href, ready }: Omit<SetupTool, "key">) {
   const inner = (
     <>
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -85,7 +85,7 @@ function SetupToolChip({ logo, label, href, ready }: Omit<SetupToolChip, "key">)
   );
 
   const cls = [
-    "group/tool inline-flex max-w-full items-center gap-1.5 px-2 py-1 font-display text-[10px] font-bold uppercase tracking-wide",
+    "group/tool inline-flex max-w-full items-center gap-1.5 px-2 py-1 text-[10px]",
     ready
       ? "border border-border text-foreground/80"
       : "border border-dashed border-border text-muted/50",
@@ -145,101 +145,116 @@ function SetupCard({ item }: { item: InitiativeWithUsers }) {
   const consensus = consensusPriority(sd);
   const teamCount = sd?.team?.length ?? 0;
   const teamCost = sd?.team?.length ? summarizeTeamCost(sd.team) : null;
+  const tools = setupToolChips(setup);
+  const href = `/workstreams/${item.id}`;
 
   return (
-    <Link
-      href={`/workstreams/${item.id}`}
-      className="group relative flex h-full flex-col border border-border bg-surface transition-colors hover:border-border-strong hover:bg-white/[0.02]"
-    >
+    <div className="group relative flex h-full flex-col border border-border bg-surface transition-colors hover:border-border-strong hover:bg-white/[0.02]">
       <CornerTicks className={hoverTicks} />
 
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <span className="font-display shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted">
-            {item.ticketId}
-          </span>
-          {progress.allDone ? (
-            <span className="inline-flex items-center gap-1 border border-success/40 bg-success/10 px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide text-success">
-              <CheckCircle2 className="size-3" />
-              Complete
+      <Link href={href} className="flex flex-1 flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <span className="font-display shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted">
+              {item.ticketId}
             </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 border border-[#EAB308]/40 bg-[#EAB308]/10 px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide text-[#EAB308]">
-              <Settings className="size-3" />
-              Setting Up
-            </span>
-          )}
-          {tShirtSize && (
-            <span className="shrink-0 border border-border px-1.5 py-0.5 font-display text-[10px] font-bold text-muted">
-              {tShirtSize}
-            </span>
-          )}
-          {consensus && (
-            <span
-              className="shrink-0 font-display text-[10px] font-bold uppercase tracking-wide"
-              style={{ color: PRIORITY_META[consensus]?.color }}
-              title="Consensus priority"
-            >
-              {consensus}
-            </span>
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-2 text-[10px] text-muted/70">
-          <Clock className="size-3" />
-          {daysSinceUpdate === 0
-            ? "Today"
-            : daysSinceUpdate === 1
-              ? "1 day ago"
-              : `${daysSinceUpdate}d`}
-        </div>
-      </div>
-
-      {/* Body */}
-      <div className="flex flex-1 flex-col px-5 py-4">
-        <h3 className="text-sm font-semibold leading-snug group-hover:text-foreground">
-          {item.title}
-        </h3>
-
-        {/* Progress bar */}
-        <div className="mt-3 flex items-center gap-3">
-          <div className="flex-1">
-            <div className="h-1.5 w-full bg-white/[0.04]">
-              <div
-                className="h-full transition-all"
-                style={{
-                  width: `${(progress.completed / progress.total) * 100}%`,
-                  backgroundColor: getPhaseProgressFill(
-                    stageColor,
-                    progress.allDone,
-                  ),
-                }}
-              />
-            </div>
+            {progress.allDone ? (
+              <span className="inline-flex items-center gap-1 border border-success/40 bg-success/10 px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide text-success">
+                <CheckCircle2 className="size-3" />
+                Complete
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 border border-[#EAB308]/40 bg-[#EAB308]/10 px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide text-[#EAB308]">
+                <Settings className="size-3" />
+                Setting Up
+              </span>
+            )}
+            {tShirtSize && (
+              <span className="shrink-0 border border-border px-1.5 py-0.5 font-display text-[10px] font-bold text-muted">
+                {tShirtSize}
+              </span>
+            )}
+            {consensus && (
+              <span
+                className="shrink-0 font-display text-[10px] font-bold uppercase tracking-wide"
+                style={{ color: PRIORITY_META[consensus]?.color }}
+                title="Consensus priority"
+              >
+                {consensus}
+              </span>
+            )}
           </div>
-          <span className="shrink-0 font-display text-xs font-bold tabular-nums text-muted">
-            {progress.completed}/{progress.total}
-          </span>
+          <div className="flex shrink-0 items-center gap-2 text-[10px] text-muted/70">
+            <Clock className="size-3" />
+            {daysSinceUpdate === 0
+              ? "Today"
+              : daysSinceUpdate === 1
+                ? "1 day ago"
+                : `${daysSinceUpdate}d`}
+          </div>
         </div>
 
-        {/* Metrics */}
-        <div className="mt-3 flex flex-wrap items-center gap-4 text-[10px] text-muted">
-          {teamCount > 0 && (
-            <span className="inline-flex items-center gap-1">
-              <Users className="size-3" />
-              {teamCount} members
+        {/* Body */}
+        <div className="flex flex-1 flex-col px-5 py-4">
+          <h3 className="text-sm font-semibold leading-snug group-hover:text-foreground">
+            {item.title}
+          </h3>
+
+          {/* Progress bar */}
+          <div className="mt-3 flex items-center gap-3">
+            <div className="flex-1">
+              <div className="h-1.5 w-full bg-white/[0.04]">
+                <div
+                  className="h-full transition-all"
+                  style={{
+                    width: `${(progress.completed / progress.total) * 100}%`,
+                    backgroundColor: getPhaseProgressFill(
+                      stageColor,
+                      progress.allDone,
+                    ),
+                  }}
+                />
+              </div>
+            </div>
+            <span className="shrink-0 font-display text-xs font-bold tabular-nums text-muted">
+              {progress.completed}/{progress.total}
             </span>
-          )}
-          {teamCost?.total != null && (
-            <span className="inline-flex items-center gap-1 tabular-nums">
-              € {formatEuro(teamCost.total)}
-            </span>
-          )}
+          </div>
+
+          {/* Metrics */}
+          <div className="mt-3 flex flex-wrap items-center gap-4 text-[10px] text-muted">
+            {teamCount > 0 && (
+              <span className="inline-flex items-center gap-1">
+                <Users className="size-3" />
+                {teamCount} members
+              </span>
+            )}
+            {teamCost?.total != null && (
+              <span className="inline-flex items-center gap-1 tabular-nums">
+                € {formatEuro(teamCost.total)}
+              </span>
+            )}
+          </div>
         </div>
+      </Link>
+
+      <div className="flex flex-wrap items-center gap-1.5 border-t border-border px-5 py-2.5">
+        {tools.map((tool) => (
+          <SetupToolChip
+            key={tool.key}
+            logo={tool.logo}
+            label={tool.label}
+            href={tool.href}
+            ready={tool.ready}
+          />
+        ))}
       </div>
 
-      {/* Footer */}
-      <div className="flex items-center justify-between border-t border-border px-5 py-3">
+      <Link
+        href={href}
+        className="flex items-center justify-between border-t border-border px-5 py-3"
+      >
         <div className="flex items-center gap-2">
           {leadPartyLabel && (
             <span className="inline-flex items-center gap-1 font-display text-[10px] font-bold uppercase tracking-wide text-foreground">
@@ -249,8 +264,8 @@ function SetupCard({ item }: { item: InitiativeWithUsers }) {
           )}
         </div>
         <ArrowRight className="size-3.5 text-muted transition-transform group-hover:translate-x-0.5" />
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
 
