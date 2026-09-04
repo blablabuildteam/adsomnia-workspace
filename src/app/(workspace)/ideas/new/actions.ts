@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { initiatives, activityLog, users } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/session";
+import { canSubmitInitiative } from "@/lib/permissions";
 
 export type SubmitIdeaResult = {
   error?: string;
@@ -15,7 +16,7 @@ export async function submitIdea(
   formData: FormData,
 ): Promise<SubmitIdeaResult> {
   const user = await getCurrentUser();
-  if (!user) {
+  if (!user || !canSubmitInitiative(user)) {
     return { error: "You must be logged in to submit an initiative." };
   }
 

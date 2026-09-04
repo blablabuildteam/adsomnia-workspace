@@ -64,7 +64,7 @@ const FIELD_META: {
 type Props = {
   initiativeId: number;
   values: IdeaFields;
-  /** Whether the current user may edit (creator or leadership, pre-approval). */
+  /** Creator or leadership may edit during Initiative or Validation. */
   canEdit: boolean;
   /** True when the initiative can be resubmitted (after feedback or on hold). */
   canResubmit?: boolean;

@@ -4,7 +4,18 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { initiatives, approvals, activityLog, comments } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { getCurrentUser, canApprove } from "@/lib/session";
+import { getCurrentUser } from "@/lib/session";
+import {
+  canApprove,
+  canEditIdeaDetails,
+  canEditScoping,
+  canEditValidation,
+  canManageOnboarding,
+  canManageSetup,
+  canResubmitIdea,
+  canResubmitScoping,
+  canResubmitValidation,
+} from "@/lib/permissions";
 import {
   isBusinessValueComplete,
   isScopingComplete,
@@ -35,7 +46,6 @@ import {
   type OnboardingData,
   type OnboardingTaskId,
 } from "@/lib/queries";
-import { canManageSetup, canManageOnboarding } from "@/lib/session";
 import {
   createChannel,
   sanitizeChannelName,
@@ -114,7 +124,7 @@ export type IdeaUpdateResult = {
   success?: boolean;
 };
 
-/** Creator (or leadership) updates initiative details, even after submission. */
+/** Creator (or leadership) updates initiative details in Initiative or Validation. */
 export async function updateIdeaDetails(
   initiativeId: number,
   _prev: IdeaUpdateResult,
@@ -138,21 +148,20 @@ export async function updateIdeaDetails(
   if (!existing) {
     return { error: "Initiative not found." };
   }
-  if (existing.currentStage !== "idea") {
+  if (existing.currentStage !== "idea" && existing.currentStage !== "validation") {
     return {
-      error: "Initiative details can only be edited before Validation approval.",
+      error:
+        "Initiative details can only be edited during the Initiative or Validation stage.",
     };
   }
 
-  const isOwner = existing.submitterId === user.id;
-  const isLeadership = canApprove(user);
-
-  if (existing.status === "rejected") {
-    if (!isOwner) {
-      return { error: "Only the initiative owner can edit a rejected submission." };
-    }
-  } else if (!isOwner && !isLeadership) {
-    return { error: "Only the creator or leadership can edit this initiative." };
+  if (!canEditIdeaDetails(user, existing)) {
+    return {
+      error:
+        existing.status === "rejected"
+          ? "Only the initiative owner can edit a rejected submission."
+          : "Only the creator or leadership can edit this initiative.",
+    };
   }
 
   const title = (formData.get("title") as string)?.trim();
@@ -220,20 +229,14 @@ export async function resubmitIdea(
     return { error: "This initiative is no longer in the Initiative stage." };
   }
 
-  const isOwner = existing.submitterId === user.id;
-  const isLeadership = canApprove(user);
-
-  if (existing.status === "rejected") {
-    if (!isOwner) {
-      return { error: "Only the initiative owner can resubmit a rejected submission." };
-    }
-  } else if (existing.status === "draft" || existing.status === "on-hold") {
-    if (!isOwner && !isLeadership) {
-      return { error: "Only the creator or leadership can resubmit." };
-    }
-  } else {
+  if (!canResubmitIdea(user, existing)) {
     return {
-      error: "Only feedback, on-hold, or rejected initiatives can be resubmitted.",
+      error:
+        existing.status === "rejected"
+          ? "Only the initiative owner can resubmit a rejected submission."
+          : existing.status === "draft" || existing.status === "on-hold"
+            ? "Only the creator or leadership can resubmit."
+            : "Only feedback, on-hold, or rejected initiatives can be resubmitted.",
     };
   }
 
@@ -680,19 +683,15 @@ export async function resubmitValidation(
     return { error: "This initiative is no longer in the Validation stage." };
   }
 
-  const isOwner = existing.submitterId === user.id;
-  const isLeadership = canApprove(user);
-
-  if (existing.status === "rejected") {
-    if (!isOwner) {
-      return { error: "Only the initiative owner can resubmit a rejected business case." };
-    }
-  } else if (existing.status === "draft" || existing.status === "on-hold") {
-    if (!isOwner && !isLeadership) {
-      return { error: "Only the creator or leadership can resubmit." };
-    }
-  } else {
-    return { error: "Only feedback, on-hold, or rejected items can be resubmitted." };
+  if (!canResubmitValidation(user, existing)) {
+    return {
+      error:
+        existing.status === "rejected"
+          ? "Only the initiative owner can resubmit a rejected business case."
+          : existing.status === "draft" || existing.status === "on-hold"
+            ? "Only the creator or leadership can resubmit."
+            : "Only feedback, on-hold, or rejected items can be resubmitted.",
+    };
   }
 
   const data = parseValidationFormData(formData);
@@ -735,10 +734,24 @@ export async function saveValidationData(
   }
 
   const [existing] = await db
-    .select({ status: initiatives.status })
+    .select({
+      submitterId: initiatives.submitterId,
+      currentStage: initiatives.currentStage,
+      status: initiatives.status,
+    })
     .from(initiatives)
     .where(eq(initiatives.id, initiativeId))
     .limit(1);
+
+  if (!existing) return { error: "Initiative not found." };
+  if (!canEditValidation(user, existing)) {
+    return {
+      error:
+        existing.currentStage !== "validation"
+          ? "Validation details can only be edited during the Validation stage."
+          : "Only the creator or leadership can edit this business case.",
+    };
+  }
 
   const data = parseValidationFormData(formData);
 
@@ -779,6 +792,26 @@ export async function submitValidationForApproval(
   const user = await getCurrentUser();
   if (!user) {
     return { error: "You must be logged in." };
+  }
+
+  const [existing] = await db
+    .select({
+      submitterId: initiatives.submitterId,
+      currentStage: initiatives.currentStage,
+      status: initiatives.status,
+    })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
+  if (!existing) return { error: "Initiative not found." };
+  if (!canEditValidation(user, existing)) {
+    return {
+      error:
+        existing.currentStage !== "validation"
+          ? "This initiative is no longer in the Validation stage."
+          : "Only the creator or leadership can submit this business case.",
+    };
   }
 
   const data = parseValidationFormData(formData);
@@ -868,6 +901,26 @@ export async function saveScopingData(
   const user = await getCurrentUser();
   if (!user) return { error: "You must be logged in." };
 
+  const [existing] = await db
+    .select({
+      submitterId: initiatives.submitterId,
+      currentStage: initiatives.currentStage,
+      status: initiatives.status,
+    })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
+  if (!existing) return { error: "Initiative not found." };
+  if (!canEditScoping(user, existing) || existing.currentStage !== "scoping") {
+    return {
+      error:
+        existing.currentStage !== "scoping"
+          ? "Scoping can only be edited during the Scoping stage."
+          : "Only the creator or leadership can edit scoping.",
+    };
+  }
+
   const data = parseScopingFormData(formData);
 
   await db
@@ -899,6 +952,26 @@ export async function submitScopingForApproval(
 ): Promise<ScopingResult> {
   const user = await getCurrentUser();
   if (!user) return { error: "You must be logged in." };
+
+  const [existing] = await db
+    .select({
+      submitterId: initiatives.submitterId,
+      currentStage: initiatives.currentStage,
+      status: initiatives.status,
+    })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
+  if (!existing) return { error: "Initiative not found." };
+  if (!canEditScoping(user, existing) || existing.currentStage !== "scoping") {
+    return {
+      error:
+        existing.currentStage !== "scoping"
+          ? "This initiative is no longer in the Scoping stage."
+          : "Only the creator or leadership can submit scoping.",
+    };
+  }
 
   const data = parseScopingFormData(formData);
 
@@ -956,14 +1029,13 @@ export async function resubmitScoping(
     return { error: "This initiative is no longer in Scoping or Go/No-Go." };
   }
 
-  const isOwner = existing.submitterId === user.id;
-  const isLeadership = canApprove(user);
-
-  if (existing.status !== "draft" && existing.status !== "on-hold") {
-    return { error: "Only feedback or on-hold items can be resubmitted." };
-  }
-  if (!isOwner && !isLeadership) {
-    return { error: "Only the creator or leadership can resubmit." };
+  if (!canResubmitScoping(user, existing)) {
+    return {
+      error:
+        existing.status !== "draft" && existing.status !== "on-hold"
+          ? "Only feedback or on-hold items can be resubmitted."
+          : "Only the creator or leadership can resubmit.",
+    };
   }
 
   const data = parseScopingFormData(formData);

@@ -1,8 +1,11 @@
 # Overall to-do
 
-- [ ] Update user permissions between **leadership** and **team** accounts (clarify what each role can do; align UI + API checks with `users.role`)
+- [ ] **Fix Google Drive creation on the Vercel build** (production create-drive flow)
+- [x] Update user permissions between **leadership** and **team** accounts (clarify what each role can do; align UI + API checks with `users.role`)
 - [x] Open **Continue with Google** for allowed domains with post-login profile signup for non-leadership (`team`) users
-- [ ] Refine **team** role permissions once product rules are decided
+- [x] Refine **team** role permissions once product rules are decided
+  - Team (`@adsomnia.com` and other allowed-domain accounts that are not `LOGIN_*` admins): submit initiatives, track them through later phases, edit own details in Initiative + Validation
+  - Leadership (`LOGIN_*` emails): approve / hold / setup / onboarding, plus the same submit + edit rights
 - [x] **Jira — Adsomnia:** client provides host / email / API token → set `JIRA_ADSOMNIA_*`, smoke-test create + epic read ([`jira-client-connect.md`](./jira-client-connect.md))
 - [x] **Jira Setup UI:** wire Create Board (like Slack) using lead party → instance map; keep paste fallback
 - [ ] **Production Overview:** epics + task progress across boards ([`jira-integration.md`](./jira-integration.md))
@@ -24,3 +27,4 @@
 - [ ] **Add project from Production view** — create a project directly in Production; Slack and Drive optional
 - [ ] **Switch Jira account** to the generic email (service account)
 - [ ] **Verify production on Vercel** — smoke-test that everything works on the Vercel URL
+- [ ] **Set up a Jira board for blablabuild** (instance connect + board / project)

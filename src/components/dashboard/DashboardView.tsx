@@ -155,18 +155,67 @@ function PipelineStageBar({
   );
 }
 
+function statusLabel(status: string): string {
+  if (status === "submitted") return "Submitted";
+  if (status === "approved") return "Approved";
+  if (status === "rejected") return "Rejected";
+  if (status === "on-hold") return "On Hold";
+  return status;
+}
+
+function InitiativeListRow({
+  init,
+  showDivider,
+}: {
+  init: InitiativeWithUsers;
+  showDivider: boolean;
+}) {
+  const stage = STAGES.find((s) => s.id === init.currentStage);
+  return (
+    <Link
+      href={`/workstreams/${init.id}`}
+      className={[
+        "group flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-white/[0.03]",
+        showDivider ? "border-t border-border" : "",
+      ].join(" ")}
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="font-display text-[10px] font-bold uppercase tracking-wider text-muted">
+            {init.ticketId}
+          </span>
+          <span className="truncate text-sm font-medium">{init.title}</span>
+        </div>
+        <p className="mt-0.5 truncate text-xs text-muted">
+          {stage?.name ?? init.currentStage} · {statusLabel(init.status)} ·
+          Updated{" "}
+          {init.updatedAt.toLocaleDateString("en-US", {
+            dateStyle: "medium",
+          })}
+        </p>
+      </div>
+      <ArrowRight className="size-4 shrink-0 text-muted transition-transform group-hover:translate-x-1" />
+    </Link>
+  );
+}
+
 type DashboardProps = {
   initiatives: InitiativeWithUsers[];
   stageCounts: Record<string, number>;
   statusCounts: Record<string, number>;
+  currentUserId?: string;
 };
 
 export function DashboardView({
   initiatives: rawItems,
   stageCounts,
   statusCounts,
+  currentUserId,
 }: DashboardProps) {
   const items = rawItems.filter((item) => !item.archivedAt);
+  const mine = currentUserId
+    ? items.filter((item) => item.submitter.id === currentUserId)
+    : [];
   const total = items.length;
   const submittedCount = statusCounts["submitted"] ?? 0;
   const approvedCount = statusCounts["approved"] ?? 0;
@@ -204,6 +253,43 @@ export function DashboardView({
           <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
         </Link>
       </header>
+
+      {currentUserId && (
+        <section className="mb-8">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Clock className="size-4 text-muted" />
+              <h2 className="font-display text-sm font-bold uppercase tracking-wide">
+                My Initiatives
+              </h2>
+            </div>
+            <span className="font-display text-xs font-bold tabular-nums text-muted">
+              {mine.length}
+            </span>
+          </div>
+          <div className="border border-border">
+            {mine.length === 0 && (
+              <div className="px-4 py-8 text-center text-sm text-muted">
+                You have not submitted an initiative yet.{" "}
+                <Link
+                  href="/ideas/new"
+                  className="text-foreground underline-offset-2 hover:underline"
+                >
+                  Submit one
+                </Link>{" "}
+                to track it through the pipeline.
+              </div>
+            )}
+            {mine.map((init, i) => (
+              <InitiativeListRow
+                key={init.id}
+                init={init}
+                showDivider={i > 0}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:gap-4">
         <StatCard label="Total Initiatives" value={total} />
@@ -298,48 +384,13 @@ export function DashboardView({
               No initiatives yet. Submit your first initiative to get started.
             </div>
           )}
-          {recent.map((init, i) => {
-            const stage = STAGES.find((s) => s.id === init.currentStage);
-            const statusBadge = init.status === "submitted"
-              ? "Submitted"
-              : init.status === "approved"
-                ? "Approved"
-                : init.status === "rejected"
-                  ? "Rejected"
-                  : init.status === "on-hold"
-                    ? "On Hold"
-                    : init.status;
-
-            return (
-              <Link
-                key={init.id}
-                href={`/workstreams/${init.id}`}
-                className={[
-                  "group flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-white/[0.03]",
-                  i > 0 ? "border-t border-border" : "",
-                ].join(" ")}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-display text-[10px] font-bold uppercase tracking-wider text-muted">
-                      {init.ticketId}
-                    </span>
-                    <span className="truncate text-sm font-medium">
-                      {init.title}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 truncate text-xs text-muted">
-                    {stage?.name ?? init.currentStage} · {statusBadge} ·
-                    Updated{" "}
-                    {init.updatedAt.toLocaleDateString("en-US", {
-                      dateStyle: "medium",
-                    })}
-                  </p>
-                </div>
-                <ArrowRight className="size-4 shrink-0 text-muted transition-transform group-hover:translate-x-1" />
-              </Link>
-            );
-          })}
+          {recent.map((init, i) => (
+            <InitiativeListRow
+              key={init.id}
+              init={init}
+              showDivider={i > 0}
+            />
+          ))}
         </div>
       </section>
     </div>

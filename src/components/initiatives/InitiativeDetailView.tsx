@@ -194,7 +194,8 @@ export function InitiativeDetailView({
   const showApprovalPanel = ideaAwaitingDecision || !!displayedIdeaDecision;
 
   const canEditIdea =
-    initiative.currentStage === "idea" &&
+    (initiative.currentStage === "idea" ||
+      initiative.currentStage === "validation") &&
     (initiative.status === "rejected"
       ? isCreator
       : isCreator || canUserApprove);
@@ -222,16 +223,12 @@ export function InitiativeDetailView({
       (initiative.status === "on-hold" && (isCreator || canUserApprove)) ||
       (initiative.status === "rejected" && isCreator));
 
-  // Creators can keep editing while awaiting a decision (update & resubmit).
+  // Creator or leadership can keep editing the business case in Validation.
   const validationIsEditable =
     validationIsCurrent &&
-    (initiative.status === "approved" ||
-      initiative.status === "draft" ||
-      initiative.status === "on-hold" ||
-      (initiative.status === "rejected" && isCreator) ||
-      (validationAwaitingDecision && isCreator));
-
-  // Initiative details stay editable in the Initiative stage per status rules above.
+    (initiative.status === "rejected"
+      ? isCreator
+      : isCreator || canUserApprove);
 
   // Only surface the latest validation decision when it matches the current
   // state (avoids showing stale decisions after a resubmission).
@@ -276,11 +273,13 @@ export function InitiativeDetailView({
     goNoGoHasFeedback && (isCreator || canUserApprove);
 
   const scopingIsEditable =
-    (scopingIsCurrent &&
+    (isCreator || canUserApprove) &&
+    ((scopingIsCurrent &&
       (initiative.status === "approved" ||
         initiative.status === "draft" ||
-        (scopingAwaitingDecision && isCreator))) ||
-    scopingCanResubmit;
+        initiative.status === "on-hold" ||
+        scopingAwaitingDecision)) ||
+      scopingCanResubmit);
 
   const scopingStatus: "complete" | "current" | "review" =
     currentNum > 3 && !scopingCanResubmit

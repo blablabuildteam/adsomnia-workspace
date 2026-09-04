@@ -4,12 +4,14 @@ import {
   getStageCounts,
   getStatusCounts,
 } from "@/lib/queries";
+import { getCurrentUser } from "@/lib/session";
 
 export default async function DashboardPage() {
-  const [items, stageCounts, statusCounts] = await Promise.all([
+  const [items, stageCounts, statusCounts, user] = await Promise.all([
     getAllInitiatives(),
     getStageCounts(),
     getStatusCounts(),
+    getCurrentUser(),
   ]);
 
   return (
@@ -17,6 +19,7 @@ export default async function DashboardPage() {
       initiatives={items}
       stageCounts={stageCounts}
       statusCounts={statusCounts}
+      currentUserId={user?.id}
     />
   );
 }

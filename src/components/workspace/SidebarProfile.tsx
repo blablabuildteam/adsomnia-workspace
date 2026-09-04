@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, Check, LogOut, User, X } from "lucide-react";
 import { logout, updateProfile, type ProfileFormResult } from "@/lib/auth";
 import { inputClass } from "@/lib/form-styles";
+import { roleLabel } from "@/lib/permissions";
 
 export type SidebarProfileUser = {
   name: string;
@@ -35,6 +36,7 @@ export function SidebarProfile({ user, collapsed }: Props) {
   }, [state.success, router]);
 
   const title = user.jobTitle?.trim();
+  const accountRole = roleLabel(user.role);
 
   return (
     <div
@@ -63,6 +65,9 @@ export function SidebarProfile({ user, collapsed }: Props) {
                 Edit profile
               </span>
             )}
+            <span className="mt-0.5 block truncate text-[10px] uppercase tracking-wide text-muted/60">
+              {accountRole}
+            </span>
           </span>
         </button>
       )}
@@ -121,7 +126,12 @@ export function SidebarProfile({ user, collapsed }: Props) {
                 >
                   Edit details
                 </h2>
-                <p className="mt-1 text-xs text-muted">{user.email}</p>
+                <p className="mt-1 text-xs text-muted">
+                  {user.email}
+                  <span className="ml-2 uppercase tracking-wide text-muted/70">
+                    {accountRole}
+                  </span>
+                </p>
               </div>
               <button
                 type="button"

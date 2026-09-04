@@ -95,17 +95,8 @@ export function displayName(user: {
   return combined || user.name;
 }
 
-/** Leadership admins who can approve, reject, or hold initiatives. */
-export function canApprove(user: SessionUser): boolean {
-  return user.role === "leadership";
-}
-
-/** Leadership — can manage Project Setup checklist. */
-export function canManageSetup(user: SessionUser): boolean {
-  return user.role === "leadership";
-}
-
-/** Leadership — runs the Onboarding & Kickoff session. */
-export function canManageOnboarding(user: SessionUser): boolean {
-  return user.role === "leadership";
-}
+export {
+  canApprove,
+  canManageOnboarding,
+  canManageSetup,
+} from "./permissions";
