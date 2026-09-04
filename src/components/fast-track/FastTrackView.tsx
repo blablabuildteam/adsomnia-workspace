@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowUpRight,
@@ -222,33 +223,42 @@ export function FastTrackView({ items, boardUrl, fetchError }: Props) {
     <div className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <header className="relative mb-8">
         <BrandTexture variant="hero" />
-        <div className="flex items-start gap-4">
-          <span className="flex size-9 shrink-0 items-center justify-center border border-bbb text-bbb">
-            <Rocket className="size-4" />
-          </span>
-          <div className="min-w-0">
-            <p className="font-display text-[11px] font-bold uppercase tracking-[0.28em] text-muted">
-              Fast-Track
-            </p>
-            <h1 className="font-display mt-2 text-4xl font-extrabold uppercase leading-[0.92] tracking-tight sm:text-5xl">
-              Fast Track
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
-              Quick fixes that skip the pipeline — one or two people, about a
-              day of work. Tasks live on the Adsomnia Fast Track Jira board.
-            </p>
-            {boardUrl && (
-              <a
-                href={boardUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-4 inline-flex items-center gap-1.5 text-xs text-muted underline-offset-4 hover:text-foreground hover:underline"
-              >
-                Open board in Jira
-                <ArrowUpRight className="size-3.5" />
-              </a>
-            )}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-4">
+            <span className="flex size-9 shrink-0 items-center justify-center border border-bbb text-bbb">
+              <Rocket className="size-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-display text-[11px] font-bold uppercase tracking-[0.28em] text-muted">
+                Fast-Track
+              </p>
+              <h1 className="font-display mt-2 text-4xl font-extrabold uppercase leading-[0.92] tracking-tight sm:text-5xl">
+                Fast Track
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
+                Quick fixes that skip the pipeline — one or two people, about a
+                day of work. Tasks live on the Adsomnia Fast Track Jira board.
+              </p>
+            </div>
           </div>
+          {boardUrl && (
+            <a
+              href={boardUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex shrink-0 items-center gap-2 border border-foreground bg-transparent px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-foreground transition-colors hover:bg-foreground hover:text-background"
+            >
+              <Image
+                src="/logos/jira.png"
+                alt=""
+                width={16}
+                height={16}
+                className="size-4 object-contain"
+              />
+              Open board in Jira
+              <ArrowUpRight className="size-3.5" />
+            </a>
+          )}
         </div>
       </header>
 
