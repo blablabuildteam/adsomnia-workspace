@@ -42,12 +42,14 @@ type Props = {
   projects: ProductionProject[];
   archived: ProductionProject[];
   canArchive: boolean;
+  canAdjustPriority: boolean;
 };
 
 export function ProductionOverview({
   projects,
   archived,
   canArchive,
+  canAdjustPriority,
 }: Props) {
   const router = useRouter();
   const [layout, setLayout] = useState<LayoutMode>("timeline");
@@ -327,11 +329,13 @@ export function ProductionOverview({
       <ProductionDetailDrawer
         project={selected}
         canArchive={canArchive}
+        canAdjustPriority={canAdjustPriority}
         onClose={() => setSelectedId(null)}
         onArchived={() => {
           setSelectedId(null);
           router.refresh();
         }}
+        onPriorityUpdated={() => router.refresh()}
       />
     </div>
   );

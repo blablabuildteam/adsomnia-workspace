@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -16,8 +16,10 @@ import {
 import {
   loadProductionJourney,
   setProductionArchived,
+  updateProductionConsensusPriority,
 } from "@/app/(workspace)/pipeline/production/actions";
 import { Modal, ModalButton } from "@/components/ui/Modal";
+import { ConsensusPriorityChip } from "@/components/production/ConsensusPriorityChip";
 import { ProductionBriefHero } from "@/components/production/ProductionBriefHero";
 import { ProductionHealthBadge } from "@/components/production/ProductionHealthBadge";
 import {
@@ -33,6 +35,10 @@ import {
   type ProductionProject,
 } from "@/lib/production/health";
 import type { JourneyStage } from "@/lib/production/load";
+import {
+  PRIORITY_META,
+  PRIORITY_OPTIONS,
+} from "@/lib/validation-data";
 
 const FLAG_COPY: Record<string, string> = {
   "no-end-date": "No end date — excluded from risk",
@@ -229,24 +235,102 @@ function EpicRow({ epic }: { epic: ProductionEpic }) {
   );
 }
 
+function LabeledMeta({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-muted/50">
+        {label}
+      </p>
+      <div className="mt-1.5">{children}</div>
+    </div>
+  );
+}
+
+function PriorityControl({
+  value,
+  canAdjust,
+  disabled,
+  onChange,
+}: {
+  value?: string;
+  canAdjust: boolean;
+  disabled?: boolean;
+  onChange: (next: string) => void;
+}) {
+  if (!canAdjust) {
+    return <ConsensusPriorityChip value={value} />;
+  }
+
+  const color = value ? PRIORITY_META[value]?.color : undefined;
+
+  return (
+    <span className="relative inline-flex items-center">
+      <select
+        value={value ?? ""}
+        disabled={disabled}
+        aria-label="Consensus priority"
+        onChange={(event) => {
+          const next = event.target.value;
+          if (next) onChange(next);
+        }}
+        className={[
+          "appearance-none border bg-transparent py-0.5 pl-2 pr-6 font-display text-[10px] font-bold uppercase tracking-wide",
+          color ? "" : "border-border text-muted/50",
+          disabled ? "opacity-50" : "cursor-pointer",
+        ].join(" ")}
+        style={
+          color
+            ? {
+                borderColor: `${color}66`,
+                backgroundColor: `${color}1A`,
+                color,
+              }
+            : undefined
+        }
+      >
+        {!value && <option value="">TBD</option>}
+        {PRIORITY_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-1.5 size-3 text-current opacity-70" />
+    </span>
+  );
+}
+
 type Props = {
   project: ProductionProject | null;
   canArchive: boolean;
+  canAdjustPriority: boolean;
   onClose: () => void;
   onArchived: () => void;
+  onPriorityUpdated: () => void;
 };
 
 export function ProductionDetailDrawer({
   project,
   canArchive,
+  canAdjustPriority,
   onClose,
   onArchived,
+  onPriorityUpdated,
 }: Props) {
   const [journey, setJourney] = useState<JourneyStage[] | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [archiveError, setArchiveError] = useState<string | null>(null);
   const [archiving, startArchive] = useTransition();
+  const [priority, setPriority] = useState<string | undefined>(undefined);
+  const [priorityError, setPriorityError] = useState<string | null>(null);
+  const [priorityPending, startPriority] = useTransition();
 
   useEffect(() => {
     if (!project) return;
@@ -268,17 +352,21 @@ export function ProductionDetailDrawer({
 
   useEffect(() => {
     if (!project) {
-      setJourney(null);
-      setDetailOpen(false);
-      setConfirmArchive(false);
-      setArchiveError(null);
-      return;
-    }
-    let cancelled = false;
     setJourney(null);
     setDetailOpen(false);
     setConfirmArchive(false);
     setArchiveError(null);
+    setPriority(undefined);
+    setPriorityError(null);
+    return;
+  }
+  let cancelled = false;
+  setJourney(null);
+  setDetailOpen(false);
+  setConfirmArchive(false);
+  setArchiveError(null);
+  setPriority(project.brief.consensusPriority);
+  setPriorityError(null);
     loadProductionJourney(project.id).then((rows) => {
       if (!cancelled) setJourney(rows);
     });
@@ -336,22 +424,60 @@ export function ProductionDetailDrawer({
               >
                 {project.title}
               </h2>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <ProductionHealthBadge health={project.health} />
-                {archived && (
-                  <span className="inline-flex items-center gap-1 border border-muted/40 px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                    <Archive className="size-3" />
-                    Archived
-                  </span>
-                )}
-                {party && (
-                  <span
-                    className="border px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide"
-                    style={{ borderColor: party.color, color: party.color }}
-                  >
-                    {party.label}
-                  </span>
-                )}
+              {archived && (
+                <span className="mt-3 inline-flex items-center gap-1 border border-muted/40 px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+                  <Archive className="size-3" />
+                  Archived
+                </span>
+              )}
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                <LabeledMeta label="On Track">
+                  <ProductionHealthBadge health={project.health} />
+                </LabeledMeta>
+                <LabeledMeta label="Production Party">
+                  {party ? (
+                    <span
+                      className="inline-flex border px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide"
+                      style={{ borderColor: party.color, color: party.color }}
+                    >
+                      {party.label}
+                    </span>
+                  ) : (
+                    <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted/50">
+                      —
+                    </span>
+                  )}
+                </LabeledMeta>
+                <LabeledMeta label="Priority">
+                  <PriorityControl
+                    value={priority ?? project.brief.consensusPriority}
+                    canAdjust={canAdjustPriority}
+                    disabled={priorityPending}
+                    onChange={(next) => {
+                      const previous =
+                        priority ?? project.brief.consensusPriority;
+                      setPriority(next);
+                      setPriorityError(null);
+                      startPriority(async () => {
+                        const result = await updateProductionConsensusPriority(
+                          project.id,
+                          next,
+                        );
+                        if (result.error) {
+                          setPriority(previous);
+                          setPriorityError(result.error);
+                          return;
+                        }
+                        onPriorityUpdated();
+                      });
+                    }}
+                  />
+                  {priorityError && (
+                    <p className="mt-1 text-[10px] text-danger">
+                      {priorityError}
+                    </p>
+                  )}
+                </LabeledMeta>
               </div>
             </div>
             <button
@@ -398,7 +524,13 @@ export function ProductionDetailDrawer({
           </section>
 
           <div className="mt-8">
-            <ProductionBriefHero brief={project.brief} />
+            <ProductionBriefHero
+              brief={{
+                ...project.brief,
+                consensusPriority:
+                  priority ?? project.brief.consensusPriority,
+              }}
+            />
           </div>
 
           <section className="mt-8">

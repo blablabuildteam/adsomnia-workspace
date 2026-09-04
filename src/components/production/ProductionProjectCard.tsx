@@ -123,9 +123,6 @@ export function ProductionProjectCard({ project, onOpen }: Props) {
             {project.ticketId}
           </span>
           <ProductionHealthBadge health={project.health} />
-          <ConsensusPriorityChip
-            value={project.brief.consensusPriority}
-          />
         </div>
         {party && (
           <span
@@ -240,7 +237,12 @@ export function ProductionProjectCard({ project, onOpen }: Props) {
         <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
           View details
         </span>
-        <ArrowRight className="size-3.5 text-muted transition-transform group-hover:translate-x-0.5" />
+        <span className="inline-flex items-center gap-2">
+          <ConsensusPriorityChip
+            value={project.brief.consensusPriority}
+          />
+          <ArrowRight className="size-3.5 text-muted transition-transform group-hover:translate-x-0.5" />
+        </span>
       </div>
     </button>
   );

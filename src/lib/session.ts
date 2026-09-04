@@ -96,6 +96,8 @@ export function displayName(user: {
 }
 
 export {
+  canAddProductionProject,
+  canAdjustProductionPriority,
   canApprove,
   canManageOnboarding,
   canManageSetup,

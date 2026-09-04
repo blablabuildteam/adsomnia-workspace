@@ -340,13 +340,7 @@ export function ProductionTimelineView({ projects, onOpen }: Props) {
                 </div>
                 <div className="mt-2 border border-border px-2.5 py-2">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                      <ProductionHealthBadge health={project.health} compact />
-                      <ConsensusPriorityChip
-                        value={project.brief.consensusPriority}
-                        compact
-                      />
-                    </div>
+                    <ProductionHealthBadge health={project.health} compact />
                     <span className="font-display text-[11px] font-bold tabular-nums">
                       {Math.round(project.ticketsDonePct)}%
                     </span>
@@ -354,14 +348,22 @@ export function ProductionTimelineView({ projects, onOpen }: Props) {
                   <p className="mt-1 text-[10px] text-muted">
                     {project.doneTickets}/{project.totalTickets} tickets
                   </p>
-                  {party && (
-                    <p
-                      className="mt-1.5 font-display text-[10px] font-bold uppercase tracking-wide"
-                      style={{ color: party.color }}
-                    >
-                      {party.label}
-                    </p>
-                  )}
+                  <div className="mt-1.5 flex items-end justify-between gap-2">
+                    {party ? (
+                      <p
+                        className="font-display text-[10px] font-bold uppercase tracking-wide"
+                        style={{ color: party.color }}
+                      >
+                        {party.label}
+                      </p>
+                    ) : (
+                      <span />
+                    )}
+                    <ConsensusPriorityChip
+                      value={project.brief.consensusPriority}
+                      compact
+                    />
+                  </div>
                 </div>
               </button>
 

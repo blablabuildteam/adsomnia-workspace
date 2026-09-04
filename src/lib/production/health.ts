@@ -71,10 +71,12 @@ export type ProductionProject = {
     fetchError?: string;
   };
   tools: {
-    jira?: { href: string; label: string };
-    slack?: { href: string; label: string };
-    drive?: { href: string; label: string };
+    jira?: { href?: string; label: string };
+    slack?: { href?: string; label: string };
+    drive?: { href?: string; label: string };
   };
+  addedManually?: boolean;
+  addedAt?: string;
   epics: ProductionEpic[];
   health: ProductionHealth;
   scoredEpicCount: number;

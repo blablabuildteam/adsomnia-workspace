@@ -62,6 +62,16 @@ export function canManageOnboarding(user: PermissionUser): boolean {
   return isLeadership(user);
 }
 
+/** Leadership — change consensus priority on a Production project. */
+export function canAdjustProductionPriority(user: PermissionUser): boolean {
+  return isLeadership(user);
+}
+
+/** Leadership — add a project directly on the Production overview. */
+export function canAddProductionProject(user: PermissionUser): boolean {
+  return isLeadership(user);
+}
+
 /**
  * Creator or leadership may change the original initiative fields while the
  * item is still in Initiative or Validation. Rejected items: creator only.

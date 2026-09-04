@@ -500,7 +500,16 @@ export type SetupData = {
   kickoffMeeting: KickoffMeetingData;
   kickoffPrep: KickoffPrepData;
   inviteTeam?: InviteTeamData;
+  /** Set when leadership adds the project from Production, skipping the pipeline. */
+  addedManually?: boolean;
+  addedAt?: string;
 };
+
+export function isManualProductionProject(
+  data: SetupData | null | undefined,
+): boolean {
+  return Boolean(data?.addedManually);
+}
 
 export const SETUP_TASKS: {
   id: SetupTaskId;
@@ -581,6 +590,66 @@ export function createDefaultSetupData(
     kickoffMeeting: { status: "pending" },
     kickoffPrep: { status: "pending" },
     inviteTeam: { status: "pending" },
+  };
+}
+
+export function createManualProductionSetupData(input: {
+  ticketId: string;
+  title: string;
+  addedAt: string;
+  jira: {
+    boardUrl: string;
+    workspace: NonNullable<JiraSetupData["workspace"]>;
+    projectKey: string;
+    projectName: string;
+    projectId?: string;
+  };
+  driveUrl?: string;
+  slackChannelName?: string;
+}): SetupData {
+  const setup = createDefaultSetupData(input.ticketId, input.title);
+  const skip = { status: "skipped" as const, completedAt: input.addedAt };
+
+  return {
+    ...setup,
+    addedManually: true,
+    addedAt: input.addedAt,
+    jira: {
+      status: "completed",
+      suggestedName: setup.jira.suggestedName,
+      boardUrl: input.jira.boardUrl,
+      projectUrl: input.jira.boardUrl,
+      workspace: input.jira.workspace,
+      projectKey: input.jira.projectKey,
+      projectName: input.jira.projectName,
+      projectId: input.jira.projectId,
+      completedAt: input.addedAt,
+    },
+    drive: input.driveUrl
+      ? {
+          status: "completed",
+          suggestedName: setup.drive.suggestedName,
+          driveUrl: input.driveUrl,
+          completedAt: input.addedAt,
+        }
+      : { ...setup.drive, ...skip },
+    slack: input.slackChannelName
+      ? {
+          status: "completed",
+          suggestedName: setup.slack.suggestedName,
+          channelName: input.slackChannelName,
+          completedAt: input.addedAt,
+        }
+      : { ...setup.slack, ...skip },
+    jiraPlanning: skip,
+    documentation: { ...setup.documentation, ...skip },
+    team: { ...setup.team, ...skip },
+    scope: skip,
+    planning: skip,
+    budget: skip,
+    kickoffMeeting: skip,
+    kickoffPrep: skip,
+    inviteTeam: skip,
   };
 }
 

@@ -96,6 +96,121 @@ function normalizeHost(host: string): string {
   return host.startsWith("https://") ? host : `https://${host}`;
 }
 
+function hostName(host: string): string {
+  return host.replace(/^https?:\/\//, "").replace(/\/$/, "").toLowerCase();
+}
+
+export type ParsedJiraSpaceUrl = {
+  host: string;
+  projectKey: string;
+};
+
+/** Extract a Jira Cloud space key from a project, board, or browse URL. */
+export function parseJiraSpaceUrl(raw: string): ParsedJiraSpaceUrl | null {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return null;
+  }
+
+  const host = url.host.toLowerCase();
+  const path = url.pathname;
+
+  const fromPath = path.match(
+    /\/(?:jira\/(?:software\/(?:c\/)?|core\/))?projects\/([A-Za-z][A-Za-z0-9]+)/i,
+  );
+  if (fromPath?.[1]) {
+    return { host, projectKey: fromPath[1].toUpperCase() };
+  }
+
+  const fromBrowse = path.match(
+    /\/browse\/([A-Za-z][A-Za-z0-9]+)(?:-\d+)?/i,
+  );
+  if (fromBrowse?.[1]) {
+    return { host, projectKey: fromBrowse[1].toUpperCase() };
+  }
+
+  const selected =
+    url.searchParams.get("selectedIssue") ||
+    url.searchParams.get("projectKey");
+  if (selected) {
+    const key = selected.match(/^([A-Za-z][A-Za-z0-9]+)/);
+    if (key?.[1]) return { host, projectKey: key[1].toUpperCase() };
+  }
+
+  return null;
+}
+
+export type ResolvedJiraSpace =
+  | {
+      ok: true;
+      instance: JiraInstance;
+      projectKey: string;
+      boardUrl: string;
+    }
+  | { ok: false; error: string };
+
+/**
+ * Confirm a pasted Jira URL belongs to the lead party's connected site
+ * and yield the project key used for epic progress.
+ */
+export function resolveJiraSpaceForLeadParty(
+  rawUrl: string,
+  leadParty: string,
+): ResolvedJiraSpace {
+  const instance = leadPartyToJiraInstance(leadParty);
+  if (!instance) {
+    return { ok: false, error: "Choose Adsomnia, BTR, or Harlem Next as the lead party." };
+  }
+
+  const config = getInstanceConfig(instance);
+  if (!config) {
+    return {
+      ok: false,
+      error: `No Jira site is connected for ${INSTANCE_LABELS[instance]}.`,
+    };
+  }
+
+  const parsed = parseJiraSpaceUrl(rawUrl);
+  if (!parsed) {
+    return {
+      ok: false,
+      error:
+        "Paste a Jira space URL, for example https://….atlassian.net/jira/software/projects/KEY.",
+    };
+  }
+
+  if (parsed.host !== hostName(config.host)) {
+    return {
+      ok: false,
+      error: `This URL is not on the ${INSTANCE_LABELS[instance]} Jira site (${hostName(config.host)}).`,
+    };
+  }
+
+  return {
+    ok: true,
+    instance,
+    projectKey: parsed.projectKey,
+    boardUrl: rawUrl,
+  };
+}
+
+export async function getJiraProject(
+  instance: JiraInstance,
+  projectKey: string,
+): Promise<{ id: string; key: string; name: string }> {
+  const { client } = requireClient(instance);
+  const project = await client.projects.getProject({
+    projectIdOrKey: projectKey,
+  });
+  return {
+    id: String(project.id ?? ""),
+    key: (project.key ?? projectKey).toUpperCase(),
+    name: project.name ?? projectKey,
+  };
+}
+
 function createClient(config: JiraConfig) {
   return createCloudClient({
     host: normalizeHost(config.host),

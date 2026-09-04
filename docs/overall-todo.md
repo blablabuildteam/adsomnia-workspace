@@ -1,29 +1,13 @@
 # Overall to-do
 
-- [ ] **Fix Google Drive creation on the Vercel build** (production create-drive flow)
-- [x] Update user permissions between **leadership** and **team** accounts (clarify what each role can do; align UI + API checks with `users.role`)
-- [x] Open **Continue with Google** for allowed domains with post-login profile signup for non-leadership (`team`) users
-- [x] Refine **team** role permissions once product rules are decided
-  - Team (`@adsomnia.com` and other allowed-domain accounts that are not `LOGIN_*` admins): submit initiatives, track them through later phases, edit own details in Initiative + Validation
-  - Leadership (`LOGIN_*` emails): approve / hold / setup / onboarding, plus the same submit + edit rights
-- [x] **Jira — Adsomnia:** client provides host / email / API token → set `JIRA_ADSOMNIA_*`, smoke-test create + epic read ([`jira-client-connect.md`](./jira-client-connect.md))
-- [x] **Jira Setup UI:** wire Create Board (like Slack) using lead party → instance map; keep paste fallback
 - [ ] **Jira — BTR** then **HN:** repeat client connect + env for partner Cloud sites
 - [ ] Build a **reminder to recycle Jira API tokens** (per instance / service account; surface before expiry or on a fixed rotation schedule)
-- [x] **Strict character limits** on Initiative description and Validation fields
 - [ ] **Submitter notifications** for feedback remarks and when an initiative advances through phases
-- [ ] **Remarks on projects** — add remarks to initiatives/projects
 - [ ] **General feedback button** — users can log issues when they hit something; when admins (Siets, Oleg, Coen, Erin) are online they can give live feedback
-- [x] **Dual priorities:** Adsomnia priority (Validation) + consensus priority (Scoping)
-  - Adsomnia priority via sliders; Scoping shows that assignment and records the agreed consensus
-- [ ] Projects in **Production** (and earlier stages) can **adjust priorities**
 - [ ] **Fast-Track recognition & overview** — staged Fast-Track view (status, priority, assignee, title, description from Jira), including control to push; backed by a Fast-Track Jira board
   - Option to convert **Fast-Track ↔ full project** (and vice versa)
-- [ ] **Fix Slack channel creation**
 - [ ] **Reporting support for Coen** — tooling / views that help Coen do reporting
 - [ ] **Rework the Dashboard view**
-- [ ] Build in **max length for Jira spaces** (names / keys)
-- [ ] **Add project from Production view** — create a project directly in Production; Slack and Drive optional
 - [ ] **Switch Jira account** to the generic email (service account)
 - [ ] **Verify production on Vercel** — smoke-test that everything works on the Vercel URL
 - [ ] **Set up a Jira board for blablabuild** (instance connect + board / project)

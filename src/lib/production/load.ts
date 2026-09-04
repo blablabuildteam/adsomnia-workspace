@@ -12,6 +12,7 @@ import {
 import { summarizeTeamCost } from "@/data/role-rates";
 import {
   formatBusinessValueSummary,
+  isManualProductionProject,
   type JiraSetupData,
 } from "@/lib/validation-data";
 import {
@@ -149,9 +150,13 @@ async function toProductionProject(
             label: target.projectName || "Jira board",
           }
         : undefined,
-      slack: slackHref
-        ? { href: slackHref, label: slackName ? `#${slackName}` : "Slack" }
-        : undefined,
+      slack:
+        slackHref || slackName
+          ? {
+              href: slackHref,
+              label: slackName ? `#${slackName}` : "Slack",
+            }
+          : undefined,
       drive: driveHref
         ? {
             href: driveHref,
@@ -159,6 +164,10 @@ async function toProductionProject(
           }
         : undefined,
     },
+    addedManually: isManualProductionProject(item.setupData),
+    addedAt: isManualProductionProject(item.setupData)
+      ? item.setupData?.addedAt ?? item.createdAt.toISOString()
+      : undefined,
     epics: [],
     health: "unscored",
     scoredEpicCount: 0,
