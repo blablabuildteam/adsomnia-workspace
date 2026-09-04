@@ -31,6 +31,7 @@ import {
   type SetupData,
   type SetupTaskId,
   type SetupTaskStatus,
+  type DriveFolderLink,
   type OnboardingData,
   type OnboardingTaskId,
 } from "@/lib/queries";
@@ -40,6 +41,7 @@ import {
   sanitizeChannelName,
 } from "@/lib/integrations/slack";
 import {
+  clampJiraProjectName,
   createEpics,
   createProject,
   getProjectUrl,
@@ -47,6 +49,7 @@ import {
   resolveSetupJiraInstance,
   sanitizeEpicSeeds,
   ticketIdToProjectKeyHint,
+  validateJiraProjectName,
   type JiraInstance,
 } from "@/lib/integrations/jira";
 
@@ -1155,6 +1158,22 @@ const VALID_TASK_IDS: SetupTaskId[] = [
   "invite-team",
 ];
 
+function parseDriveFolderLinks(value: unknown): DriveFolderLink[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is DriveFolderLink => {
+    if (!item || typeof item !== "object") return false;
+    const folder = item as Partial<DriveFolderLink>;
+    return (
+      typeof folder.name === "string" &&
+      folder.name.trim().length > 0 &&
+      typeof folder.id === "string" &&
+      folder.id.trim().length > 0 &&
+      typeof folder.url === "string" &&
+      folder.url.trim().length > 0
+    );
+  });
+}
+
 /** Completes a single setup checklist task with provided data. */
 export async function completeSetupTask(
   initiativeId: number,
@@ -1199,6 +1218,9 @@ export async function completeSetupTask(
     }
     taskData.boardUrl = boardUrl;
     taskData.projectUrl = boardUrl;
+    if (typeof taskData.projectName === "string") {
+      taskData.projectName = clampJiraProjectName(taskData.projectName);
+    }
   }
 
   const [row] = await db
@@ -1227,6 +1249,11 @@ export async function completeSetupTask(
   const now = new Date().toISOString();
   const dataKey = setupTaskIdToDataKey(taskId);
   const markComplete = formData.get("complete") !== "0";
+  const driveFolders =
+    taskId === "drive" ? parseDriveFolderLinks(taskData.folders) : [];
+  if (taskId === "drive") {
+    delete taskData.folders;
+  }
 
   const existingTask = setup[dataKey] as Record<string, unknown> | undefined;
   const updated: SetupData = {
@@ -1243,6 +1270,15 @@ export async function completeSetupTask(
         : ((existingTask?.completedAt as string | undefined) ?? undefined),
     },
   };
+
+  if (driveFolders.length > 0) {
+    updated.documentation = {
+      ...(updated.documentation ?? { status: "pending", linkedDocs: [] }),
+      folders: driveFolders,
+      status: "completed",
+      completedAt: now,
+    };
+  }
 
   const channelUrl =
     taskId === "slack" && typeof taskData.channelUrl === "string"
@@ -1445,8 +1481,10 @@ export async function createAndCompleteJiraBoard(
     return { error: "Only the Head of Production can manage Project Setup." };
   }
 
-  const name = input.name?.trim();
+  const name = clampJiraProjectName(input.name ?? "");
   if (!name) return { error: "Space title is required." };
+  const nameError = validateJiraProjectName(name);
+  if (nameError) return { error: nameError };
   const template = input.template === "scrum" ? "scrum" : "kanban";
 
   const [row] = await db

@@ -1,7 +1,11 @@
 import { createCloudClient } from "jira.js";
 import {
   JIRA_EPIC_COLORS,
+  JIRA_ISSUE_SUMMARY_MAX,
+  JIRA_PROJECT_KEY_MAX,
+  clampJiraProjectName,
   toIsoDate,
+  validateJiraProjectName,
   type JiraEpicSeed,
 } from "./jira-plan";
 
@@ -123,7 +127,18 @@ export function getAvailableInstances(): {
 }
 
 export type { JiraEpicSeed } from "./jira-plan";
-export { milestonesToEpicSeeds, sanitizeEpicSeeds } from "./jira-plan";
+export {
+  JIRA_ISSUE_SUMMARY_MAX,
+  JIRA_PROJECT_KEY_MAX,
+  JIRA_PROJECT_NAME_MAX,
+  JIRA_PROJECT_NAME_MIN,
+  clampJiraProjectName,
+  milestonesToEpicSeeds,
+  sanitizeEpicSeeds,
+  suggestedJiraName,
+  ticketIdToProjectKeyHint,
+  validateJiraProjectName,
+} from "./jira-plan";
 
 export type CreatedJiraEpic = {
   key: string;
@@ -145,13 +160,6 @@ function requireClient(instance: JiraInstance) {
 function asProjectKey(value: unknown, fallback: string): string {
   const raw = typeof value === "string" ? value : fallback;
   return raw.replace(/^"+|"+$/g, "").toUpperCase() || fallback;
-}
-
-/** Jira project keys: 2–10 letters/digits, must start with a letter. */
-export function ticketIdToProjectKeyHint(ticketId: string): string {
-  const compact = ticketId.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  const keyed = compact.replace(/^[^A-Z]+/, "") || "WS";
-  return keyed.slice(0, 10);
 }
 
 function adfParagraph(text: string) {
@@ -255,7 +263,10 @@ export async function createProject(
       ? "com.pyxis.greenhopper.jira:gh-simplified-agility-scrum"
       : "com.pyxis.greenhopper.jira:gh-simplified-agility-kanban";
 
-  const requestedKey = opts.key.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
+  const requestedKey = opts.key
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, JIRA_PROJECT_KEY_MAX);
   let key = requestedKey;
   try {
     const suggested = await client.projectKeyAndNameValidation.getValidProjectKey({
@@ -266,9 +277,10 @@ export async function createProject(
     key = requestedKey;
   }
 
-  const name = opts.name.trim().slice(0, 80);
-  if (name.length < 2) {
-    throw new Error("Space title must be at least 2 characters.");
+  const name = clampJiraProjectName(opts.name);
+  const nameError = validateJiraProjectName(name);
+  if (nameError) {
+    throw new Error(nameError);
   }
 
   return createSimplifiedProject(config, { key, name, templateKey });
@@ -361,13 +373,15 @@ export async function createEpics(
     const endDate = toIsoDate(seed.endDate);
     const fieldsPayload: Record<string, unknown> = {
       project: { key: projectKey },
-      summary: name.slice(0, 255),
+      summary: name.slice(0, JIRA_ISSUE_SUMMARY_MAX),
       issuetype: { id: epicType.id },
     };
     if (seed.description?.trim()) {
       fieldsPayload.description = adfParagraph(seed.description.trim());
     }
-    if (epicNameFieldId) fieldsPayload[epicNameFieldId] = name.slice(0, 255);
+    if (epicNameFieldId) {
+      fieldsPayload[epicNameFieldId] = name.slice(0, JIRA_ISSUE_SUMMARY_MAX);
+    }
     if (startFieldId && startDate) fieldsPayload[startFieldId] = startDate;
     if (dueDateAvailable && endDate) fieldsPayload.duedate = endDate;
     if (reporterRequired && me.accountId) {

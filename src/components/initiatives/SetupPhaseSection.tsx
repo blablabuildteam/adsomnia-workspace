@@ -11,6 +11,7 @@ import {
   isSetupPhaseUnlocked,
   normalizeUrl,
   suggestedDriveName,
+  suggestedJiraName,
   type SetupData,
   type SetupTaskId,
   type SetupTaskStatus,
@@ -119,6 +120,7 @@ export function SetupPhaseSection({
       jiraBoardUrl,
       driveUrl,
       suggestedDriveName: suggestedDriveName(projectTitle, ticketId),
+      suggestedJiraName: suggestedJiraName(projectTitle, ticketId),
     });
     if ("error" in payload) {
       setTaskError(payload.error);
@@ -239,6 +241,7 @@ export function SetupPhaseSection({
                 scopingData,
                 readOnly: readOnly || taskLocked,
                 suggestedDriveName: suggestedDriveName(projectTitle, ticketId),
+                suggestedJiraName: suggestedJiraName(projectTitle, ticketId),
                 ticketId,
                 leadParty,
                 slackChannelName,
@@ -293,6 +296,7 @@ type TaskRenderContext = {
   scopingData?: ScopingData | null;
   readOnly?: boolean;
   suggestedDriveName: string;
+  suggestedJiraName: string;
   ticketId: string;
   leadParty?: string;
   slackChannelName: string;
@@ -317,6 +321,7 @@ function buildQuickCompletePayload(
     jiraBoardUrl: string;
     driveUrl: string;
     suggestedDriveName: string;
+    suggestedJiraName: string;
   },
 ): { data: Record<string, unknown> } | { error: string } {
   const { setupData } = ctx;
@@ -347,7 +352,7 @@ function buildQuickCompletePayload(
           boardUrl,
           projectUrl: boardUrl,
           projectName:
-            setupData.jira.projectName || ctx.suggestedDriveName,
+            setupData.jira.projectName || ctx.suggestedJiraName,
         },
       };
     }
@@ -395,8 +400,12 @@ function renderTaskContent(
           driveUrl={ctx.driveUrl}
           onDriveUrlChange={ctx.onDriveUrlChange}
           readOnly={readOnly}
-          onComplete={(driveName, nextDriveUrl) =>
-            ctx.onComplete("drive", { driveName, driveUrl: nextDriveUrl })
+          onComplete={(driveName, nextDriveUrl, folders) =>
+            ctx.onComplete("drive", {
+              driveName,
+              driveUrl: nextDriveUrl,
+              ...(folders && folders.length > 0 ? { folders } : {}),
+            })
           }
         />
       );
@@ -405,7 +414,7 @@ function renderTaskContent(
         <JiraSetupTask
           initiativeId={ctx.initiativeId}
           data={setupData.jira}
-          suggestedName={ctx.suggestedDriveName}
+          suggestedName={ctx.suggestedJiraName}
           boardUrl={ctx.jiraBoardUrl}
           onBoardUrlChange={ctx.onJiraBoardUrlChange}
           leadParty={ctx.leadParty}

@@ -1,5 +1,8 @@
 /** Client-safe validation types & helpers (no database imports). */
 
+import { suggestedJiraName } from "./integrations/jira-plan";
+export { suggestedJiraName };
+
 export type BusinessValueType = "speed" | "cost-efficiency" | "growth";
 
 /** Impact score 1–10 for a selected business value type. */
@@ -553,7 +556,7 @@ export function createDefaultSetupData(
   return {
     slack: { status: "pending", suggestedName: slug },
     drive: { status: "pending", suggestedName: suggestedDriveName(title, ticketId) },
-    jira: { status: "pending", suggestedName: suggestedDriveName(title, ticketId) },
+    jira: { status: "pending", suggestedName: suggestedJiraName(title, ticketId) },
     jiraPlanning: { status: "pending" },
     documentation: {
       status: "pending",

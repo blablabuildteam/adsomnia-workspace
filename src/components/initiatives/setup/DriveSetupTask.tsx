@@ -10,7 +10,7 @@ import {
   Loader2,
   HardDrive,
 } from "lucide-react";
-import type { DriveSetupData } from "@/lib/validation-data";
+import type { DriveFolderLink, DriveSetupData } from "@/lib/validation-data";
 import { inputClass } from "@/lib/form-styles";
 import {
   canCreateProjectDrive,
@@ -24,7 +24,11 @@ type Props = {
   driveUrl: string;
   onDriveUrlChange: (value: string) => void;
   readOnly?: boolean;
-  onComplete: (driveName: string, driveUrl?: string) => void;
+  onComplete: (
+    driveName: string,
+    driveUrl?: string,
+    folders?: DriveFolderLink[],
+  ) => void;
 };
 
 export function DriveSetupTask({
@@ -76,12 +80,18 @@ export function DriveSetupTask({
       setDriveName(created.name);
       onDriveUrlChange(created.url);
       setLoadedFolderName(created.name);
-      if (created.kind === "folder") {
+      if (created.folderError) {
         setInfo(
-          "Created a project folder in your Google Drive. Shared Drive creation is not available for this account.",
+          created.kind === "folder"
+            ? `Created a project folder in your Google Drive. ${created.folderError}`
+            : created.folderError,
+        );
+      } else if (created.kind === "folder") {
+        setInfo(
+          "Created a project folder in your Google Drive, including the recommended folders. Shared Drive creation is not available for this account.",
         );
       }
-      onComplete(created.name, created.url);
+      onComplete(created.name, created.url, created.folders);
       setEditing(false);
       setManualMode(false);
     } catch (err) {
@@ -186,8 +196,8 @@ export function DriveSetupTask({
     <div className="space-y-4">
       {!editing && (
         <p className="text-xs text-muted">
-          Create a Shared Drive for this project with your Google account. Use
-          the suggested name below or choose your own.
+          Create a Shared Drive for this project with your Google account. The
+          recommended folder structure is created in the same step.
         </p>
       )}
 
@@ -239,8 +249,8 @@ export function DriveSetupTask({
                 <HardDrive className="size-3.5" />
               )}
               {creating
-                ? "Creating Google Drive…"
-                : "Create Google Drive with my account"}
+                ? "Creating Drive and folders…"
+                : "Create Google Drive with folders"}
             </button>
           ) : (
             <p className="text-[11px] text-btr">

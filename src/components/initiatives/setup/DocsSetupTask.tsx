@@ -31,8 +31,8 @@ export function DocsSetupTask({
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted">
-        Create the recommended folder structure in the project Drive, then
-        confirm once the folders are in place.
+        Confirm the recommended folder structure in the project Drive. Creating
+        the Drive also creates these folders automatically.
       </p>
 
       <div className="border border-border bg-surface-elevated px-3 py-3">

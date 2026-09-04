@@ -252,6 +252,8 @@ export type CreatedProjectDrive = {
   name: string;
   url: string;
   kind: ProjectDriveKind;
+  folders: CreatedDriveFolder[];
+  folderError?: string;
 };
 
 async function createSharedDrive(
@@ -283,6 +285,7 @@ async function createSharedDrive(
     name: payload.name || name,
     url: driveFolderUrl(payload.id),
     kind: "shared_drive",
+    folders: [],
   };
 }
 
@@ -309,37 +312,12 @@ async function createRootFolder(
     name: payload.name || name,
     url: driveFolderUrl(payload.id),
     kind: "folder",
+    folders: [],
   };
 }
 
-/**
- * Creates a Shared Drive when the signed-in Workspace account allows it;
- * otherwise creates a project folder in that account's My Drive.
- */
-export async function createProjectDrive(
-  name: string,
-): Promise<CreatedProjectDrive> {
-  const trimmed = name.trim();
-  if (!trimmed) {
-    throw new Error("Drive name is required.");
-  }
-
-  const token = await getDriveAccessToken();
-
-  try {
-    return await createSharedDrive(token, trimmed);
-  } catch {
-    try {
-      return await createRootFolder(token, trimmed);
-    } catch (folderError) {
-      throw folderError instanceof Error
-        ? folderError
-        : new Error("Could not create a Google Drive for this project.");
-    }
-  }
-}
-
-export async function createRecommendedDriveFolders(
+async function ensureRecommendedFolders(
+  token: string,
   driveUrl: string,
 ): Promise<CreateDriveFoldersResult> {
   const folderId = parseGoogleDriveFolderId(driveUrl);
@@ -349,7 +327,6 @@ export async function createRecommendedDriveFolders(
     );
   }
 
-  const token = await getDriveAccessToken();
   const existing = await listChildFolders(token, folderId);
   const existingByName = new Map(existing.map((folder) => [folder.name, folder]));
 
@@ -378,4 +355,53 @@ export async function createRecommendedDriveFolders(
   }
 
   return { created, skipped, folders };
+}
+
+/**
+ * Creates a Shared Drive when the signed-in Workspace account allows it;
+ * otherwise creates a project folder in that account's My Drive.
+ * Recommended project folders are created in the same step (same Google token).
+ */
+export async function createProjectDrive(
+  name: string,
+): Promise<CreatedProjectDrive> {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error("Drive name is required.");
+  }
+
+  const token = await getDriveAccessToken();
+
+  let drive: CreatedProjectDrive;
+  try {
+    drive = await createSharedDrive(token, trimmed);
+  } catch {
+    try {
+      drive = await createRootFolder(token, trimmed);
+    } catch (folderError) {
+      throw folderError instanceof Error
+        ? folderError
+        : new Error("Could not create a Google Drive for this project.");
+    }
+  }
+
+  try {
+    const result = await ensureRecommendedFolders(token, drive.url);
+    return { ...drive, folders: result.folders };
+  } catch (error) {
+    return {
+      ...drive,
+      folderError:
+        error instanceof Error
+          ? error.message
+          : "Drive created, but the folder structure could not be created.",
+    };
+  }
+}
+
+export async function createRecommendedDriveFolders(
+  driveUrl: string,
+): Promise<CreateDriveFoldersResult> {
+  const token = await getDriveAccessToken();
+  return ensureRecommendedFolders(token, driveUrl);
 }

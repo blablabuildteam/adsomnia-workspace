@@ -19,8 +19,12 @@ import { createAndCompleteJiraBoard } from "@/app/(workspace)/workstreams/[id]/a
 import {
   JIRA_EPIC_COLOR_HEX,
   JIRA_EPIC_COLORS,
+  JIRA_ISSUE_SUMMARY_MAX,
+  JIRA_PROJECT_NAME_MAX,
   type JiraEpicColor,
   milestonesToEpicSeeds,
+  ticketIdToProjectKeyHint,
+  validateJiraProjectName,
 } from "@/lib/integrations/jira-plan";
 
 type JiraInstance = "adsomnia" | "btr" | "hn";
@@ -59,12 +63,23 @@ function seedsToEditable(
 ): EditableEpic[] {
   return milestonesToEpicSeeds(milestones ?? []).map((seed, index) => ({
     id: `epic-${index}-${seed.name}`,
-    name: seed.name,
+    name: seed.name.slice(0, JIRA_ISSUE_SUMMARY_MAX),
     startDate: seed.startDate ?? "",
     endDate: seed.endDate ?? "",
     description: seed.description,
     color: seed.color ?? JIRA_EPIC_COLORS[index % JIRA_EPIC_COLORS.length],
   }));
+}
+
+function CharCount({ value, max }: { value: string; max: number }) {
+  const n = value.length;
+  return (
+    <span
+      className={`text-[10px] tabular-nums ${n >= max ? "text-btr" : "text-muted"}`}
+    >
+      {n}/{max}
+    </span>
+  );
 }
 
 type Props = {
@@ -97,10 +112,19 @@ export function JiraSetupTask({
   onComplete,
 }: Props) {
   const router = useRouter();
-  const suggestion = suggestedName || data.suggestedName || "";
+  const suggestion = (suggestedName || data.suggestedName || "").slice(
+    0,
+    JIRA_PROJECT_NAME_MAX,
+  );
   const savedUrl = data.boardUrl || data.projectUrl || "";
-  const savedName = data.projectName || suggestion;
-  const [spaceTitle, setSpaceTitle] = useState(data.projectName || suggestion);
+  const savedName = (data.projectName || suggestion).slice(
+    0,
+    JIRA_PROJECT_NAME_MAX,
+  );
+  const [spaceTitle, setSpaceTitle] = useState(savedName);
+  const projectKeyHint = ticketId
+    ? ticketIdToProjectKeyHint(ticketId)
+    : "";
   const [epics, setEpics] = useState<EditableEpic[]>(() =>
     seedsToEditable(milestones),
   );
@@ -167,9 +191,17 @@ export function JiraSetupTask({
   };
 
   const handleCreate = async () => {
-    const name = spaceTitle.trim() || suggestion;
+    const name = (spaceTitle.trim() || suggestion).slice(
+      0,
+      JIRA_PROJECT_NAME_MAX,
+    );
     if (!name) {
       setError("Space title is required.");
+      return;
+    }
+    const nameError = validateJiraProjectName(name);
+    if (nameError) {
+      setError(nameError);
       return;
     }
     if (!target) {
@@ -178,7 +210,7 @@ export function JiraSetupTask({
     }
     const readyEpics = epics
       .map((epic) => ({
-        name: epic.name.trim(),
+        name: epic.name.trim().slice(0, JIRA_ISSUE_SUMMARY_MAX),
         description: epic.description,
         startDate: epic.startDate || undefined,
         endDate: epic.endDate || undefined,
@@ -239,7 +271,10 @@ export function JiraSetupTask({
     setError(null);
     onComplete({
       boardUrl: url,
-      projectName: spaceTitle.trim() || suggestion,
+      projectName: (spaceTitle.trim() || suggestion).slice(
+        0,
+        JIRA_PROJECT_NAME_MAX,
+      ),
     });
     setEditing(false);
     setManualMode(false);
@@ -276,7 +311,9 @@ export function JiraSetupTask({
           <button
             type="button"
             onClick={() => {
-              setSpaceTitle(view.projectName || savedName);
+              setSpaceTitle(
+                (view.projectName || savedName).slice(0, JIRA_PROJECT_NAME_MAX),
+              );
               onBoardUrlChange(view.boardUrl || savedUrl);
               setError(null);
               setInfo(null);
@@ -306,11 +343,11 @@ export function JiraSetupTask({
           Create Jira for this workstream
           {partnerLabel ? ` on ${partnerLabel}` : ""}. Review the recommended
           space title and epics before creating
-          {ticketId ? (
+          {projectKeyHint ? (
             <>
               {" "}
-              — project key will be based on{" "}
-              <span className="font-mono text-foreground">{ticketId}</span>
+              — project key will be{" "}
+              <span className="font-mono text-foreground">{projectKeyHint}</span>
             </>
           ) : null}
           .
@@ -348,17 +385,21 @@ export function JiraSetupTask({
 
       <div>
         <label className="block">
-          <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-            Space title<span className="ml-1 text-btr">*</span>
+          <span className="flex items-baseline justify-between gap-3">
+            <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+              Space title<span className="ml-1 text-btr">*</span>
+            </span>
+            <CharCount value={spaceTitle} max={JIRA_PROJECT_NAME_MAX} />
           </span>
           <div className="mt-1 flex items-stretch gap-2">
             <input
               type="text"
               value={spaceTitle}
               onChange={(e) => {
-                setSpaceTitle(e.target.value);
+                setSpaceTitle(e.target.value.slice(0, JIRA_PROJECT_NAME_MAX));
                 setError(null);
               }}
+              maxLength={JIRA_PROJECT_NAME_MAX}
               className={`${inputClass} flex-1`}
               placeholder={suggestion}
               disabled={creating}
@@ -381,6 +422,11 @@ export function JiraSetupTask({
           <p className="mt-1 text-[10px] text-muted">
             Recommended from {ticketId ? `${ticketId} · ` : ""}the workstream
             title
+          </p>
+        )}
+        {spaceTitle.length >= JIRA_PROJECT_NAME_MAX && (
+          <p className="mt-1 text-[10px] text-btr">
+            Jira allows {JIRA_PROJECT_NAME_MAX} characters for a space title.
           </p>
         )}
       </div>
@@ -430,16 +476,29 @@ export function JiraSetupTask({
                       <Trash2 className="size-3" />
                     </button>
                   </div>
-                  <input
-                    type="text"
-                    value={epic.name}
-                    onChange={(e) =>
-                      updateEpic(epic.id, { name: e.target.value })
-                    }
-                    placeholder="Epic name"
-                    disabled={creating}
-                    className="w-full border-b border-border bg-transparent px-0 py-1 text-sm text-foreground placeholder:text-muted/40 focus:border-muted focus:outline-none disabled:opacity-40"
-                  />
+                  <div>
+                    <input
+                      type="text"
+                      value={epic.name}
+                      onChange={(e) =>
+                        updateEpic(epic.id, {
+                          name: e.target.value.slice(0, JIRA_ISSUE_SUMMARY_MAX),
+                        })
+                      }
+                      maxLength={JIRA_ISSUE_SUMMARY_MAX}
+                      placeholder="Epic name"
+                      disabled={creating}
+                      className="w-full border-b border-border bg-transparent px-0 py-1 text-sm text-foreground placeholder:text-muted/40 focus:border-muted focus:outline-none disabled:opacity-40"
+                    />
+                    {epic.name.length >= 200 && (
+                      <div className="mt-1 text-right">
+                        <CharCount
+                          value={epic.name}
+                          max={JIRA_ISSUE_SUMMARY_MAX}
+                        />
+                      </div>
+                    )}
+                  </div>
                   <fieldset className="space-y-1.5">
                     <legend className="font-display text-[9px] font-bold uppercase tracking-wide text-muted">
                       Color

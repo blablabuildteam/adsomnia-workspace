@@ -1,3 +1,51 @@
+/** Jira Cloud Create project: name is 2–80 characters. */
+export const JIRA_PROJECT_NAME_MIN = 2;
+export const JIRA_PROJECT_NAME_MAX = 80;
+
+/** Jira Cloud project keys: 2–10 letters/digits, must start with a letter. */
+export const JIRA_PROJECT_KEY_MIN = 2;
+export const JIRA_PROJECT_KEY_MAX = 10;
+
+/** Jira issue summary (epic title) maximum. */
+export const JIRA_ISSUE_SUMMARY_MAX = 255;
+
+export function suggestedJiraName(title: string, ticketId: string): string {
+  const trimmedTitle = title.trim();
+  const suffix = ticketId.trim() ? ` - ${ticketId.trim()}` : "";
+  const combined = `${trimmedTitle}${suffix}`;
+  if (combined.length <= JIRA_PROJECT_NAME_MAX) return combined;
+  const titleBudget = Math.max(
+    JIRA_PROJECT_NAME_MIN,
+    JIRA_PROJECT_NAME_MAX - suffix.length,
+  );
+  return `${trimmedTitle.slice(0, titleBudget).trimEnd()}${suffix}`.slice(
+    0,
+    JIRA_PROJECT_NAME_MAX,
+  );
+}
+
+export function clampJiraProjectName(name: string): string {
+  return name.trim().slice(0, JIRA_PROJECT_NAME_MAX);
+}
+
+export function validateJiraProjectName(name: string): string | null {
+  const trimmed = name.trim();
+  if (trimmed.length < JIRA_PROJECT_NAME_MIN) {
+    return `Space title must be at least ${JIRA_PROJECT_NAME_MIN} characters (Jira limit).`;
+  }
+  if (trimmed.length > JIRA_PROJECT_NAME_MAX) {
+    return `Space title must be ${JIRA_PROJECT_NAME_MAX} characters or fewer (Jira limit).`;
+  }
+  return null;
+}
+
+/** Jira project keys: 2–10 letters/digits, must start with a letter. */
+export function ticketIdToProjectKeyHint(ticketId: string): string {
+  const compact = ticketId.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const keyed = compact.replace(/^[^A-Z]+/, "") || "WS";
+  return keyed.slice(0, JIRA_PROJECT_KEY_MAX);
+}
+
 export const JIRA_EPIC_COLORS = [
   "blue",
   "green",
@@ -108,7 +156,9 @@ export function milestonesToEpicSeeds(
   >();
 
   for (const row of milestones) {
-    const name = (row.epic ?? "").trim() || (row.milestone ?? "").trim();
+    const name = (
+      (row.epic ?? "").trim() || (row.milestone ?? "").trim()
+    ).slice(0, JIRA_ISSUE_SUMMARY_MAX);
     if (!name) continue;
     const note = (row.milestone ?? "").trim();
     const existing = byName.get(name);
@@ -155,7 +205,7 @@ export function sanitizeEpicSeeds(raw: unknown): JiraEpicSeed[] {
     const description =
       typeof rec.description === "string" ? rec.description.trim() : "";
     seeds.push({
-      name: name.slice(0, 255),
+      name: name.slice(0, JIRA_ISSUE_SUMMARY_MAX),
       description: description || undefined,
       startDate: toIsoDate(
         typeof rec.startDate === "string" ? rec.startDate : undefined,

@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, canManageSetup } from "@/lib/session";
 import {
+  clampJiraProjectName,
   createProject,
   getProjectUrl,
+  validateJiraProjectName,
   type JiraInstance,
 } from "@/lib/integrations/jira";
 
@@ -28,10 +30,16 @@ export async function POST(request: Request) {
     );
   }
 
+  const projectName = clampJiraProjectName(name);
+  const nameError = validateJiraProjectName(projectName);
+  if (nameError) {
+    return NextResponse.json({ error: nameError }, { status: 400 });
+  }
+
   try {
     const result = await createProject(instance, {
       key,
-      name,
+      name: projectName,
       description,
       template,
     });

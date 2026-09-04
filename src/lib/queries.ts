@@ -27,6 +27,7 @@ export type {
   SetupData,
   SetupTaskId,
   SetupTaskStatus,
+  DriveFolderLink,
   OnboardingData,
   OnboardingTaskId,
 } from "@/lib/validation-data";

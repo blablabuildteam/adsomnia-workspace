@@ -24,6 +24,8 @@ const SYNC_KEYS = [
   "GOOGLE_LOGIN_CLIENT_ID",
   "GOOGLE_LOGIN_CLIENT_SECRET",
   "GOOGLE_ALLOWED_DOMAINS",
+  "NEXT_PUBLIC_GOOGLE_CLIENT_ID",
+  "NEXT_PUBLIC_GOOGLE_API_KEY",
   "JIRA_ADSOMNIA_HOST",
   "JIRA_ADSOMNIA_EMAIL",
   "JIRA_ADSOMNIA_API_TOKEN",
@@ -224,8 +226,17 @@ async function main() {
       );
 
       if (match) {
-        await updateEnvVar(token, projectId, teamId, match.id, key, value, target);
-        console.log(`Updated ${key} (${target})`);
+        try {
+          await updateEnvVar(token, projectId, teamId, match.id, key, value, target);
+          console.log(`Updated ${key} (${target})`);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (message.includes("cannot change the type")) {
+            console.warn(`Skipped ${key} (${target}) — ${message}`);
+            continue;
+          }
+          throw error;
+        }
       } else {
         await createEnvVar(token, projectId, teamId, key, value, target);
         console.log(`Created ${key} (${target})`);
