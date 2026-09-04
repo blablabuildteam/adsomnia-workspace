@@ -8,9 +8,11 @@ import {
   CalendarRange,
   Filter,
   LayoutList,
+  Plus,
   RefreshCw,
 } from "lucide-react";
 import { refreshProductionOverview } from "@/app/(workspace)/pipeline/production/actions";
+import { AddProductionProjectModal } from "@/components/production/AddProductionProjectModal";
 import { ProductionDetailDrawer } from "@/components/production/ProductionDetailDrawer";
 import { ProductionProjectCard } from "@/components/production/ProductionProjectCard";
 import { ProductionTimelineView } from "@/components/production/ProductionTimelineView";
@@ -43,6 +45,7 @@ type Props = {
   archived: ProductionProject[];
   canArchive: boolean;
   canAdjustPriority: boolean;
+  canAddProject: boolean;
 };
 
 export function ProductionOverview({
@@ -50,6 +53,7 @@ export function ProductionOverview({
   archived,
   canArchive,
   canAdjustPriority,
+  canAddProject,
 }: Props) {
   const router = useRouter();
   const [layout, setLayout] = useState<LayoutMode>("timeline");
@@ -58,6 +62,7 @@ export function ProductionOverview({
   const [leadPartyFilter, setLeadPartyFilter] =
     useState<ProductionLeadParty | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
   const [refreshing, startRefresh] = useTransition();
 
   const counts = useMemo(() => {
@@ -232,6 +237,16 @@ export function ProductionOverview({
         </div>
 
         <div className="flex items-center gap-2">
+          {canAddProject && !archiveView && (
+            <button
+              type="button"
+              onClick={() => setAddOpen(true)}
+              className="inline-flex items-center gap-1.5 border border-foreground bg-foreground px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90"
+            >
+              <Plus className="size-3.5" />
+              Add project
+            </button>
+          )}
           <div className="flex border border-border">
             <button
               type="button"
@@ -292,7 +307,9 @@ export function ProductionOverview({
               {archiveView
                 ? "No archived production projects yet."
                 : projects.length === 0
-                  ? "No workstreams are in Production yet. Complete Onboarding to land a project here."
+                  ? canAddProject
+                    ? "No workstreams are in Production yet. Add a project here, or complete Onboarding to land one from the pipeline."
+                    : "No workstreams are in Production yet. Complete Onboarding to land a project here."
                   : "No projects match the current filters."}
             </p>
           </div>
@@ -337,6 +354,19 @@ export function ProductionOverview({
         }}
         onPriorityUpdated={() => router.refresh()}
       />
+
+      {canAddProject && (
+        <AddProductionProjectModal
+          open={addOpen}
+          onClose={() => setAddOpen(false)}
+          onCreated={(id) => {
+            setAddOpen(false);
+            setArchiveView(false);
+            setSelectedId(id);
+            router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

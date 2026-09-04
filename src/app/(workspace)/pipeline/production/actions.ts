@@ -5,6 +5,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { activityLog, initiatives } from "@/db/schema";
 import {
+  getInstanceLabel,
   getJiraProject,
   resolveJiraSpaceForLeadParty,
 } from "@/lib/integrations/jira";
@@ -210,11 +211,16 @@ export async function createManualProductionProject(
   try {
     projectMeta = await getJiraProject(resolved.instance, resolved.projectKey);
   } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (/404|not found|does not exist/i.test(message)) {
+      return {
+        error: `Jira space ${resolved.projectKey} was not found on the ${getInstanceLabel(resolved.instance)} site.`,
+      };
+    }
     return {
       error:
-        error instanceof Error
-          ? error.message
-          : `Could not find Jira space ${resolved.projectKey} on that lead party's site.`,
+        message ||
+        `Could not open Jira space ${resolved.projectKey} on the ${getInstanceLabel(resolved.instance)} site.`,
     };
   }
 

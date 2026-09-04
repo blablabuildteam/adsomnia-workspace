@@ -21,6 +21,7 @@ export default async function PipelineProductionPage() {
       archived={data.archived}
       canArchive={Boolean(user && canManageOnboarding(user))}
       canAdjustPriority={Boolean(user && canAdjustProductionPriority(user))}
+      canAddProject={Boolean(user && canAddProductionProject(user))}
     />
   );
 }

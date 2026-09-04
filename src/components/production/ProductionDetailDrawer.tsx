@@ -78,10 +78,12 @@ function ToolIcon({
   logo,
   label,
   href,
+  present,
 }: {
   logo: string;
   label: string;
   href?: string;
+  present?: boolean;
 }) {
   const icon = (
     // eslint-disable-next-line @next/next/no-img-element
@@ -100,6 +102,18 @@ function ToolIcon({
       >
         {icon}
       </a>
+    );
+  }
+
+  if (present) {
+    return (
+      <span
+        title={label}
+        aria-label={label}
+        className="inline-flex size-8 items-center justify-center border border-border text-foreground"
+      >
+        {icon}
+      </span>
     );
   }
 
@@ -367,9 +381,11 @@ export function ProductionDetailDrawer({
   setArchiveError(null);
   setPriority(project.brief.consensusPriority);
   setPriorityError(null);
-    loadProductionJourney(project.id).then((rows) => {
-      if (!cancelled) setJourney(rows);
-    });
+    if (!project.addedManually) {
+      loadProductionJourney(project.id).then((rows) => {
+        if (!cancelled) setJourney(rows);
+      });
+    }
     return () => {
       cancelled = true;
     };
@@ -490,7 +506,7 @@ export function ProductionDetailDrawer({
             </button>
           </div>
 
-          <div className="mt-4 flex items-center gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             {TOOL_ORDER.map((tool) => {
               const linked = project.tools[tool.key];
               return (
@@ -499,9 +515,15 @@ export function ProductionDetailDrawer({
                   logo={tool.logo}
                   label={linked?.label ?? tool.fallback}
                   href={linked?.href}
+                  present={Boolean(linked)}
                 />
               );
             })}
+            {project.tools.slack?.label && !project.tools.slack.href && (
+              <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+                {project.tools.slack.label}
+              </span>
+            )}
           </div>
         </div>
 
@@ -523,57 +545,76 @@ export function ProductionDetailDrawer({
             )}
           </section>
 
-          <div className="mt-8">
-            <ProductionBriefHero
-              brief={{
-                ...project.brief,
-                consensusPriority:
-                  priority ?? project.brief.consensusPriority,
-              }}
-            />
-          </div>
+          {!project.addedManually && (
+            <div className="mt-8">
+              <ProductionBriefHero
+                brief={{
+                  ...project.brief,
+                  consensusPriority:
+                    priority ?? project.brief.consensusPriority,
+                }}
+              />
+            </div>
+          )}
 
           <section className="mt-8">
-            <h3 className="font-display mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
-              Pipeline journey
-            </h3>
-            <ol className="space-y-0">
-              {(journey ??
-                STAGES.map(
-                  (stage): JourneyStage => ({
-                    id: stage.id as JourneyStage["id"],
-                    label: stage.name,
-                  }),
-                )).map((stage, index, rows) => {
-                const reached =
-                  Boolean(stage.enteredAt) || stage.id === "production";
-                const color = getStageColor(stage.id);
-                const last = index === rows.length - 1;
-                return (
-                  <li key={stage.id} className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <span
-                        className="size-2.5 shrink-0 border"
-                        style={{
-                          borderColor: color,
-                          backgroundColor: reached ? color : "transparent",
-                        }}
-                      />
-                      {!last && <span className="w-px flex-1 bg-border" />}
-                    </div>
-                    <div className={last ? "pb-0" : "pb-4"}>
-                      <p className="text-sm font-medium">{stage.label}</p>
-                      <p className="text-[11px] text-muted">
-                        {formatJourneyDate(stage.enteredAt) ??
-                          (stage.id === "production"
-                            ? "In production"
-                            : "Not recorded")}
-                      </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
+            {project.addedManually ? (
+              <div className="border border-border bg-white/[0.02] px-4 py-4">
+                <h3 className="font-display mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
+                  Added manually
+                </h3>
+                <p className="text-sm leading-relaxed text-muted">
+                  This project was added from Production and did not go through
+                  the pipeline.
+                  {project.addedAt
+                    ? ` Added ${formatJourneyDate(project.addedAt)}.`
+                    : ""}
+                </p>
+              </div>
+            ) : (
+              <>
+                <h3 className="font-display mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
+                  Pipeline journey
+                </h3>
+                <ol className="space-y-0">
+                  {(journey ??
+                    STAGES.map(
+                      (stage): JourneyStage => ({
+                        id: stage.id as JourneyStage["id"],
+                        label: stage.name,
+                      }),
+                    )).map((stage, index, rows) => {
+                    const reached =
+                      Boolean(stage.enteredAt) || stage.id === "production";
+                    const color = getStageColor(stage.id);
+                    const last = index === rows.length - 1;
+                    return (
+                      <li key={stage.id} className="flex gap-3">
+                        <div className="flex flex-col items-center">
+                          <span
+                            className="size-2.5 shrink-0 border"
+                            style={{
+                              borderColor: color,
+                              backgroundColor: reached ? color : "transparent",
+                            }}
+                          />
+                          {!last && <span className="w-px flex-1 bg-border" />}
+                        </div>
+                        <div className={last ? "pb-0" : "pb-4"}>
+                          <p className="text-sm font-medium">{stage.label}</p>
+                          <p className="text-[11px] text-muted">
+                            {formatJourneyDate(stage.enteredAt) ??
+                              (stage.id === "production"
+                                ? "In production"
+                                : "Not recorded")}
+                          </p>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </>
+            )}
             <Link
               href={`/workstreams/${project.id}`}
               className="mt-5 inline-flex w-full items-center justify-center gap-2 border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90"
@@ -608,6 +649,7 @@ export function ProductionDetailDrawer({
             )}
           </section>
 
+          {!project.addedManually && (
           <section className="mt-8">
             <button
               type="button"
@@ -685,6 +727,7 @@ export function ProductionDetailDrawer({
               </div>
             )}
           </section>
+          )}
         </div>
       </aside>
 

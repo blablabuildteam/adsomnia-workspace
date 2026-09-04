@@ -31,6 +31,7 @@ import {
   createDefaultOnboardingData,
   getOnboardingProgress,
   getSetupProgress,
+  isManualProductionProject,
 } from "@/lib/validation-data";
 
 const STAGE_INDEX: Record<string, number> = {};
@@ -337,6 +338,13 @@ export function InitiativeDetailView({
   const onboardingReady =
     onboardingIsCurrent && getOnboardingProgress(onboardingData).allDone;
 
+  const addedManually = isManualProductionProject(initiative.setupData);
+  const addedManuallyOn = initiative.setupData?.addedAt
+    ? new Date(initiative.setupData.addedAt).toLocaleDateString("en-US", {
+        dateStyle: "medium",
+      })
+    : null;
+
   const currentPhaseBarStatus: "current" | "review" | "ready" | null =
     goNoGoIsCurrent
       ? goNoGoStatus === "review"
@@ -387,7 +395,21 @@ export function InitiativeDetailView({
           </div>
         </header>
 
-        {/* Quick View — grows as phases fill */}
+        {addedManually ? (
+          <div
+            className={`mb-8 border border-border bg-surface px-5 py-5 ${ENTER_CLASS}`}
+            style={enterStyle(70)}
+          >
+            <p className="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
+              Added manually
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-muted">
+              This project was added from Production and did not go through the
+              pipeline.
+              {addedManuallyOn ? ` Added ${addedManuallyOn}.` : ""}
+            </p>
+          </div>
+        ) : (
         <DetailsQuickView
           className={ENTER_CLASS}
           style={enterStyle(70)}
@@ -403,6 +425,7 @@ export function InitiativeDetailView({
               : null
           }
         />
+        )}
 
         <div id="detail-header-sentinel" aria-hidden="true" />
 
@@ -412,6 +435,7 @@ export function InitiativeDetailView({
           </div>
         )}
 
+        {!addedManually && (
         <div className="space-y-6">
             <PhaseCard
               stageId="idea"
@@ -615,6 +639,7 @@ export function InitiativeDetailView({
               </PhaseCard>
             )}
         </div>
+        )}
 
       </div>
       {showChat && (
@@ -628,7 +653,7 @@ export function InitiativeDetailView({
           dockAbovePhaseBar={currentNum >= 4}
         />
       )}
-      {currentNum >= 4 && currentPhaseBarStatus && (
+      {!addedManually && currentNum >= 4 && currentPhaseBarStatus && (
         <CurrentPhaseBar
           stageId={initiative.currentStage}
           stageNumber={stage?.number ?? currentNum}

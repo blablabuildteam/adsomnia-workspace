@@ -130,6 +130,7 @@ async function toProductionProject(
     item.setupData?.slack?.channelUrl;
   const slackName = item.setupData?.slack?.channelName?.replace(/^#/, "");
   const driveHref = item.setupData?.drive?.driveUrl;
+  const addedManually = isManualProductionProject(item.setupData);
   const base: ProductionProject = {
     id: item.id,
     ticketId: item.ticketId,
@@ -164,8 +165,8 @@ async function toProductionProject(
           }
         : undefined,
     },
-    addedManually: isManualProductionProject(item.setupData),
-    addedAt: isManualProductionProject(item.setupData)
+    addedManually,
+    addedAt: addedManually
       ? item.setupData?.addedAt ?? item.createdAt.toISOString()
       : undefined,
     epics: [],
