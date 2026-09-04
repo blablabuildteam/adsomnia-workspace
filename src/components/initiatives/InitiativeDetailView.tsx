@@ -4,6 +4,7 @@ import { STAGES, getStageColor, type WorkflowStage } from "@/data/workflow";
 import type {
   InitiativeWithUsers,
   CommentEntry,
+  MentionPerson,
 } from "@/lib/queries";
 import { ApprovalPanel, type ApprovalDecision } from "./ApprovalPanel";
 import {
@@ -127,6 +128,7 @@ function StageStepper({ currentStageId }: { currentStageId: string }) {
 type Props = {
   initiative: InitiativeWithUsers;
   comments: CommentEntry[];
+  mentionablePeople?: MentionPerson[];
   canUserApprove: boolean;
   canComment: boolean;
   currentUserName: string;
@@ -148,6 +150,7 @@ type Props = {
 export function InitiativeDetailView({
   initiative,
   comments,
+  mentionablePeople = [],
   canUserApprove,
   canComment,
   currentUserName,
@@ -618,6 +621,7 @@ export function InitiativeDetailView({
         <WorkstreamChat
           initiativeId={initiative.id}
           comments={comments}
+          mentionablePeople={mentionablePeople}
           currentUserName={currentUserName}
           currentUserId={currentUserId}
           canComment={canComment}

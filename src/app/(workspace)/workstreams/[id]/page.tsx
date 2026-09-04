@@ -4,6 +4,7 @@ import {
   getInitiativeById,
   getCommentsForInitiative,
   getApprovalHistory,
+  getMentionablePeople,
 } from "@/lib/queries";
 import {
   getCurrentUser,
@@ -47,9 +48,10 @@ export default async function InitiativePage({ params }: Props) {
     );
   }
 
-  const [comments, approvals] = await Promise.all([
+  const [comments, approvals, mentionablePeople] = await Promise.all([
     getCommentsForInitiative(initiative.id),
     getApprovalHistory(initiative.id),
+    getMentionablePeople(),
   ]);
   const canUserApprove = user ? canApprove(user) : false;
   const canUserManageSetup = user ? canManageSetup(user) : false;
@@ -93,6 +95,7 @@ export default async function InitiativePage({ params }: Props) {
     <InitiativeDetailView
       initiative={initiative}
       comments={comments}
+      mentionablePeople={mentionablePeople}
       canUserApprove={canUserApprove}
       canComment={!!user}
       currentUserName={user ? displayName(user) : "Unknown"}

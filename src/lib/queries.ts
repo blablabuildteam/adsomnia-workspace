@@ -6,7 +6,8 @@ import {
   activityLog,
   comments,
 } from "@/db/schema";
-import { eq, desc, count, inArray, isNull } from "drizzle-orm";
+import { eq, desc, asc, count, inArray, isNull } from "drizzle-orm";
+import { displayName } from "@/lib/session";
 import type {
   ValidationData,
   ScopingData,
@@ -304,6 +305,39 @@ export async function getCommentsForInitiative(
     .innerJoin(users, eq(comments.userId, users.id))
     .where(eq(comments.initiativeId, initiativeId))
     .orderBy(desc(comments.createdAt));
+}
+
+export type MentionPerson = {
+  id: string;
+  handle: string;
+  firstName: string | null;
+  lastName: string | null;
+  jobTitle: string | null;
+};
+
+/** Workspace accounts that can be @mentioned in workstream chat. */
+export async function getMentionablePeople(): Promise<MentionPerson[]> {
+  const rows = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      jobTitle: users.jobTitle,
+    })
+    .from(users)
+    .orderBy(asc(users.name));
+
+  return rows
+    .map((row) => ({
+      id: row.id,
+      handle: displayName(row),
+      firstName: row.firstName,
+      lastName: row.lastName,
+      jobTitle: row.jobTitle,
+    }))
+    .filter((person) => person.handle.length > 0)
+    .sort((a, b) => a.handle.localeCompare(b.handle, "en"));
 }
 
 /**
