@@ -66,6 +66,7 @@ The app requests permission to:
 - Invite people into those channels  
 - Post a short message in the new channel  
 - (Later) add bookmarks such as Drive or Jira links  
+- Look up members by email and send a direct message when leadership leaves feedback or a workstream advances  
 
 It does **not** need access to read your full message history for this setup.
 

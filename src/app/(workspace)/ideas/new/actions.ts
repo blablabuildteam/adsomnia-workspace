@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { initiatives, activityLog, users } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, or, sql } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/session";
 import { canSubmitInitiative } from "@/lib/permissions";
 import { readIdeaFields, validateIdeaFields } from "@/lib/field-limits";
@@ -48,7 +48,7 @@ export async function submitIdea(
   const [sponsor] = await db
     .select({ id: users.id })
     .from(users)
-    .where(eq(users.name, sponsorName))
+    .where(or(eq(users.firstName, sponsorName), eq(users.name, sponsorName)))
     .limit(1);
 
   if (!sponsor) {

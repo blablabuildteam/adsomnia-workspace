@@ -23,6 +23,9 @@ Later, Google login only changes how Adsomnia knows who you are; the Slack link 
    - `groups:read`
    - `chat:write`
    - `bookmarks:write` (channel bookmarks for Drive / Jira links)
+   - `im:write` (submitter DMs)
+   - `users:read`
+   - `users:read.email` (resolve submitter by Workspace email)
 4. **Redirect URL** (HTTPS required — Slack rejects `http://localhost`):
    - Production: `https://adsomnia-workspace.vercel.app/api/integrations/slack/oauth/callback`
    - Local Slack OAuth: `https://localhost:3000/api/integrations/slack/oauth/callback` — only when running `npm run dev:https`. Default `npm run dev` is HTTP, so Connect Slack will not work locally.
@@ -37,6 +40,7 @@ No Slack app setting changes are required for per-user linking beyond the scopes
 | `SLACK_CLIENT_ID` | Server | Slack app Client ID |
 | `SLACK_CLIENT_SECRET` | Server | Slack app Client Secret |
 | `SLACK_SIGNING_SECRET` | Server | Reserved for future request verification |
+| `SLACK_NOTIFICATIONS_TEAM_ID` | Server | Home Slack workspace `team_id` for submitter DMs (blablabuild now; Adsomnia later) |
 | `NEXT_PUBLIC_APP_URL` | Public | App origin used to build the OAuth redirect URI (no trailing slash) |
 
 Example `.env.local` entries:
@@ -46,7 +50,10 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 SLACK_CLIENT_ID=
 SLACK_CLIENT_SECRET=
 SLACK_SIGNING_SECRET=
+SLACK_NOTIFICATIONS_TEAM_ID=
 ```
+
+`SLACK_NOTIFICATIONS_TEAM_ID` is the Slack `team_id` already stored on `slack_workspaces` after Connect. DMs go only to that workspace; client Slack installs stay for channel creation. After adding DM scopes, **Reconnect Slack** once so the stored bot token picks them up.
 
 On Vercel, production/preview should use `https://adsomnia-workspace.vercel.app` for `NEXT_PUBLIC_APP_URL`.
 
@@ -77,11 +84,43 @@ The tool creates the channel, invites you, stores ids/urls on `setupData.slack`,
 - The sidebar often shows only channels you have **joined**. Use **Browse channels** (or the channel deep link from Project Setup) to find a new public channel if you were not invited yet.
 - Private channels are invisible until you are invited — that is why per-user Connect + invite matters.
 
+## Submitter notifications
+
+The bot DMs the initiative **submitter** on the home workspace (`SLACK_NOTIFICATIONS_TEAM_ID`) after leadership leaves a remark or the workstream advances. Resolution: `users.email` via `users.lookupByEmail`, with `slack_user_links` as fallback. The actor is skipped when they are the submitter. Slack errors never fail the approval.
+
+**Feedback / decision remark**
+
+- Initiative: feedback, reject, on hold
+- Validation: feedback, reject, on hold
+- Go/No-Go: feedback, reject
+- Fast-Track conversion
+
+**Phase advanced**
+
+- Initiative → Validation
+- Validation → Scoping
+- Go/No-Go → Project Setup
+- Project Setup → Onboarding & Kickoff
+- Onboarding → Production & Reporting
+
+Submitter-driven submits and informal comments are not notified.
+
+Each DM includes ticket id, title, remark (when present), actor name, and a button to `/workstreams/{id}`.
+
 ## Switch to a client Slack later
 
 1. Client Slack admin installs the **same** Slack app (OAuth).
 2. A new row appears in `slack_workspaces`.
 3. Each creator Connects once for that workspace, then picks it when creating channels.
+
+## Move notifications to Adsomnia Slack later
+
+Code does not assume who owns the Slack app. Switching environments is env + reconnect:
+
+1. Recreate the same app under Adsomnia’s Slack developer account (same scopes + redirect URLs above).
+2. Swap `SLACK_CLIENT_ID` / `SLACK_CLIENT_SECRET` / `SLACK_SIGNING_SECRET`.
+3. Reconnect Slack so `slack_workspaces` gets their bot token.
+4. Point `SLACK_NOTIFICATIONS_TEAM_ID` at the Adsomnia team id.
 
 ## Out of scope (v1)
 

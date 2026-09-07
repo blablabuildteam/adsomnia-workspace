@@ -8,6 +8,7 @@ import { activityLog, initiatives } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { canApprove } from "@/lib/permissions";
 import { createFastTrackIssue } from "@/lib/integrations/jira";
+import { notifySubmitter } from "@/lib/integrations/slack-notify";
 import type { ApprovalResult } from "@/app/(workspace)/workstreams/[id]/actions";
 
 export async function convertToFastTrack(
@@ -94,6 +95,15 @@ export async function convertToFastTrack(
       jiraKey: created.key,
       jiraUrl: created.url,
     },
+  });
+
+  await notifySubmitter({
+    initiativeId,
+    actorUserId: user.id,
+    actorName: user.name,
+    kind: "feedback",
+    remark: comment,
+    headline: "moved this initiative to Fast-Track",
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);

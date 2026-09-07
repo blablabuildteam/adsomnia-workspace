@@ -55,6 +55,7 @@ import {
   createChannel,
   sanitizeChannelName,
 } from "@/lib/integrations/slack";
+import { notifySubmitter } from "@/lib/integrations/slack-notify";
 import {
   clampJiraProjectName,
   createEpics,
@@ -382,6 +383,16 @@ export async function approveToValidation(
     },
   });
 
+  await notifySubmitter({
+    initiativeId,
+    actorUserId: user.id,
+    actorName: user.name,
+    kind: "advanced",
+    remark: comment,
+    fromStage: "Initiative",
+    toStage: "Validation",
+  });
+
   revalidatePath(`/workstreams/${initiativeId}`);
   revalidatePath("/pipeline/initiatives");
   revalidatePath("/pipeline/validation");
@@ -431,6 +442,15 @@ export async function rejectInitiative(
     userId: user.id,
     action: "idea_rejected",
     details: { comment, approver: user.name },
+  });
+
+  await notifySubmitter({
+    initiativeId,
+    actorUserId: user.id,
+    actorName: user.name,
+    kind: "feedback",
+    remark: comment,
+    headline: "rejected this initiative",
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
@@ -483,6 +503,15 @@ export async function putOnHold(
     details: { comment, approver: user.name },
   });
 
+  await notifySubmitter({
+    initiativeId,
+    actorUserId: user.id,
+    actorName: user.name,
+    kind: "feedback",
+    remark: comment,
+    headline: "put this initiative on hold",
+  });
+
   revalidatePath(`/workstreams/${initiativeId}`);
   revalidatePath("/pipeline/initiatives");
   revalidatePath("/dashboard");
@@ -532,6 +561,15 @@ export async function requestIdeaFeedback(
     userId: user.id,
     action: "idea_feedback",
     details: { comment, approver: user.name },
+  });
+
+  await notifySubmitter({
+    initiativeId,
+    actorUserId: user.id,
+    actorName: user.name,
+    kind: "feedback",
+    remark: comment,
+    headline: "sent this back with feedback",
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
@@ -599,6 +637,33 @@ async function recordValidationDecision(
     action: opts.action,
     details: { comment, approver: user.name },
   });
+
+  if (opts.decision === "approved") {
+    await notifySubmitter({
+      initiativeId,
+      actorUserId: user.id,
+      actorName: user.name,
+      kind: "advanced",
+      remark: comment,
+      fromStage: "Validation",
+      toStage: "Scoping",
+    });
+  } else {
+    const headline =
+      opts.decision === "feedback"
+        ? "sent this back with feedback"
+        : opts.decision === "rejected"
+          ? "rejected this initiative"
+          : "put this initiative on hold";
+    await notifySubmitter({
+      initiativeId,
+      actorUserId: user.id,
+      actorName: user.name,
+      kind: "feedback",
+      remark: comment,
+      headline,
+    });
+  }
 
   revalidatePath(`/workstreams/${initiativeId}`);
   revalidatePath("/pipeline/initiatives");
@@ -1138,6 +1203,30 @@ async function recordGoNoGoDecision(
     action: opts.action,
     details: { comment, approver: user.name },
   });
+
+  if (opts.decision === "approved") {
+    await notifySubmitter({
+      initiativeId,
+      actorUserId: user.id,
+      actorName: user.name,
+      kind: "advanced",
+      remark: comment,
+      fromStage: "Go/No-Go",
+      toStage: "Project Setup",
+    });
+  } else {
+    await notifySubmitter({
+      initiativeId,
+      actorUserId: user.id,
+      actorName: user.name,
+      kind: "feedback",
+      remark: comment,
+      headline:
+        opts.decision === "feedback"
+          ? "sent this back with feedback"
+          : "rejected this initiative",
+    });
+  }
 
   revalidatePath(`/workstreams/${initiativeId}`);
   revalidatePath("/pipeline/scoping");
@@ -1874,6 +1963,15 @@ export async function advanceToOnboarding(
     details: { advancedBy: user.name, toStage: "Onboarding & Kickoff" },
   });
 
+  await notifySubmitter({
+    initiativeId,
+    actorUserId: user.id,
+    actorName: user.name,
+    kind: "advanced",
+    fromStage: "Project Setup",
+    toStage: "Onboarding & Kickoff",
+  });
+
   revalidatePath(`/workstreams/${initiativeId}`);
   revalidatePath("/pipeline/setup");
   revalidatePath("/pipeline/onboarding");
@@ -2138,6 +2236,15 @@ export async function advanceToProduction(
     userId: user.id,
     action: "onboarding_completed",
     details: { advancedBy: user.name, toStage: "Production & Reporting" },
+  });
+
+  await notifySubmitter({
+    initiativeId,
+    actorUserId: user.id,
+    actorName: user.name,
+    kind: "advanced",
+    fromStage: "Onboarding & Kickoff",
+    toStage: "Production & Reporting",
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
