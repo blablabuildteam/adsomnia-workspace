@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, canManageSetup } from "@/lib/session";
-import { searchUsers, type JiraInstance } from "@/lib/integrations/jira";
+import { isJiraInstance, searchUsers } from "@/lib/integrations/jira";
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
@@ -9,10 +9,10 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const instance = searchParams.get("instance") as JiraInstance | null;
+  const instance = searchParams.get("instance");
   const query = searchParams.get("query") ?? "";
 
-  if (!instance) {
+  if (!isJiraInstance(instance)) {
     return NextResponse.json(
       { error: "Missing required parameter: instance" },
       { status: 400 },

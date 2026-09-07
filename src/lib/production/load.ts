@@ -235,12 +235,9 @@ export type ProductionOverviewData = {
 
 export async function getProductionOverview(): Promise<ProductionOverviewData> {
   const initiatives = await getInitiativesByStage("production");
-  const eligible = initiatives.filter(
-    (item) => normalizeLeadParty(item.validationData?.leadProductionParty) !== "bbb",
-  );
   const today = todayIso();
   const projects = await Promise.all(
-    eligible.map((item) => toProductionProject(item, today)),
+    initiatives.map((item) => toProductionProject(item, today)),
   );
   const active = sortProductionProjects(
     projects.filter((project) => !project.archivedAt),

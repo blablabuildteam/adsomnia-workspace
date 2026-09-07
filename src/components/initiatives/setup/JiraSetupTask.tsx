@@ -27,13 +27,14 @@ import {
   validateJiraProjectName,
 } from "@/lib/integrations/jira-plan";
 
-type JiraInstance = "adsomnia" | "btr" | "hn";
+type JiraInstance = "adsomnia" | "btr" | "hn" | "bbb";
 
 const PARTY_JIRA_LABEL: Record<string, string> = {
   as: "Adsomnia",
   adsomnia: "Adsomnia",
   btr: "Bending The Rules",
   hn: "Harlem Next",
+  bbb: "blablabuild",
 };
 
 type JiraWorkspaceOption = {

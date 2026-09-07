@@ -2,7 +2,7 @@
 
 These steps let Adsomnia Workspace create project boards in **your Jira Cloud** and later show production progress (epics + task status) in the Workspace **Production Overview**.
 
-**Start with Adsomnia’s own Jira.** After that works, the same checklist is reused for **Bending The Rules** and **Harlem Next** (each has a separate Atlassian site).
+**Start with Adsomnia’s own Jira.** After that works, the same checklist is reused for **Bending The Rules**, **Harlem Next**, and **blablabuild** (each has a separate Atlassian site).
 
 You need:
 
@@ -41,7 +41,7 @@ If your security policy forbids a shared user, an admin personal account works f
 5. Set expiry to the **longest option** (1 year). Atlassian no longer allows non-expiring tokens.
 6. Copy the token **immediately** (it is shown only once)
 
-Workspace leadership is reminded 30 days before expiry to contact blablabuild to recycle the token. After rotation, update `JIRA_API_TOKEN_EXPIRES_AT` on the server.
+Workspace leadership is reminded 30 days before the soonest configured token expires, and asked to contact blablabuild to recycle it. After rotation, update that instance’s `JIRA_*_API_TOKEN_EXPIRES_AT` on the server.
 
 Treat the token like a password. Do not put it in Slack channels, tickets, or email threads that are widely shared if you can avoid it — prefer a secure one-time channel (password manager share, encrypted note, or live handoff).
 
@@ -57,7 +57,7 @@ Treat the token like a password. Do not put it in Slack channels, tickets, or em
 
 Also confirm:
 
-- Which **party** this site is for: **Adsomnia**, **Bending The Rules**, or **Harlem Next**
+- Which **party** this site is for: **Adsomnia**, **Bending The Rules**, **Harlem Next**, or **blablabuild**
 - That Workspace may **create software projects** (Scrum or Kanban templates) under this site
 - That Workspace may **read** epics and issues for progress reporting
 
@@ -97,6 +97,7 @@ Workspace does **not** need to read Slack messages, email, or Confluence unless 
 | 1 | **Adsomnia** | This document — do first |
 | 2 | **Bending The Rules** | Same Parts 1–4 on **BTR’s** Atlassian site; send a second host/email/token set |
 | 3 | **Harlem Next** | Same on **HN’s** site; third set |
+| 4 | **blablabuild** | Same on **BBB’s** site; fourth set |
 
 Each partner keeps their own Jira. Workspace chooses the site from the initiative’s **lead production partner** at Project Setup.
 
@@ -119,7 +120,7 @@ Each partner keeps their own Jira. Workspace chooses the site from the initiativ
 1. Create a dedicated Atlassian user for Adsomnia Workspace (recommended).  
 2. Grant create-project + browse/view-issue access on your Jira Cloud.  
 3. Create an API token for that user.  
-4. Securely send **host**, **email**, and **API token** (and which party: Adsomnia / BTR / HN).  
+4. Securely send **host**, **email**, and **API token** (and which party: Adsomnia / BTR / HN / blablabuild).  
 5. Adsomnia tech stores env vars and smoke-tests create + read.
 
 Questions: contact your Adsomnia project lead / Workspace technical contact.

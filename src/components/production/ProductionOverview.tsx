@@ -21,13 +21,14 @@ import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PARTIES, STAGES } from "@/data/workflow";
 import {
   HEALTH_META,
+  PRODUCTION_LEAD_PARTIES,
   type ProductionLeadParty,
   type ProductionProject,
 } from "@/lib/production/health";
 
 const stage = STAGES.find((item) => item.id === "production")!;
 
-const LEAD_FILTERS: ProductionLeadParty[] = ["adsomnia", "btr", "hn"];
+const LEAD_FILTERS = PRODUCTION_LEAD_PARTIES;
 
 type HealthFilter = "all" | "critical" | "at-risk" | "on-track";
 
@@ -102,7 +103,12 @@ export function ProductionOverview({
   const source = archiveView ? archived : projects;
 
   const leadCounts = useMemo(() => {
-    const next = { adsomnia: 0, btr: 0, hn: 0 };
+    const next: Record<ProductionLeadParty, number> = {
+      adsomnia: 0,
+      btr: 0,
+      hn: 0,
+      bbb: 0,
+    };
     for (const project of source) {
       if (project.leadPartyId) next[project.leadPartyId] += 1;
     }

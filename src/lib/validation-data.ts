@@ -390,7 +390,7 @@ export type JiraSetupData = {
   boardUrl?: string;
   /** @deprecated Kept so older setup drafts still parse. */
   projectUrl?: string;
-  workspace?: "adsomnia" | "btr" | "hn";
+  workspace?: "adsomnia" | "btr" | "hn" | "bbb";
   projectKey?: string;
   projectName?: string;
   projectId?: string;

@@ -4,8 +4,8 @@ import {
   clampJiraProjectName,
   createProject,
   getProjectUrl,
+  isJiraInstance,
   validateJiraProjectName,
-  type JiraInstance,
 } from "@/lib/integrations/jira";
 
 export async function POST(request: Request) {
@@ -16,14 +16,14 @@ export async function POST(request: Request) {
 
   const body = await request.json();
   const { instance, key, name, description, template } = body as {
-    instance: JiraInstance;
+    instance: string;
     key: string;
     name: string;
     description?: string;
     template: "scrum" | "kanban";
   };
 
-  if (!instance || !key || !name || !template) {
+  if (!isJiraInstance(instance) || !key || !name || !template) {
     return NextResponse.json(
       { error: "Missing required fields: instance, key, name, template" },
       { status: 400 },

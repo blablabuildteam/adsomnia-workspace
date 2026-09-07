@@ -33,7 +33,13 @@ export type ProductionEpic = {
   health?: Exclude<ProductionHealth, "unscored">;
 };
 
-export type ProductionLeadParty = "adsomnia" | "btr" | "hn";
+export const PRODUCTION_LEAD_PARTIES = [
+  "adsomnia",
+  "btr",
+  "hn",
+  "bbb",
+] as const;
+export type ProductionLeadParty = (typeof PRODUCTION_LEAD_PARTIES)[number];
 
 export type ProductionProjectBrief = {
   tShirtSize?: string;
@@ -64,7 +70,7 @@ export type ProductionProject = {
   leadPartyId: ProductionLeadParty | null;
   leadPartyRaw: string | null;
   jira: {
-    instance?: "adsomnia" | "btr" | "hn";
+    instance?: ProductionLeadParty;
     projectKey?: string;
     boardUrl?: string;
     projectName?: string;
@@ -124,7 +130,7 @@ export function normalizeLeadParty(
 export function isTrackedLeadParty(
   party: string | null,
 ): party is ProductionLeadParty {
-  return party === "adsomnia" || party === "btr" || party === "hn";
+  return (PRODUCTION_LEAD_PARTIES as readonly string[]).includes(party ?? "");
 }
 
 export function todayIso(now: Date = new Date()): string {

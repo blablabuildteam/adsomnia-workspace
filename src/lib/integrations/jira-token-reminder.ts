@@ -1,12 +1,17 @@
 /**
  * Atlassian Cloud API tokens expire after at most one year.
  *
- * The current pilot token was created on 28 Aug 2026 (Coen's Atlassian
- * account, reused for Adsomnia + Harlem Next). Default expiry is therefore
- * 28 Aug 2027. After rotation, set `JIRA_API_TOKEN_EXPIRES_AT=YYYY-MM-DD`.
+ * Prefer a per-instance date (`JIRA_ADSOMNIA_API_TOKEN_EXPIRES_AT`, …).
+ * `JIRA_API_TOKEN_EXPIRES_AT` is the fallback when an instance has none.
+ * If neither is set, default from the original Coen token (issued 2026-08-28).
  */
 
-const JIRA_INSTANCE_PREFIXES = ["JIRA_ADSOMNIA", "JIRA_BTR", "JIRA_HN"] as const;
+const JIRA_INSTANCE_PREFIXES = [
+  "JIRA_ADSOMNIA",
+  "JIRA_BTR",
+  "JIRA_HN",
+  "JIRA_BBB",
+] as const;
 
 export const JIRA_API_TOKEN_ISSUED_AT = "2026-08-28";
 export const JIRA_API_TOKEN_LIFETIME_YEARS = 1;
@@ -62,12 +67,45 @@ export function defaultJiraTokenExpiry(): string {
   return toIsoDate(addCalendarYears(issued, JIRA_API_TOKEN_LIFETIME_YEARS));
 }
 
+function parseExpiry(value: string | undefined): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed || !parseIsoDate(trimmed)) return null;
+  return trimmed;
+}
+
+function isInstanceConfigured(
+  prefix: (typeof JIRA_INSTANCE_PREFIXES)[number],
+  env: NodeJS.ProcessEnv,
+): boolean {
+  return Boolean(
+    env[`${prefix}_HOST`] && env[`${prefix}_EMAIL`] && env[`${prefix}_API_TOKEN`],
+  );
+}
+
+function resolveInstanceExpiry(
+  prefix: (typeof JIRA_INSTANCE_PREFIXES)[number],
+  env: NodeJS.ProcessEnv,
+): string {
+  return (
+    parseExpiry(env[`${prefix}_API_TOKEN_EXPIRES_AT`]) ??
+    parseExpiry(env.JIRA_API_TOKEN_EXPIRES_AT) ??
+    defaultJiraTokenExpiry()
+  );
+}
+
+/** Soonest expiry among configured instances. */
 export function resolveJiraTokenExpiry(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
-  const override = env.JIRA_API_TOKEN_EXPIRES_AT?.trim();
-  if (override && parseIsoDate(override)) return override;
-  return defaultJiraTokenExpiry();
+  const dates = JIRA_INSTANCE_PREFIXES.filter((prefix) =>
+    isInstanceConfigured(prefix, env),
+  ).map((prefix) => resolveInstanceExpiry(prefix, env));
+
+  if (dates.length > 0) {
+    return dates.reduce((soonest, next) => (next < soonest ? next : soonest));
+  }
+
+  return parseExpiry(env.JIRA_API_TOKEN_EXPIRES_AT) ?? defaultJiraTokenExpiry();
 }
 
 /** Pure date check — used by the server helper and by tests. */
@@ -92,11 +130,8 @@ export function evaluateJiraTokenReminder(
 function hasConfiguredJiraToken(
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
-  return JIRA_INSTANCE_PREFIXES.some(
-    (prefix) =>
-      Boolean(env[`${prefix}_HOST`]) &&
-      Boolean(env[`${prefix}_EMAIL`]) &&
-      Boolean(env[`${prefix}_API_TOKEN`]),
+  return JIRA_INSTANCE_PREFIXES.some((prefix) =>
+    isInstanceConfigured(prefix, env),
   );
 }
 

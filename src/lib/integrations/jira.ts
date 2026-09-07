@@ -9,7 +9,8 @@ import {
   type JiraEpicSeed,
 } from "./jira-plan";
 
-export type JiraInstance = "adsomnia" | "btr" | "hn";
+export const JIRA_INSTANCES = ["adsomnia", "btr", "hn", "bbb"] as const;
+export type JiraInstance = (typeof JIRA_INSTANCES)[number];
 
 type JiraConfig = {
   host: string;
@@ -21,9 +22,21 @@ const INSTANCE_LABELS: Record<JiraInstance, string> = {
   adsomnia: "Adsomnia",
   btr: "Bending The Rules",
   hn: "Harlem Next",
+  bbb: "blablabuild",
 };
 
-/** Map initiative lead party → Jira Cloud instance. `bbb` has no dedicated site. */
+export function isJiraInstance(
+  value: string | null | undefined,
+): value is JiraInstance {
+  return (
+    value === "adsomnia" ||
+    value === "btr" ||
+    value === "hn" ||
+    value === "bbb"
+  );
+}
+
+/** Map initiative lead party → Jira Cloud instance. */
 export function leadPartyToJiraInstance(
   leadParty: string | null | undefined,
 ): JiraInstance | null {
@@ -35,6 +48,8 @@ export function leadPartyToJiraInstance(
       return "btr";
     case "hn":
       return "hn";
+    case "bbb":
+      return "bbb";
     default:
       return null;
   }
@@ -53,9 +68,9 @@ export type JiraSetupTarget = {
 
 /**
  * Site to create the Project Setup board on.
- * Partner sites are used only when their env is present. blablabuild falls
- * back to Adsomnia. An unconfigured partner (e.g. BTR) returns null so the
- * UI can keep the paste-URL fallback instead of creating on the wrong site.
+ * Partner sites are used only when their env is present. An unconfigured
+ * partner (e.g. BTR) returns null so the UI can keep the paste-URL fallback
+ * instead of creating on the wrong site.
  */
 export function resolveSetupJiraInstance(
   leadParty: string | null | undefined,
@@ -161,7 +176,10 @@ export function resolveJiraSpaceForLeadParty(
 ): ResolvedJiraSpace {
   const instance = leadPartyToJiraInstance(leadParty);
   if (!instance) {
-    return { ok: false, error: "Choose Adsomnia, BTR, or Harlem Next as the lead party." };
+    return {
+      ok: false,
+      error: "Choose Adsomnia, BTR, Harlem Next, or blablabuild as the lead party.",
+    };
   }
 
   const config = getInstanceConfig(instance);
@@ -228,7 +246,7 @@ export function getAvailableInstances(): {
   host: string;
 }[] {
   const instances: { id: JiraInstance; label: string; host: string }[] = [];
-  for (const id of ["adsomnia", "btr", "hn"] as JiraInstance[]) {
+  for (const id of JIRA_INSTANCES) {
     const config = getInstanceConfig(id);
     if (config) {
       instances.push({

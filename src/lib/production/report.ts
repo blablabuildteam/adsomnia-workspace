@@ -105,7 +105,12 @@ const FLAG_LABEL: Record<EpicFlagReason, string> = {
   "no-tickets": "no tickets",
 };
 
-const TRACKED_PARTIES: ProductionLeadParty[] = ["adsomnia", "btr", "hn"];
+const TRACKED_PARTIES: ProductionLeadParty[] = [
+  "adsomnia",
+  "btr",
+  "hn",
+  "bbb",
+];
 
 function weekOfIso(today: string): string {
   const [y, m, d] = today.split("-").map(Number);

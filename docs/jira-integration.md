@@ -1,6 +1,6 @@
 # Jira integration (multi-instance API)
 
-Adsomnia Workspace talks to **up to three separate Jira Cloud sites** via REST API (Basic auth: email + API token). Unlike Slack (OAuth install per workspace), each party’s credentials live in **server env vars** — no end-user OAuth for v1.
+Adsomnia Workspace talks to **up to four separate Jira Cloud sites** via REST API (Basic auth: email + API token). Unlike Slack (OAuth install per workspace), each party’s credentials live in **server env vars** — no end-user OAuth for v1.
 
 ## Goals
 
@@ -11,15 +11,14 @@ Adsomnia Workspace talks to **up to three separate Jira Cloud sites** via REST A
 | **Tickets per epic** | Manual confirm | Epics are seeded on create; this step is adding tickets/tasks under each epic |
 | **Production Overview** (cross-board progress) | Planned | Read epics + nested task status from each lead’s Jira |
 
-## Three instances
+## Four instances
 
 | Instance id | Party | Env prefix | When used |
 |-------------|-------|------------|-----------|
 | `adsomnia` | Adsomnia | `JIRA_ADSOMNIA_*` | Lead party Adsomnia Internal (`as` / `adsomnia`) — **connect first** |
 | `btr` | Bending The Rules | `JIRA_BTR_*` | Lead party `btr` |
 | `hn` | Harlem Next | `JIRA_HN_*` | Lead party `hn` |
-
-**blablabuild (`bbb`)** has no dedicated Jira Cloud in this model. For BBB-led work, either create the board in **Adsomnia** Jira or keep the existing manual paste fallback.
+| `bbb` | blablabuild | `JIRA_BBB_*` | Lead party `bbb` |
 
 Lead party is stored on the initiative as `validationData.leadProductionParty`. Mapping helpers live in `src/lib/integrations/jira.ts` (`leadPartyToJiraInstance`).
 
@@ -30,7 +29,7 @@ Lead party is stored on the initiative as `validationData.leadProductionParty`. 
 | Auth | Distributable app OAuth | Browser GIS (user) | Shared **API token** per Cloud site |
 | Where secrets live | DB (`slack_workspaces`) + app env | Browser session | **Vercel / `.env.local`** only |
 | Who provisions | Slack admin installs app | Any Drive user | **Jira site admin** creates token for a service (or admin) user |
-| Multi-tenant | Multiple Slack installs | Same Google client | Three env triplets (Adsomnia → BTR → HN) |
+| Multi-tenant | Multiple Slack installs | Same Google client | Four env triplets (Adsomnia → BTR → HN → BBB) |
 
 We do **not** need Atlassian org admin access ourselves. Adsomnia (then partners) create a user + API token with the right permissions and give us host / email / token to store in env.
 
@@ -45,6 +44,7 @@ All server-only. Never prefix with `NEXT_PUBLIC_`.
 | `JIRA_ADSOMNIA_API_TOKEN` | API token from [id.atlassian.com](https://id.atlassian.com/manage-profile/security/api-tokens) |
 | `JIRA_BTR_HOST` / `_EMAIL` / `_API_TOKEN` | Same for Bending The Rules |
 | `JIRA_HN_HOST` / `_EMAIL` / `_API_TOKEN` | Same for Harlem Next |
+| `JIRA_BBB_HOST` / `_EMAIL` / `_API_TOKEN` | Same for blablabuild |
 
 Example `.env.local` (Adsomnia first):
 
@@ -60,6 +60,9 @@ JIRA_ADSOMNIA_API_TOKEN=
 # JIRA_HN_HOST=
 # JIRA_HN_EMAIL=
 # JIRA_HN_API_TOKEN=
+# JIRA_BBB_HOST=
+# JIRA_BBB_EMAIL=
+# JIRA_BBB_API_TOKEN=
 ```
 
 Sync to Vercel with `npm run env:sync-vercel` (keys are listed in `scripts/sync-vercel-env.ts`).
@@ -70,9 +73,13 @@ Optional (token rotation reminder):
 
 | Variable | Purpose |
 |----------|---------|
-| `JIRA_API_TOKEN_EXPIRES_AT` | `YYYY-MM-DD` expiry of the current token. Defaults to **2027-08-28** (token issued 2026-08-28, Atlassian max lifetime 1 year). Update this when the token is recycled. |
+| `JIRA_ADSOMNIA_API_TOKEN_EXPIRES_AT` | Adsomnia token expiry (`YYYY-MM-DD`). Currently **2027-08-28**. |
+| `JIRA_HN_API_TOKEN_EXPIRES_AT` | Harlem Next token expiry. Currently **2027-08-28** (same Coen token). |
+| `JIRA_BBB_API_TOKEN_EXPIRES_AT` | blablabuild token expiry. Currently **2027-09-07**. |
+| `JIRA_BTR_API_TOKEN_EXPIRES_AT` | BTR token expiry (when that site is connected). |
+| `JIRA_API_TOKEN_EXPIRES_AT` | Fallback expiry when an instance has no date of its own. Defaults to **2027-08-28**. |
 
-Leadership accounts see a modal starting **30 days before** this date, telling them to contact blablabuild to recycle the token. The modal can be dismissed for the rest of the day and returns the next day until the expiry date is updated.
+Leadership accounts see a modal starting **30 days before** the soonest configured token expires, telling them to contact blablabuild to recycle it. The modal can be dismissed for the rest of the day and returns the next day until that expiry date is updated.
 
 ## Required Jira permissions (token user)
 
@@ -111,7 +118,7 @@ During Project Setup, default the Jira instance from `leadProductionParty`:
 | `as` / `adsomnia` | `adsomnia` |
 | `btr` | `btr` |
 | `hn` | `hn` |
-| `bbb` | `null` → Adsomnia Jira or manual URL |
+| `bbb` | `bbb` |
 
 Only offer instances that appear in `getAvailableInstances()` (env present).
 
@@ -144,7 +151,6 @@ Date fields vary by site (Due date, Start date, Target start/end). Document the 
 - Atlassian OAuth / Forge apps (API token is enough)
 - Encrypting tokens at rest beyond Vercel env secrecy
 - Auto-invite full project team in Jira
-- blablabuild-owned Jira Cloud
 - Writing weekly leadership digests from Jira (Overview UI first)
 
 ## Related docs

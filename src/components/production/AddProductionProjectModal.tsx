@@ -5,10 +5,10 @@ import { createManualProductionProject } from "@/app/(workspace)/pipeline/produc
 import { Modal, ModalButton } from "@/components/ui/Modal";
 import { inputClass, selectTriggerClass } from "@/lib/form-styles";
 import { PARTIES } from "@/data/workflow";
-import type { ProductionLeadParty } from "@/lib/production/health";
+import { PRODUCTION_LEAD_PARTIES } from "@/lib/production/health";
 import { PRIORITY_OPTIONS } from "@/lib/validation-data";
 
-const LEAD_PARTIES: ProductionLeadParty[] = ["adsomnia", "btr", "hn"];
+const LEAD_PARTIES = PRODUCTION_LEAD_PARTIES;
 
 type Props = {
   open: boolean;

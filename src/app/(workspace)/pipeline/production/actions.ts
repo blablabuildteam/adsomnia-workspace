@@ -197,7 +197,9 @@ export async function createManualProductionProject(
 
   const leadParty = input.leadParty.trim().toLowerCase();
   if (!isTrackedLeadParty(leadParty)) {
-    return { error: "Choose Adsomnia, BTR, or Harlem Next as the lead party." };
+    return {
+      error: "Choose Adsomnia, BTR, Harlem Next, or blablabuild as the lead party.",
+    };
   }
 
   const jiraUrl = normalizeUrl(input.jiraUrl);
