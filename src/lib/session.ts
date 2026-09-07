@@ -101,5 +101,8 @@ export {
   canApprove,
   canManageOnboarding,
   canManageSetup,
+  canSubmitProductFeedback,
+  canViewFeedbackInbox,
   canViewLeadershipReport,
+  isBlablabuildAccount,
 } from "./permissions";

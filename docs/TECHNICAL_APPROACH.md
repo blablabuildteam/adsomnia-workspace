@@ -93,6 +93,28 @@ Audit trail for all significant actions.
 | `details` | `jsonb` | Flexible metadata |
 | `created_at` | `timestamp` | When it happened |
 
+#### `feedback_submissions`
+
+Product-issue reports from the workspace Feedback button. Distinct from pipeline `approvals.decision = "feedback"` remarks.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `serial` | Primary key |
+| `title` | `varchar(200)` | Short summary |
+| `description` | `text` | Steps to reproduce |
+| `submitter_id` | `uuid FK → users` | Who filed it |
+| `page_path` | `varchar(500)` | App pathname at submit time |
+| `page_url` | `varchar(1000)` | Full URL including query |
+| `user_agent` | `varchar(500)` | Browser user agent |
+| `viewport` | `varchar(40)` | Window size, e.g. `1440×900` |
+| `image_file_name` | `varchar(255)` | Optional screenshot name |
+| `image_mime_type` | `varchar(100)` | Optional screenshot MIME |
+| `image_data` | `text` | Optional compressed screenshot as a data URL |
+| `status` | `enum('open', 'resolved')` | Inbox triage |
+| `created_at` | `timestamp` | When it was filed |
+
+The inbox at `/feedback` is **blablabuild-only** (`@blablabuild.com` email). Any signed-in workspace user can submit from the right-edge button.
+
 ---
 
 ## 3. Authentication Approach
@@ -151,6 +173,8 @@ All write operations use Next.js Server Actions co-located with their pages:
 - `approveInitiative()` — approve an initiative to advance to the next stage
 - `rejectInitiative()` — reject or put on hold
 - `login()` / `logout()` — session management
+- `submitProductFeedback()` — file a product issue from the workspace Feedback button
+- `updateFeedbackStatus()` — blablabuild inbox triage (open / resolved)
 
 ### Server Components (Reads)
 
@@ -265,9 +289,11 @@ Each stage gate (Validation → Scoping, Scoping → Go/No-Go, etc.) will have i
 | `JIRA_ADSOMNIA_HOST` | Server | Jira | Adsomnia Jira Cloud host (connect first) |
 | `JIRA_ADSOMNIA_EMAIL` | Server | Jira | Service/admin email for Adsomnia API token |
 | `JIRA_ADSOMNIA_API_TOKEN` | Server | Jira | Adsomnia Atlassian API token |
-| `JIRA_BTR_HOST` / `_EMAIL` / `_API_TOKEN` | Server | Jira | Bending The Rules Jira Cloud (later) |
-| `JIRA_HN_HOST` / `_EMAIL` / `_API_TOKEN` | Server | Jira | Harlem Next Jira Cloud (later) |
-| `JIRA_API_TOKEN_EXPIRES_AT` | Server | Jira | Optional `YYYY-MM-DD` token expiry (default 2027-08-28) for the leadership rotation reminder |
+| `JIRA_ADSOMNIA_API_TOKEN_EXPIRES_AT` | Server | Jira | Adsomnia token expiry (`YYYY-MM-DD`) |
+| `JIRA_BTR_HOST` / `_EMAIL` / `_API_TOKEN` / `_API_TOKEN_EXPIRES_AT` | Server | Jira | Bending The Rules Jira Cloud (later) |
+| `JIRA_HN_HOST` / `_EMAIL` / `_API_TOKEN` / `_API_TOKEN_EXPIRES_AT` | Server | Jira | Harlem Next Jira Cloud |
+| `JIRA_BBB_HOST` / `_EMAIL` / `_API_TOKEN` / `_API_TOKEN_EXPIRES_AT` | Server | Jira | blablabuild Jira Cloud |
+| `JIRA_API_TOKEN_EXPIRES_AT` | Server | Jira | Fallback token expiry when an instance has no date of its own |
 
 Local values live in `.env.local` (gitignored). Sync auth/session/login/Slack/Google/Jira vars to Vercel via `npm run env:sync-vercel`. When Resend and Gemini go live, add those keys to the sync script and Vercel Production/Preview/Development. Slack: [`slack-integration.md`](./slack-integration.md). Google login: [`google-login.md`](./google-login.md). Jira: [`jira-integration.md`](./jira-integration.md) · client handoff: [`jira-client-connect.md`](./jira-client-connect.md).
 
@@ -299,6 +325,9 @@ src/
       ideas/new/
         page.tsx                      # Initiative submission
         actions.ts                    # submitIdea Server Action
+      feedback/
+        page.tsx                      # blablabuild-only product feedback inbox
+        actions.ts                    # submitProductFeedback / updateFeedbackStatus
       initiatives/[id]/
         page.tsx                      # Initiative detail
         actions.ts                    # Approval Server Actions
@@ -308,8 +337,11 @@ src/
     ideas/IdeaFormView.tsx            # Initiative form (DB-backed)
     dashboard/DashboardView.tsx       # Refactored for real data
     initiatives/InitiativeDetailView.tsx  # + approval UI
+    feedback/
+      FeedbackButton.tsx            # Right-edge report button + modal
+      FeedbackInboxView.tsx         # blablabuild inbox
     workspace/
-      WorkspaceShell.tsx            # Sidebar + main layout
+      WorkspaceShell.tsx            # Sidebar + main layout + feedback button
       WorkspaceSidebar.tsx          # Collapsible nav
   db/
     index.ts                          # Drizzle client

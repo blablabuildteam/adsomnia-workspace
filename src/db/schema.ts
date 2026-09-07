@@ -189,3 +189,32 @@ export const slackUserLinks = pgTable(
     ),
   }),
 );
+
+export const feedbackStatusEnum = pgEnum("feedback_status", [
+  "open",
+  "resolved",
+]);
+
+/**
+ * Product-issue reports from the workspace Feedback button.
+ * Distinct from pipeline `approvals.decision = "feedback"` remarks.
+ */
+export const feedbackSubmissions = pgTable("feedback_submissions", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description").notNull(),
+  submitterId: uuid("submitter_id")
+    .notNull()
+    .references(() => users.id),
+  pagePath: varchar("page_path", { length: 500 }).notNull(),
+  pageUrl: varchar("page_url", { length: 1000 }),
+  userAgent: varchar("user_agent", { length: 500 }),
+  viewport: varchar("viewport", { length: 40 }),
+  imageFileName: varchar("image_file_name", { length: 255 }),
+  imageMimeType: varchar("image_mime_type", { length: 100 }),
+  imageData: text("image_data"),
+  status: feedbackStatusEnum("status").notNull().default("open"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});

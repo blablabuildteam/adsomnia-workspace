@@ -12,6 +12,11 @@ export const IDEA_FIELD_LIMITS = {
 
 export type IdeaFieldName = keyof typeof IDEA_FIELD_LIMITS;
 
+export const FEEDBACK_FIELD_LIMITS = {
+  title: { min: 8, max: 120 },
+  description: { min: 20, max: 2000 },
+} as const;
+
 export const VALIDATION_FIELD_LIMITS = {
   solutionDirection: { min: 50, max: 500 },
   leadPartyOther: { min: 8, max: 80 },

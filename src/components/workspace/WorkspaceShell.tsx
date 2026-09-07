@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { FeedbackButton } from "@/components/feedback/FeedbackButton";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
 import { JiraTokenReminderModal } from "./JiraTokenReminderModal";
 import type { SidebarProfileUser } from "./SidebarProfile";
@@ -50,6 +51,7 @@ export function WorkspaceShell({ user, children, jiraTokenReminder }: Props) {
       <main className="workspace-content min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
         {children}
       </main>
+      <FeedbackButton />
       {jiraTokenReminder ? (
         <JiraTokenReminderModal reminder={jiraTokenReminder} />
       ) : null}

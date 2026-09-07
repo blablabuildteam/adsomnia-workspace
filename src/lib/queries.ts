@@ -5,6 +5,7 @@ import {
   approvals,
   activityLog,
   comments,
+  feedbackSubmissions,
 } from "@/db/schema";
 import { eq, desc, asc, count, inArray, isNull, notInArray, and } from "drizzle-orm";
 import { displayName } from "@/lib/session";
@@ -518,4 +519,88 @@ export async function getStatusCounts(): Promise<Record<string, number>> {
     result[row.status] = row.count;
   }
   return result;
+}
+
+export type FeedbackSubmissionEntry = {
+  id: number;
+  title: string;
+  description: string;
+  pagePath: string;
+  pageUrl: string | null;
+  userAgent: string | null;
+  viewport: string | null;
+  imageFileName: string | null;
+  imageMimeType: string | null;
+  hasImage: boolean;
+  status: "open" | "resolved";
+  createdAt: Date;
+  submitter: { id: string; name: string; email: string };
+};
+
+/** Newest first. Callers must already have gated for blablabuild. */
+export async function getFeedbackSubmissions(): Promise<
+  FeedbackSubmissionEntry[]
+> {
+  const rows = await db
+    .select({
+      id: feedbackSubmissions.id,
+      title: feedbackSubmissions.title,
+      description: feedbackSubmissions.description,
+      pagePath: feedbackSubmissions.pagePath,
+      pageUrl: feedbackSubmissions.pageUrl,
+      userAgent: feedbackSubmissions.userAgent,
+      viewport: feedbackSubmissions.viewport,
+      imageFileName: feedbackSubmissions.imageFileName,
+      imageMimeType: feedbackSubmissions.imageMimeType,
+      status: feedbackSubmissions.status,
+      createdAt: feedbackSubmissions.createdAt,
+      submitterId: users.id,
+      submitterName: users.name,
+      submitterFirstName: users.firstName,
+      submitterLastName: users.lastName,
+      submitterEmail: users.email,
+    })
+    .from(feedbackSubmissions)
+    .innerJoin(users, eq(feedbackSubmissions.submitterId, users.id))
+    .orderBy(desc(feedbackSubmissions.createdAt));
+
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    pagePath: row.pagePath,
+    pageUrl: row.pageUrl,
+    userAgent: row.userAgent,
+    viewport: row.viewport,
+    imageFileName: row.imageFileName,
+    imageMimeType: row.imageMimeType,
+    hasImage: Boolean(row.imageFileName),
+    status: row.status,
+    createdAt: row.createdAt,
+    submitter: {
+      id: row.submitterId,
+      name: displayName({
+        name: row.submitterName,
+        firstName: row.submitterFirstName,
+        lastName: row.submitterLastName,
+      }),
+      email: row.submitterEmail,
+    },
+  }));
+}
+
+export async function getFeedbackImage(
+  id: number,
+): Promise<{ imageData: string; imageFileName: string | null } | null> {
+  const [row] = await db
+    .select({
+      imageData: feedbackSubmissions.imageData,
+      imageFileName: feedbackSubmissions.imageFileName,
+    })
+    .from(feedbackSubmissions)
+    .where(eq(feedbackSubmissions.id, id))
+    .limit(1);
+
+  if (!row?.imageData) return null;
+  return { imageData: row.imageData, imageFileName: row.imageFileName };
 }

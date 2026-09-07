@@ -7,6 +7,7 @@
  *   Submit initiatives, follow them through later phases, and edit their own
  *   details while the item is still in Initiative or Validation.
  * - `production` — reserved; treated as team for write access today.
+ * - Product Feedback inbox is gated by `@blablabuild.com`, not role.
  */
 
 export type WorkspaceRole = "leadership" | "production" | "team";
@@ -80,6 +81,25 @@ export function canSeeJiraTokenReminder(user: PermissionUser): boolean {
 /** Leadership — live Production report for weekly updates. */
 export function canViewLeadershipReport(user: PermissionUser): boolean {
   return isLeadership(user);
+}
+
+const BLABLABUILD_DOMAIN = "blablabuild.com";
+
+/** Party is not stored on users — blablabuild is the email domain. */
+export function isBlablabuildAccount(user: { email: string }): boolean {
+  const at = user.email.lastIndexOf("@");
+  if (at === -1) return false;
+  return user.email.slice(at + 1).toLowerCase() === BLABLABUILD_DOMAIN;
+}
+
+/** Any signed-in workspace account can file a product issue. */
+export function canSubmitProductFeedback(user: PermissionUser | null): boolean {
+  return user != null;
+}
+
+/** Feedback inbox is blablabuild-only — not Adsomnia leadership. */
+export function canViewFeedbackInbox(user: { email: string } | null): boolean {
+  return user != null && isBlablabuildAccount(user);
 }
 
 /**

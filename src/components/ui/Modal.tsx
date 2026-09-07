@@ -93,6 +93,7 @@ type ModalButtonProps = {
   onClick?: () => void;
   disabled?: boolean;
   type?: "button" | "submit";
+  form?: string;
   children: React.ReactNode;
 };
 
@@ -101,6 +102,7 @@ export function ModalButton({
   onClick,
   disabled,
   type = "button",
+  form,
   children,
 }: ModalButtonProps) {
   const baseClass =
@@ -115,6 +117,7 @@ export function ModalButton({
   return (
     <button
       type={type}
+      form={form}
       onClick={onClick}
       disabled={disabled}
       className={`${baseClass} ${variantClass}`}
