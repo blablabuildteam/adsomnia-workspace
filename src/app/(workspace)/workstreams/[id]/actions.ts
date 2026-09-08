@@ -1380,14 +1380,35 @@ export async function completeSetupTask(
     if (!channelName) {
       return { error: "Slack channel name is required." };
     }
+    const channelUrl =
+      typeof taskData.channelUrl === "string"
+        ? normalizeUrl(taskData.channelUrl)
+        : null;
+    if (!channelUrl) {
+      return { error: "Create the Slack channel or paste a Slack URL." };
+    }
     taskData.channelName = channelName;
+    taskData.channelUrl = channelUrl;
+  }
+
+  if (taskId === "drive") {
+    const driveUrl =
+      typeof taskData.driveUrl === "string"
+        ? normalizeUrl(taskData.driveUrl)
+        : null;
+    if (!driveUrl) {
+      return { error: "Create the Google Drive or paste a Drive URL." };
+    }
+    taskData.driveUrl = driveUrl;
   }
 
   if (taskId === "jira") {
     const boardUrl =
-      typeof taskData.boardUrl === "string" ? taskData.boardUrl.trim() : "";
+      typeof taskData.boardUrl === "string"
+        ? normalizeUrl(taskData.boardUrl)
+        : null;
     if (!boardUrl) {
-      return { error: "Jira board URL is required." };
+      return { error: "Create Jira or paste a Jira URL." };
     }
     taskData.boardUrl = boardUrl;
     taskData.projectUrl = boardUrl;
@@ -1425,7 +1446,11 @@ export async function completeSetupTask(
   const driveFolders =
     taskId === "drive" ? parseDriveFolderLinks(taskData.folders) : [];
   if (taskId === "drive") {
-    delete taskData.folders;
+    if (driveFolders.length > 0) {
+      taskData.folders = driveFolders;
+    } else {
+      delete taskData.folders;
+    }
   }
 
   const existingTask = setup[dataKey] as Record<string, unknown> | undefined;
@@ -1448,8 +1473,6 @@ export async function completeSetupTask(
     updated.documentation = {
       ...(updated.documentation ?? { status: "pending", linkedDocs: [] }),
       folders: driveFolders,
-      status: "completed",
-      completedAt: now,
     };
   }
 
@@ -1514,6 +1537,7 @@ export async function createAndCompleteSlackChannel(
   channelId?: string;
   channelName?: string;
   channelUrl?: string;
+  bookmarkError?: string;
 }> {
   "use server";
 
@@ -1543,9 +1567,36 @@ export async function createAndCompleteSlackChannel(
   }
 
   const setup = (row.setupData as SetupData | null) ?? ({} as SetupData);
-  if (!isSetupPhaseUnlocked(setup, "A")) {
+  if (!isSetupPhaseUnlocked(setup, "C")) {
     return { error: "Complete Environment Setup before Kickoff Preparation." };
   }
+
+  const driveUrl =
+    typeof setup.drive?.driveUrl === "string" ? setup.drive.driveUrl.trim() : "";
+  const jiraUrl =
+    typeof setup.jira?.boardUrl === "string"
+      ? setup.jira.boardUrl.trim()
+      : typeof setup.jira?.projectUrl === "string"
+        ? setup.jira.projectUrl.trim()
+        : "";
+  const bookmarks = [
+    driveUrl
+      ? {
+          title: setup.drive?.driveName?.trim() || "Google Drive",
+          link: driveUrl,
+          emoji: ":file_folder:",
+        }
+      : null,
+    jiraUrl
+      ? {
+          title: setup.jira?.projectName?.trim() || "Jira",
+          link: jiraUrl,
+          emoji: ":ticket:",
+        }
+      : null,
+  ].filter((bookmark): bookmark is NonNullable<typeof bookmark> =>
+    Boolean(bookmark),
+  );
 
   let created;
   try {
@@ -1554,6 +1605,7 @@ export async function createAndCompleteSlackChannel(
       name: channelName,
       isPrivate: Boolean(input.isPrivate),
       adsomniaUserId: user.id,
+      bookmarks,
     });
   } catch (err) {
     return {
@@ -1617,6 +1669,7 @@ export async function createAndCompleteSlackChannel(
     channelId: created.channelId,
     channelName: created.channelName,
     channelUrl: created.channelUrl,
+    bookmarkError: created.bookmarkError,
   };
 }
 

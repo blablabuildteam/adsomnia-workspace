@@ -2,10 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Hash, Copy, Check, Pencil, ExternalLink, Loader2 } from "lucide-react";
-import type { SlackSetupData } from "@/lib/validation-data";
+import { Hash, Check, Pencil, ExternalLink, Loader2 } from "lucide-react";
+import {
+  normalizeUrl,
+  type SlackSetupData,
+} from "@/lib/validation-data";
 import { inputClass } from "@/lib/form-styles";
 import { createAndCompleteSlackChannel } from "@/app/(workspace)/workstreams/[id]/actions";
+import { SetupCreateOrLinkRow } from "./SetupCreateOrLinkRow";
 
 type SlackWorkspaceOption = {
   teamId: string;
@@ -40,11 +44,11 @@ export function SlackSetupTask({
   onComplete,
 }: Props) {
   const router = useRouter();
-  const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [manualMode, setManualMode] = useState(false);
+  const [channelUrl, setChannelUrl] = useState(data.channelUrl ?? "");
   const [isPrivate, setIsPrivate] = useState(data.isPrivate ?? false);
   const [workspaces, setWorkspaces] = useState<SlackWorkspaceOption[]>([]);
   const [appConfigured, setAppConfigured] = useState(true);
@@ -102,12 +106,6 @@ export function SlackSetupTask({
     void loadWorkspaces();
   }, [readOnly, view.status, editing, loadWorkspaces]);
 
-  const handleCopySuggestion = async () => {
-    await navigator.clipboard.writeText(data.suggestedName);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const handleCreate = async () => {
     const name = channelName.trim().replace(/^#/, "");
     if (!name) {
@@ -119,6 +117,7 @@ export function SlackSetupTask({
       return;
     }
     setError(null);
+    setInfo(null);
     setCreating(true);
     try {
       const result = await createAndCompleteSlackChannel(initiativeId, {
@@ -129,6 +128,9 @@ export function SlackSetupTask({
       if (result.error) {
         setError(result.error);
         return;
+      }
+      if (result.bookmarkError) {
+        setInfo(result.bookmarkError);
       }
       const resolvedName = result.channelName ?? name;
       const teamName = workspaces.find((w) => w.teamId === teamId)?.teamName;
@@ -144,6 +146,7 @@ export function SlackSetupTask({
         isPrivate,
         completedAt: new Date().toISOString(),
       });
+      if (result.channelUrl) setChannelUrl(result.channelUrl);
       onComplete({
         channelName: resolvedName,
         channelId: result.channelId,
@@ -153,7 +156,6 @@ export function SlackSetupTask({
         isPrivate,
       });
       setEditing(false);
-      setManualMode(false);
       router.refresh();
     } finally {
       setCreating(false);
@@ -161,15 +163,19 @@ export function SlackSetupTask({
   };
 
   const handleManualComplete = () => {
-    const name = channelName.trim().replace(/^#/, "");
+    const name = channelName.trim().replace(/^#/, "") || data.suggestedName;
+    const url = normalizeUrl(channelUrl);
+    if (!url) {
+      setError("Paste a Slack channel URL.");
+      return;
+    }
     if (!name) {
       setError("Channel name is required.");
       return;
     }
     setError(null);
-    onComplete({ channelName: name, isPrivate });
+    onComplete({ channelName: name, channelUrl: url, isPrivate });
     setEditing(false);
-    setManualMode(false);
   };
 
   const connectHref = `/api/integrations/slack/oauth/start?returnTo=${encodeURIComponent(returnTo)}`;
@@ -205,6 +211,9 @@ export function SlackSetupTask({
                 <ExternalLink className="size-3" />
               </a>
             ) : null}
+            {info ? (
+              <p className="mt-2 text-[11px] text-muted">{info}</p>
+            ) : null}
           </div>
         </div>
         {!readOnly && (
@@ -212,8 +221,10 @@ export function SlackSetupTask({
             type="button"
             onClick={() => {
               onChannelNameChange(savedName);
+              setChannelUrl(view.channelUrl ?? "");
               setIsPrivate(view.isPrivate ?? false);
               setError(null);
+              setInfo(null);
               setEditing(true);
             }}
             className="inline-flex items-center gap-1.5 font-display text-[10px] font-bold uppercase tracking-wide text-muted hover:text-foreground"
@@ -234,24 +245,10 @@ export function SlackSetupTask({
 
   return (
     <div className="space-y-4">
-      {!editing && (
-        <p className="text-xs text-muted">
-          Create a Slack channel for this project from Adsomnia Workspace.
-          Suggested name:{" "}
-          <button
-            type="button"
-            onClick={handleCopySuggestion}
-            className="inline-flex items-center gap-1 font-mono text-foreground hover:text-success"
-          >
-            #{data.suggestedName}
-            {copied ? (
-              <Check className="size-3 text-success" />
-            ) : (
-              <Copy className="size-3 text-muted" />
-            )}
-          </button>
-        </p>
-      )}
+      <p className="text-xs text-muted">
+        Create a Slack channel for this project. Google Drive and Jira are
+        bookmarked in the channel automatically.
+      </p>
 
       {loadingWorkspaces ? (
         <p className="flex items-center gap-2 text-xs text-muted">
@@ -259,34 +256,11 @@ export function SlackSetupTask({
           Checking Slack connection…
         </p>
       ) : !appConfigured ? (
-        <div className="space-y-3">
-          <p className="text-xs text-btr">
-            Slack app credentials are not configured. Set SLACK_CLIENT_ID,
-            SLACK_CLIENT_SECRET, and NEXT_PUBLIC_APP_URL, then reload. You can
-            still confirm an existing channel name below.
-          </p>
-          <label className="block">
-            <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-              Channel name<span className="ml-1 text-btr">*</span>
-            </span>
-            <div className="relative mt-1">
-              <Hash className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted/50" />
-              <input
-                type="text"
-                value={channelName}
-                onChange={(e) => {
-                  onChannelNameChange(
-                    e.target.value.toLowerCase().replace(/[^a-z0-9-_#]/g, "-"),
-                  );
-                  setError(null);
-                }}
-                className={`${inputClass} pl-8`}
-                placeholder={data.suggestedName}
-                required
-              />
-            </div>
-          </label>
-        </div>
+        <p className="text-xs text-btr">
+          Slack app credentials are not configured. Set SLACK_CLIENT_ID,
+          SLACK_CLIENT_SECRET, and NEXT_PUBLIC_APP_URL, then reload — or paste
+          an existing channel URL below.
+        </p>
       ) : workspaces.length === 0 ? (
         <div className="space-y-3">
           <p className="text-xs text-muted">
@@ -299,27 +273,6 @@ export function SlackSetupTask({
           >
             Connect Slack
           </a>
-          <label className="block">
-            <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-              Channel name<span className="ml-1 text-btr">*</span>
-            </span>
-            <div className="relative mt-1">
-              <Hash className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted/50" />
-              <input
-                type="text"
-                value={channelName}
-                onChange={(e) => {
-                  onChannelNameChange(
-                    e.target.value.toLowerCase().replace(/[^a-z0-9-_#]/g, "-"),
-                  );
-                  setError(null);
-                }}
-                className={`${inputClass} pl-8`}
-                placeholder={data.suggestedName}
-                required
-              />
-            </div>
-          </label>
         </div>
       ) : (
         <>
@@ -365,29 +318,6 @@ export function SlackSetupTask({
             </div>
           )}
 
-          <label className="block">
-            <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-              Channel name<span className="ml-1 text-btr">*</span>
-            </span>
-            <div className="relative mt-1">
-              <Hash className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted/50" />
-              <input
-                type="text"
-                value={channelName}
-                onChange={(e) => {
-                  onChannelNameChange(
-                    e.target.value.toLowerCase().replace(/[^a-z0-9-_#]/g, "-"),
-                  );
-                  setError(null);
-                }}
-                className={`${inputClass} pl-8`}
-                placeholder={data.suggestedName}
-                required
-                disabled={creating}
-              />
-            </div>
-          </label>
-
           <fieldset className="space-y-2">
             <legend className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
               Visibility
@@ -422,73 +352,74 @@ export function SlackSetupTask({
         </>
       )}
 
-      {error && <p className="text-xs text-btr">{error}</p>}
-
-      <div className="flex flex-wrap items-center gap-3">
-        {workspaces.length > 0 && !manualMode && userLinkedToSelected && (
-          <button
-            type="button"
-            onClick={handleCreate}
-            disabled={creating || !channelName.trim() || !teamId}
-            className="inline-flex items-center gap-2 border border-success bg-success/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-success transition-colors hover:bg-success/20 disabled:opacity-40"
-          >
-            {creating ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Check className="size-3.5" />
-            )}
-            {creating ? "Creating…" : "Create Channel"}
-          </button>
-        )}
-
-        {(manualMode || workspaces.length === 0 || !appConfigured) && (
-          <button
-            type="button"
-            onClick={handleManualComplete}
-            disabled={!channelName.trim()}
-            className="inline-flex items-center gap-2 border border-border px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-muted transition-colors hover:border-foreground hover:text-foreground disabled:opacity-40"
-          >
-            <Check className="size-3.5" />
-            {editing ? "Save Channel Name" : "Confirm Existing"}
-          </button>
-        )}
-
-        {workspaces.length > 0 && !manualMode && userLinkedToSelected && (
-          <button
-            type="button"
-            onClick={() => setManualMode(true)}
-            className="font-display text-[10px] font-bold uppercase tracking-wide text-muted hover:text-foreground"
-          >
-            Confirm existing instead
-          </button>
-        )}
-
-        {manualMode && workspaces.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setManualMode(false)}
-            className="font-display text-[10px] font-bold uppercase tracking-wide text-muted hover:text-foreground"
-          >
-            Back to create
-          </button>
-        )}
-
-        {editing && (
-          <button
-            type="button"
-            onClick={() => {
-              onChannelNameChange(savedName);
-              setIsPrivate(view.isPrivate ?? false);
+      <label className="block">
+        <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+          Channel name<span className="ml-1 text-btr">*</span>
+        </span>
+        <div className="relative mt-1">
+          <Hash className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted/50" />
+          <input
+            type="text"
+            value={channelName}
+            onChange={(e) => {
+              onChannelNameChange(
+                e.target.value.toLowerCase().replace(/[^a-z0-9-_#]/g, "-"),
+              );
               setError(null);
-              setEditing(false);
-              setManualMode(false);
             }}
-            className="font-display text-[10px] font-bold uppercase tracking-wide text-muted hover:text-foreground"
-          >
-            Cancel
-          </button>
-        )}
-      </div>
+            className={`${inputClass} pl-8`}
+            placeholder={data.suggestedName}
+            required
+            disabled={creating}
+          />
+        </div>
+      </label>
+
+      <SetupCreateOrLinkRow
+        create={
+          workspaces.length > 0 && userLinkedToSelected
+            ? {
+                label: "Create Slack Channel",
+                busy: creating,
+                disabled: !channelName.trim() || !teamId,
+                icon: <Check className="size-3.5" />,
+                onClick: () => void handleCreate(),
+              }
+            : undefined
+        }
+        urlLabel="Slack URL"
+        urlValue={channelUrl}
+        urlPlaceholder="https://app.slack.com/client/…"
+        urlDisabled={creating}
+        onUrlChange={(value) => {
+          setChannelUrl(value);
+          setError(null);
+        }}
+        saveLabel="Save Slack Link"
+        saveDisabled={creating || !channelUrl.trim()}
+        onSave={handleManualComplete}
+        extra={
+          editing ? (
+            <button
+              type="button"
+              onClick={() => {
+                onChannelNameChange(savedName);
+                setChannelUrl(view.channelUrl ?? "");
+                setIsPrivate(view.isPrivate ?? false);
+                setError(null);
+                setInfo(null);
+                setEditing(false);
+              }}
+              className="font-display text-[10px] font-bold uppercase tracking-wide text-muted hover:text-foreground"
+            >
+              Cancel
+            </button>
+          ) : null
+        }
+      />
+
+      {info && !error && <p className="text-xs text-muted">{info}</p>}
+      {error && <p className="text-xs text-btr">{error}</p>}
     </div>
   );
 }

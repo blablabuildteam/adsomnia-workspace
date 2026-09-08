@@ -60,7 +60,7 @@ On Vercel, production/preview should use `https://adsomnia-workspace.vercel.app`
 ## Connect (workspace + your Slack user)
 
 1. Sign in as a user who can manage Project Setup.
-2. Open an initiative in **Project Setup** → **Create Slack Channel**.
+2. Open an initiative in **Project Setup** → Kickoff Preparation → **Create Slack Channel** (after Google Drive and Jira are set up).
 3. Click **Connect Slack** / **Connect My Slack Account**.
 4. Approve while logged into the **Slack account you want invited** to new channels.
 5. We store the workspace bot (if new) and your personal Slack user link.
@@ -74,7 +74,7 @@ Other Setup users each Connect once for the same workspace so *they* get invited
 3. Choose **Public** or **Private** (default Public).
 4. Click **Create Channel**.
 
-The tool creates the channel, invites you, stores ids/urls on `setupData.slack`, and sets `onboardingData.links.slackChannelUrl`.
+The tool creates the channel, invites you, bookmarks the project **Google Drive** and **Jira** URLs, stores ids/urls on `setupData.slack`, and sets `onboardingData.links.slackChannelUrl`. Slack creation lives in Kickoff Preparation so those links already exist.
 
 **Confirm existing** remains available if the channel was created outside the tool.
 

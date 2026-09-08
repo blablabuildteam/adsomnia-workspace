@@ -7,21 +7,26 @@ import {
   Check,
   ExternalLink,
   Pencil,
-  Loader2,
   HardDrive,
 } from "lucide-react";
-import type { DriveFolderLink, DriveSetupData } from "@/lib/validation-data";
+import {
+  normalizeUrl,
+  type DriveFolderLink,
+  type DriveSetupData,
+} from "@/lib/validation-data";
 import { inputClass } from "@/lib/form-styles";
 import {
   canCreateProjectDrive,
   createProjectDrive,
   fetchDriveFolderName,
 } from "@/lib/integrations/google-drive-browser";
+import { SetupCreateOrLinkRow } from "./SetupCreateOrLinkRow";
 
 type Props = {
   data: DriveSetupData;
   suggestedName?: string;
   driveUrl: string;
+  folders?: DriveFolderLink[];
   onDriveUrlChange: (value: string) => void;
   readOnly?: boolean;
   onComplete: (
@@ -31,22 +36,47 @@ type Props = {
   ) => void;
 };
 
+function DriveFolderLinks({ folders }: { folders: DriveFolderLink[] }) {
+  if (folders.length === 0) return null;
+  return (
+    <ul className="mt-3 space-y-1.5">
+      {folders.map((folder) => (
+        <li key={folder.id}>
+          <a
+            href={folder.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 font-mono text-[11px] text-[#38BDF8] hover:underline"
+          >
+            {folder.name}
+            <ExternalLink className="size-2.5" />
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function DriveSetupTask({
   data,
   suggestedName,
   driveUrl,
+  folders,
   onDriveUrlChange,
   readOnly,
   onComplete,
 }: Props) {
   const suggestion = suggestedName || data.suggestedName;
   const savedUrl = data.driveUrl || "";
+  const [createdFolders, setCreatedFolders] = useState<DriveFolderLink[] | null>(
+    null,
+  );
+  const savedFolders = createdFolders ?? data.folders ?? folders ?? [];
   const [loadedFolderName, setLoadedFolderName] = useState<string | null>(null);
   const savedName = loadedFolderName || data.driveName || suggestion;
   const [driveName, setDriveName] = useState(data.driveName || suggestion);
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [manualMode, setManualMode] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -91,9 +121,9 @@ export function DriveSetupTask({
           "Created a project folder in your Google Drive, including the recommended folders. Shared Drive creation is not available for this account.",
         );
       }
+      setCreatedFolders(created.folders);
       onComplete(created.name, created.url, created.folders);
       setEditing(false);
-      setManualMode(false);
     } catch (err) {
       setError(
         err instanceof Error
@@ -106,61 +136,53 @@ export function DriveSetupTask({
   };
 
   const handleManualSave = async () => {
-    const url = driveUrl.trim();
+    const url = normalizeUrl(driveUrl);
     let name = driveName.trim();
     if (!url) {
       setError("Paste a Google Drive folder or Shared Drive link.");
       return;
     }
     setError(null);
-    if (url) {
-      try {
-        const googleName = await fetchDriveFolderName(url);
-        if (googleName) {
-          name = googleName;
-          setLoadedFolderName(googleName);
-        }
-      } catch {
-        /* keep the typed name if Google does not return one */
+    try {
+      const googleName = await fetchDriveFolderName(url);
+      if (googleName) {
+        name = googleName;
+        setLoadedFolderName(googleName);
       }
+    } catch {
+      /* keep the typed name if Google does not return one */
     }
     onComplete(name || suggestion, url);
     setEditing(false);
-    setManualMode(false);
   };
 
   if (data.status === "completed" && !editing) {
     return (
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <FolderOpen className="size-4 shrink-0 text-success" />
-          <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <FolderOpen className="mt-0.5 size-4 shrink-0 text-success" />
+          <div className="min-w-0">
+            <p className="text-xs text-foreground">{savedName}</p>
             {savedUrl ? (
-              <>
-                <p className="text-xs text-foreground">{savedName}</p>
-                <a
-                  href={savedUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-[#38BDF8] hover:underline"
-                >
-                  Open in Google Drive
-                  <ExternalLink className="size-2.5" />
-                </a>
-              </>
-            ) : (
-              <>
-                <p className="text-xs text-foreground">{savedName}</p>
-                {data.completedAt && (
-                  <p className="mt-0.5 text-[10px] text-muted">
-                    Drive confirmed ·{" "}
-                    {new Date(data.completedAt).toLocaleDateString("en-US", {
-                      dateStyle: "medium",
-                    })}
-                  </p>
-                )}
-              </>
-            )}
+              <a
+                href={savedUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-[#38BDF8] hover:underline"
+              >
+                Open in Google Drive
+                <ExternalLink className="size-2.5" />
+              </a>
+            ) : data.completedAt ? (
+              <p className="mt-0.5 text-[10px] text-muted">
+                Drive confirmed ·{" "}
+                {new Date(data.completedAt).toLocaleDateString("en-US", {
+                  dateStyle: "medium",
+                })}
+              </p>
+            ) : null}
+            <DriveFolderLinks folders={savedFolders} />
+            {info ? <p className="mt-2 text-[11px] text-muted">{info}</p> : null}
           </div>
         </div>
         {!readOnly && (
@@ -172,7 +194,6 @@ export function DriveSetupTask({
               setError(null);
               setInfo(null);
               setEditing(true);
-              setManualMode(false);
             }}
             className="inline-flex items-center gap-1.5 font-display text-[10px] font-bold uppercase tracking-wide text-muted hover:text-foreground"
           >
@@ -234,101 +255,56 @@ export function DriveSetupTask({
         </label>
       </div>
 
-      {!manualMode ? (
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-          {configured ? (
-            <button
-              type="button"
-              onClick={() => void handleCreate()}
-              disabled={creating || !(driveName.trim() || suggestion)}
-              className="inline-flex items-center gap-2 border border-success bg-success/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-success transition-colors hover:bg-success/20 disabled:opacity-40"
-            >
-              {creating ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <HardDrive className="size-3.5" />
-              )}
-              {creating
-                ? "Creating Drive and folders…"
-                : "Create Google Drive with folders"}
-            </button>
-          ) : (
-            <p className="text-[11px] text-btr">
-              Google Drive is not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-              then reload — or link an existing Drive below.
-            </p>
-          )}
+      {!configured && (
+        <p className="text-[11px] text-btr">
+          Google Drive is not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+          then reload — or paste an existing Drive URL below.
+        </p>
+      )}
 
-          <button
-            type="button"
-            onClick={() => {
-              setManualMode(true);
-              setError(null);
-            }}
-            disabled={creating}
-            className="font-display text-[10px] font-bold uppercase tracking-wide text-muted hover:text-foreground disabled:opacity-40"
-          >
-            Link an existing Drive instead
-          </button>
-        </div>
-      ) : (
-        <>
-          <label className="block">
-            <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-              Drive URL<span className="ml-1 text-btr">*</span>
-            </span>
-            <input
-              type="url"
-              value={driveUrl}
-              onChange={(e) => {
-                onDriveUrlChange(e.target.value);
-                setError(null);
-              }}
-              className={`${inputClass} mt-1`}
-              placeholder="https://drive.google.com/drive/folders/..."
-              disabled={creating}
-            />
-          </label>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={() => void handleManualSave()}
-              className="inline-flex items-center gap-2 border border-success bg-success/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-success transition-colors hover:bg-success/20"
-            >
-              <Check className="size-3.5" />
-              Save Drive Link
-            </button>
+      <SetupCreateOrLinkRow
+        create={
+          configured
+            ? {
+                label: "Create Google Drive with folders",
+                busyLabel: "Creating Drive and folders…",
+                busy: creating,
+                disabled: !(driveName.trim() || suggestion),
+                icon: <HardDrive className="size-3.5" />,
+                onClick: () => void handleCreate(),
+              }
+            : undefined
+        }
+        urlLabel="Drive URL"
+        urlValue={driveUrl}
+        urlPlaceholder="https://drive.google.com/drive/folders/..."
+        urlDisabled={creating}
+        onUrlChange={(value) => {
+          onDriveUrlChange(value);
+          setError(null);
+        }}
+        saveLabel="Save Drive Link"
+        saveDisabled={creating || !driveUrl.trim()}
+        onSave={() => void handleManualSave()}
+        extra={
+          editing ? (
             <button
               type="button"
               onClick={() => {
-                setManualMode(false);
+                setDriveName(savedName);
+                onDriveUrlChange(savedUrl);
+                setEditing(false);
                 setError(null);
+                setInfo(null);
               }}
-              className="font-display text-[10px] font-bold uppercase tracking-wide text-muted hover:text-foreground"
+              disabled={creating}
+              className="font-display text-[10px] font-bold uppercase tracking-wide text-muted hover:text-foreground disabled:opacity-40"
             >
-              Back to create
+              Cancel
             </button>
-          </div>
-        </>
-      )}
-
-      {editing && !manualMode && (
-        <button
-          type="button"
-          onClick={() => {
-            setDriveName(savedName);
-            onDriveUrlChange(savedUrl);
-            setEditing(false);
-            setError(null);
-            setInfo(null);
-          }}
-          disabled={creating}
-          className="font-display text-[10px] font-bold uppercase tracking-wide text-muted hover:text-foreground disabled:opacity-40"
-        >
-          Cancel
-        </button>
-      )}
+          ) : null
+        }
+      />
 
       {info && <p className="text-[11px] text-muted">{info}</p>}
       {error && <p className="text-[11px] text-btr">{error}</p>}

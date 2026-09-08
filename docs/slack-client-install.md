@@ -17,7 +17,7 @@ Do this in your company’s Slack (the one where project channels should live).
 1. Sign in to **Adsomnia Workspace** in your browser:  
    [https://adsomnia-workspace.vercel.app](https://adsomnia-workspace.vercel.app)
 2. Open an initiative that is in **Project Setup**.
-3. Open the task **Create Slack Channel**.
+3. Open **Create Slack Channel** in Kickoff Preparation (after Google Drive and Jira).
 4. Click **Connect Slack** (or **Connect My Slack Account** / **Add workspace**).
 5. Slack opens and asks you to allow **Adsomnia Workspace**.
 6. Confirm you are installing into the **correct Slack workspace** (your company), then **Allow**.
@@ -65,7 +65,7 @@ The app requests permission to:
 - Create public and private channels  
 - Invite people into those channels  
 - Post a short message in the new channel  
-- (Later) add bookmarks such as Drive or Jira links  
+- Add channel bookmarks for the project Google Drive and Jira links  
 - Look up members by email and send a direct message when leadership leaves feedback or a workstream advances  
 
 It does **not** need access to read your full message history for this setup.

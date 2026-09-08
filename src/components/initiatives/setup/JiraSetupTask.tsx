@@ -16,6 +16,7 @@ import type { JiraSetupData, ScopingMilestone } from "@/lib/validation-data";
 import { inputClass } from "@/lib/form-styles";
 import { normalizeUrl } from "@/lib/validation-data";
 import { createAndCompleteJiraBoard } from "@/app/(workspace)/workstreams/[id]/actions";
+import { SetupCreateOrLinkRow } from "./SetupCreateOrLinkRow";
 import {
   JIRA_EPIC_COLOR_HEX,
   JIRA_EPIC_COLORS,
@@ -132,7 +133,6 @@ export function JiraSetupTask({
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [manualMode, setManualMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [suggested, setSuggested] = useState<SuggestedTarget | null>(null);
@@ -256,7 +256,6 @@ export function JiraSetupTask({
         created: true,
       });
       setEditing(false);
-      setManualMode(false);
       router.refresh();
     } finally {
       setCreating(false);
@@ -278,7 +277,6 @@ export function JiraSetupTask({
       ),
     });
     setEditing(false);
-    setManualMode(false);
   };
 
   if (view.status === "completed" && !editing) {
@@ -432,7 +430,7 @@ export function JiraSetupTask({
         )}
       </div>
 
-      {!manualMode && canCreate && (
+      {canCreate && (
         <div className="space-y-2">
           <div className="flex items-baseline justify-between gap-3">
             <p className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
@@ -587,95 +585,51 @@ export function JiraSetupTask({
         </div>
       )}
 
-      {(manualMode || !canCreate) && (
-        <label className="block">
-          <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-            Jira URL{!canCreate ? <span className="ml-1 text-btr">*</span> : null}
-          </span>
-          <input
-            type="url"
-            value={boardUrl}
-            onChange={(e) => {
-              onBoardUrlChange(e.target.value);
-              setError(null);
-            }}
-            className={`${inputClass} mt-1`}
-            placeholder="https://….atlassian.net/jira/software/projects/…"
-            disabled={creating}
-          />
-        </label>
-      )}
+      <SetupCreateOrLinkRow
+        create={
+          canCreate
+            ? {
+                label: "Create Jira",
+                busy: creating,
+                disabled: !(spaceTitle.trim() || suggestion),
+                icon: <SquareKanban className="size-3.5" />,
+                onClick: () => void handleCreate(),
+              }
+            : undefined
+        }
+        urlLabel="Jira URL"
+        urlValue={boardUrl}
+        urlPlaceholder="https://….atlassian.net/jira/software/projects/…"
+        urlDisabled={creating}
+        onUrlChange={(value) => {
+          onBoardUrlChange(value);
+          setError(null);
+        }}
+        saveLabel="Save Jira Link"
+        saveDisabled={creating || !boardUrl.trim()}
+        onSave={handleManualSave}
+        extra={
+          editing ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSpaceTitle(savedName);
+                onBoardUrlChange(savedUrl);
+                setEpics(seedsToEditable(milestones));
+                setError(null);
+                setInfo(null);
+                setEditing(false);
+              }}
+              className="font-display text-[10px] font-bold uppercase tracking-wide text-muted hover:text-foreground"
+            >
+              Cancel
+            </button>
+          ) : null
+        }
+      />
 
       {error && <p className="text-xs text-btr">{error}</p>}
       {info && !error && <p className="text-xs text-muted">{info}</p>}
-
-      <div className="flex flex-wrap items-center gap-3">
-        {canCreate && !manualMode && (
-          <button
-            type="button"
-            onClick={() => void handleCreate()}
-            disabled={creating || !(spaceTitle.trim() || suggestion)}
-            className="inline-flex items-center gap-2 border border-success bg-success/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-success transition-colors hover:bg-success/20 disabled:opacity-40"
-          >
-            {creating ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <SquareKanban className="size-3.5" />
-            )}
-            {creating ? "Creating…" : "Create Jira"}
-          </button>
-        )}
-
-        {(manualMode || !canCreate) && (
-          <button
-            type="button"
-            onClick={handleManualSave}
-            disabled={!boardUrl.trim()}
-            className="inline-flex items-center gap-2 border border-border px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-muted transition-colors hover:border-foreground hover:text-foreground disabled:opacity-40"
-          >
-            <Check className="size-3.5" />
-            {editing ? "Save Jira Link" : "Confirm Existing"}
-          </button>
-        )}
-
-        {canCreate && !manualMode && (
-          <button
-            type="button"
-            onClick={() => setManualMode(true)}
-            className="font-display text-[10px] font-bold uppercase tracking-wide text-muted hover:text-foreground"
-          >
-            Confirm existing instead
-          </button>
-        )}
-
-        {manualMode && canCreate && (
-          <button
-            type="button"
-            onClick={() => setManualMode(false)}
-            className="font-display text-[10px] font-bold uppercase tracking-wide text-muted hover:text-foreground"
-          >
-            Back to create
-          </button>
-        )}
-
-        {editing && (
-          <button
-            type="button"
-            onClick={() => {
-              setSpaceTitle(savedName);
-              onBoardUrlChange(savedUrl);
-              setEpics(seedsToEditable(milestones));
-              setError(null);
-              setInfo(null);
-              setEditing(false);
-              setManualMode(false);
-            }}
-            className="font-display text-[10px] font-bold uppercase tracking-wide text-muted hover:text-foreground"
-          >
-            Cancel
-          </button>
-        )}
-      </div>
     </div>
   );
 }

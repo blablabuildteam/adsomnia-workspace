@@ -23,6 +23,12 @@ export type SlackWorkspaceSummary = {
   userLinked: boolean;
 };
 
+export type SlackChannelBookmark = {
+  title: string;
+  link: string;
+  emoji?: string;
+};
+
 export type CreateChannelResult = {
   channelId: string;
   channelName: string;
@@ -30,6 +36,7 @@ export type CreateChannelResult = {
   teamId: string;
   teamName: string;
   isPrivate: boolean;
+  bookmarkError?: string;
 };
 
 function configuredAppOrigin(): string {
@@ -295,12 +302,51 @@ export async function exchangeOAuthCode(
   };
 }
 
+async function addChannelBookmarks(
+  client: WebClient,
+  channelId: string,
+  bookmarks: SlackChannelBookmark[],
+): Promise<string | undefined> {
+  const failed: string[] = [];
+  let missingScope = false;
+
+  for (const bookmark of bookmarks) {
+    try {
+      const result = (await client.apiCall("bookmarks.add", {
+        channel_id: channelId,
+        title: bookmark.title,
+        type: "link",
+        link: bookmark.link,
+        ...(bookmark.emoji ? { emoji: bookmark.emoji } : {}),
+      })) as { ok?: boolean; error?: string };
+      if (!result.ok) {
+        if (result.error === "missing_scope") missingScope = true;
+        failed.push(bookmark.title);
+      }
+    } catch (err) {
+      const code =
+        err && typeof err === "object" && "data" in err
+          ? (err as { data?: { error?: string } }).data?.error
+          : undefined;
+      if (code === "missing_scope") missingScope = true;
+      failed.push(bookmark.title);
+    }
+  }
+
+  if (failed.length === 0) return undefined;
+  if (missingScope) {
+    return "Channel created, but bookmarks need a Slack reconnect (bookmarks:write).";
+  }
+  return `Channel created, but could not bookmark ${failed.join(" and ")}.`;
+}
+
 export async function createChannel(opts: {
   teamId: string;
   name: string;
   isPrivate?: boolean;
   /** Adsomnia user creating the channel — invited via their linked Slack id. */
   adsomniaUserId: string;
+  bookmarks?: SlackChannelBookmark[];
 }): Promise<CreateChannelResult> {
   const workspace = await getWorkspace(opts.teamId);
   if (!workspace) {
@@ -376,6 +422,11 @@ export async function createChannel(opts: {
       // Welcome post is optional; channel create already succeeded.
     }
 
+    const bookmarkError =
+      opts.bookmarks && opts.bookmarks.length > 0
+        ? await addChannelBookmarks(client, channelId, opts.bookmarks)
+        : undefined;
+
     return {
       channelId,
       channelName,
@@ -383,6 +434,7 @@ export async function createChannel(opts: {
       teamId: workspace.teamId,
       teamName: workspace.teamName,
       isPrivate,
+      bookmarkError,
     };
   } catch (err) {
     if (err && typeof err === "object" && "data" in err) {

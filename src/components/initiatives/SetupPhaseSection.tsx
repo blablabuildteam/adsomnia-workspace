@@ -64,7 +64,7 @@ export function SetupPhaseSection({
   const [forceOpenTask, setForceOpenTask] = useState<SetupTaskId | null>(null);
   const [forceOpenSeq, setForceOpenSeq] = useState(0);
   const [slackChannelName, setSlackChannelName] = useState(
-    setupData.slack.channelName || "",
+    setupData.slack.channelName || setupData.slack.suggestedName || "",
   );
   const [jiraBoardUrl, setJiraBoardUrl] = useState(
     setupData.jira.boardUrl || setupData.jira.projectUrl || "",
@@ -100,7 +100,13 @@ export function SetupPhaseSection({
     }
   };
 
-  const TASKS_NEEDING_INPUT: SetupTaskId[] = ["slack", "jira", "invite-team"];
+  const INTEGRATION_SETUP_TASKS: SetupTaskId[] = ["drive", "slack", "jira"];
+  const TASKS_NEEDING_INPUT: SetupTaskId[] = [
+    "drive",
+    "slack",
+    "jira",
+    "invite-team",
+  ];
 
   const handleMarkComplete = (taskId: SetupTaskId) => {
     const taskDef = SETUP_TASKS.find((t) => t.id === taskId);
@@ -222,9 +228,12 @@ export function SetupPhaseSection({
               lockHint={lockHint}
               forceOpen={forceOpenTask === task.id ? forceOpenSeq : undefined}
               completing={pendingTask === task.id}
+              stayOpenOnComplete={task.id === "drive"}
               accent={ACCENT}
               onMarkComplete={
-                readOnly || taskLocked
+                readOnly ||
+                taskLocked ||
+                INTEGRATION_SETUP_TASKS.includes(task.id)
                   ? undefined
                   : () => handleMarkComplete(task.id)
               }
@@ -329,19 +338,37 @@ function buildQuickCompletePayload(
   switch (taskId) {
     case "slack": {
       const channelName = ctx.slackChannelName.trim().replace(/^#/, "");
-      if (!channelName) {
-        return { error: "Enter the Slack channel name, then mark complete." };
+      const channelUrl = normalizeUrl(setupData.slack.channelUrl ?? "");
+      if (!channelUrl) {
+        return {
+          error: "Create the Slack channel or paste a Slack URL, then save.",
+        };
       }
-      return { data: { channelName } };
+      return {
+        data: {
+          channelName: channelName || setupData.slack.suggestedName,
+          channelUrl,
+        },
+      };
     }
-    case "drive":
+    case "drive": {
+      const driveUrl = normalizeUrl(
+        ctx.driveUrl || setupData.drive.driveUrl || "",
+      );
+      if (!driveUrl) {
+        return {
+          error:
+            "Create the Google Drive or paste a Drive URL, then save.",
+        };
+      }
       return {
         data: {
           driveName:
             setupData.drive.driveName || ctx.suggestedDriveName,
-          driveUrl: ctx.driveUrl || setupData.drive.driveUrl,
+          driveUrl,
         },
       };
+    }
     case "jira": {
       const boardUrl = normalizeUrl(ctx.jiraBoardUrl);
       if (!boardUrl) {
@@ -398,6 +425,9 @@ function renderTaskContent(
           data={setupData.drive}
           suggestedName={ctx.suggestedDriveName}
           driveUrl={ctx.driveUrl}
+          folders={
+            setupData.drive.folders ?? setupData.documentation.folders
+          }
           onDriveUrlChange={ctx.onDriveUrlChange}
           readOnly={readOnly}
           onComplete={(driveName, nextDriveUrl, folders) =>
@@ -444,24 +474,13 @@ function renderTaskContent(
     case "documentation":
       return (
         <DocsSetupTask
-          linkedDocs={setupData.documentation.linkedDocs}
-          folders={setupData.documentation.folders}
+          data={setupData.documentation ?? { status: "pending", linkedDocs: [] }}
           driveUrl={ctx.driveUrl || setupData.drive.driveUrl}
           readOnly={readOnly}
-          onFoldersCreated={(folders) =>
-            ctx.onComplete(
-              "documentation",
-              {
-                linkedDocs: setupData.documentation.linkedDocs,
-                folders,
-              },
-              { complete: false },
-            )
-          }
-          onComplete={(folders) =>
+          onComplete={() =>
             ctx.onComplete("documentation", {
-              linkedDocs: setupData.documentation.linkedDocs,
-              folders,
+              linkedDocs: setupData.documentation?.linkedDocs ?? [],
+              folders: setupData.documentation?.folders,
             })
           }
         />
