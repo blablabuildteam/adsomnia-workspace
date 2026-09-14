@@ -52,42 +52,68 @@ export function isGoogleLoginConfigured(): boolean {
   );
 }
 
-/** Comma-separated domains from GOOGLE_ALLOWED_DOMAINS (lowercased, trimmed). */
-export function getAllowedGoogleDomains(): string[] {
-  const raw = process.env.GOOGLE_ALLOWED_DOMAINS || "";
+const DEFAULT_ALLOWED_GOOGLE_DOMAINS = [
+  "adsomnia.com",
+  "blablabuild.com",
+  "godai.nl",
+] as const;
+
+/**
+ * Known leadership emails, including Godai aliases of Adsomnia admins.
+ * LOGIN_*_EMAIL env values are unioned in (comma-separated lists allowed).
+ */
+const DEFAULT_LEADERSHIP_EMAILS = [
+  "sietse@adsomnia.com",
+  "sietse@godai.nl",
+  "oleg@adsomnia.com",
+  "jasper@adsomnia.com",
+  "jesper@godai.nl",
+  "coen@adsomnia.com",
+  "xennith@blablabuild.com",
+  "kevin@blablabuild.com",
+] as const;
+
+const LOGIN_EMAIL_KEYS = [
+  "LOGIN_SIETSE_EMAIL",
+  "LOGIN_OLEG_EMAIL",
+  "LOGIN_JASPER_EMAIL",
+  "LOGIN_COEN_EMAIL",
+  "LOGIN_XENNITH_EMAIL",
+  "LOGIN_KEVIN_EMAIL",
+] as const;
+
+function parseCommaSeparated(raw: string): string[] {
   return raw
     .split(",")
-    .map((d) => d.trim().toLowerCase())
+    .map((part) => part.trim().toLowerCase())
     .filter(Boolean);
+}
+
+/** Allowed Google login domains: built-in entities plus GOOGLE_ALLOWED_DOMAINS. */
+export function getAllowedGoogleDomains(): string[] {
+  const fromEnv = parseCommaSeparated(process.env.GOOGLE_ALLOWED_DOMAINS || "");
+  return [...new Set([...DEFAULT_ALLOWED_GOOGLE_DOMAINS, ...fromEnv])];
 }
 
 export function isEmailDomainAllowed(email: string): boolean {
   const at = email.lastIndexOf("@");
   if (at === -1) return false;
   const domain = email.slice(at + 1).toLowerCase();
-  const allowed = getAllowedGoogleDomains();
-  if (allowed.length === 0) return false;
-  return allowed.includes(domain);
+  return getAllowedGoogleDomains().includes(domain);
 }
 
 /**
- * Emails from LOGIN_*_EMAIL env vars (Adsomnia leadership + blablabuild admins).
+ * Leadership admin emails (Adsomnia + Godai aliases + blablabuild).
  * Matched Google accounts get the `leadership` role.
  */
 export function getLeadershipEmails(): string[] {
-  const keys = [
-    "LOGIN_SIETSE_EMAIL",
-    "LOGIN_OLEG_EMAIL",
-    "LOGIN_JASPER_EMAIL",
-    "LOGIN_COEN_EMAIL",
-    "LOGIN_XENNITH_EMAIL",
-    "LOGIN_KEVIN_EMAIL",
-  ] as const;
-
-  const emails = new Set<string>();
-  for (const key of keys) {
-    const value = process.env[key]?.toLowerCase().trim();
-    if (value) emails.add(value);
+  const emails = new Set<string>(DEFAULT_LEADERSHIP_EMAILS);
+  for (const key of LOGIN_EMAIL_KEYS) {
+    const value = process.env[key];
+    if (!value) continue;
+    for (const email of parseCommaSeparated(value)) {
+      emails.add(email);
+    }
   }
   return [...emails];
 }

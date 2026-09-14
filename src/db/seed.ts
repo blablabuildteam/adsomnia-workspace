@@ -68,6 +68,22 @@ async function seed() {
       password: process.env.LOGIN_KEVIN_PASSWORD ?? defaultPassword,
       role: "leadership" as const,
     },
+    {
+      name: "Sietse",
+      firstName: "Sietse",
+      lastName: "",
+      email: "sietse@godai.nl",
+      password: process.env.LOGIN_SIETSE_PASSWORD ?? defaultPassword,
+      role: "leadership" as const,
+    },
+    {
+      name: "Jesper",
+      firstName: "Jesper",
+      lastName: "",
+      email: "jesper@godai.nl",
+      password: process.env.LOGIN_JASPER_PASSWORD ?? defaultPassword,
+      role: "leadership" as const,
+    },
   ];
 
   console.log("Seeding users...");

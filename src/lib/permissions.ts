@@ -2,8 +2,9 @@
  * Workspace RBAC.
  *
  * - `leadership` — LOGIN_* admin emails (Sietse, Oleg, Jasper, Coen, plus
- *   seeded blablabuild admins). Approve, hold, set up projects, run onboarding.
- * - `team` — every other allowed-domain account (typically @adsomnia.com).
+ *   Godai aliases sietse@godai.nl / jesper@godai.nl and seeded blablabuild
+ *   admins). Approve, hold, set up projects, run onboarding.
+ * - `team` — every other allowed-domain account (Adsomnia, Godai, blablabuild).
  *   Submit initiatives, follow them through later phases, and edit their own
  *   details while the item is still in Initiative or Validation.
  * - `production` — reserved; treated as team for write access today.

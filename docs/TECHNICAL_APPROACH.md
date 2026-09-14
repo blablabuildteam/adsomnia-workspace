@@ -126,7 +126,7 @@ The inbox at `/feedback` is **blablabuild-only** (`@blablabuild.com` email). Any
 - `getCurrentUser()` server-side helper reads the session cookie and returns the user
 - The `(workspace)` route group layout enforces authentication — unauthenticated users redirect to `/login`
 - No self-registration, no password reset
-- **Admin capabilities** (`canApprove`, `canManageSetup`, `canManageOnboarding`) are granted by `role === "leadership"` (not hard-coded names). Seeded admins include Adsomnia + blablabuild accounts from `LOGIN_*` env vars.
+- **Admin capabilities** (`canApprove`, `canManageSetup`, `canManageOnboarding`) are granted by `role === "leadership"` (not hard-coded names). Seeded admins include Adsomnia + Godai (`sietse@godai.nl`, `jesper@godai.nl`) + blablabuild accounts from `LOGIN_*` env vars.
 
 ### Google Workspace login (current)
 
@@ -285,7 +285,7 @@ Each stage gate (Validation → Scoping, Scoping → Go/No-Go, etc.) will have i
 | `SLACK_NOTIFICATIONS_TEAM_ID` | Server | Slack | Home workspace `team_id` for submitter DMs |
 | `GOOGLE_LOGIN_CLIENT_ID` | Server | Google login | Dedicated login OAuth Client ID |
 | `GOOGLE_LOGIN_CLIENT_SECRET` | Server | Google login | Dedicated login OAuth Client secret |
-| `GOOGLE_ALLOWED_DOMAINS` | Server | Google login | Comma-separated allowed email domains |
+| `GOOGLE_ALLOWED_DOMAINS` | Server | Google login | Comma-separated allowed email domains (`adsomnia.com`, `blablabuild.com`, `godai.nl`) |
 | `JIRA_ADSOMNIA_HOST` | Server | Jira | Adsomnia Jira Cloud host (connect first) |
 | `JIRA_ADSOMNIA_EMAIL` | Server | Jira | Service/admin email for Adsomnia API token |
 | `JIRA_ADSOMNIA_API_TOKEN` | Server | Jira | Adsomnia Atlassian API token |
