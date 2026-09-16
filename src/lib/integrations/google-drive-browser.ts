@@ -73,14 +73,27 @@ async function ensureGoogleIdentity(): Promise<void> {
   await gisReady;
 }
 
-async function getDriveAccessToken(): Promise<string> {
-  if (!GOOGLE_CLIENT_ID) {
-    throw new Error(
-      "Google sign-in is not configured. Add NEXT_PUBLIC_GOOGLE_CLIENT_ID.",
+/** Load GIS on the setup screen so Create can open the Google popup from the click. */
+export function preloadGoogleDriveAuth(): void {
+  if (!GOOGLE_CLIENT_ID) return;
+  void ensureGoogleIdentity();
+}
+
+function gisPopupError(error: google.accounts.oauth2.TokenClientError): Error {
+  if (error.type === "popup_failed_to_open") {
+    return new Error(
+      "The Google sign-in popup was blocked. Allow popups for this site in your browser, then click Create again.",
     );
   }
-  await ensureGoogleIdentity();
+  if (error.type === "popup_closed") {
+    return new Error(
+      "Google sign-in was closed before Drive access was granted.",
+    );
+  }
+  return new Error(error.message || "Google Drive sign-in failed.");
+}
 
+function requestDriveAccessToken(): Promise<string> {
   if (!tokenClient) {
     tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
@@ -104,10 +117,37 @@ async function getDriveAccessToken(): Promise<string> {
       accessToken = response.access_token;
       resolve(response.access_token);
     };
+    tokenClient!.error_callback = (error) => {
+      reject(gisPopupError(error));
+    };
     tokenClient!.requestAccessToken({
       prompt: accessToken ? "" : "consent",
     });
   });
+}
+
+/**
+ * Opens the Google Drive consent popup. Call from a click handler while GIS is
+ * already loaded so the browser still treats it as a user gesture.
+ */
+function getDriveAccessToken(): Promise<string> {
+  if (!GOOGLE_CLIENT_ID) {
+    return Promise.reject(
+      new Error(
+        "Google sign-in is not configured. Add NEXT_PUBLIC_GOOGLE_CLIENT_ID.",
+      ),
+    );
+  }
+  if (!window.google?.accounts?.oauth2) {
+    return ensureGoogleIdentity().then(() =>
+      Promise.reject(
+        new Error(
+          "Google Drive is ready now. Click Create again — a Google popup should open. Allow popups for this site if it does not.",
+        ),
+      ),
+    );
+  }
+  return requestDriveAccessToken();
 }
 
 export function parseGoogleDriveFolderId(url: string): string | null {
@@ -370,7 +410,8 @@ export async function createProjectDrive(
     throw new Error("Drive name is required.");
   }
 
-  const token = await getDriveAccessToken();
+  const tokenPromise = getDriveAccessToken();
+  const token = await tokenPromise;
 
   let drive: CreatedProjectDrive;
   try {

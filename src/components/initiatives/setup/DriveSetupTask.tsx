@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FolderOpen,
   Copy,
@@ -19,6 +19,7 @@ import {
   canCreateProjectDrive,
   createProjectDrive,
   fetchDriveFolderName,
+  preloadGoogleDriveAuth,
 } from "@/lib/integrations/google-drive-browser";
 import { SetupCreateOrLinkRow } from "./SetupCreateOrLinkRow";
 
@@ -83,6 +84,10 @@ export function DriveSetupTask({
 
   const configured = canCreateProjectDrive();
 
+  useEffect(() => {
+    preloadGoogleDriveAuth();
+  }, []);
+
   const handleCopy = async () => {
     await navigator.clipboard.writeText(driveName);
     setCopied(true);
@@ -102,11 +107,12 @@ export function DriveSetupTask({
       return;
     }
 
+    const createdPromise = createProjectDrive(name);
     setError(null);
     setInfo(null);
     setCreating(true);
     try {
-      const created = await createProjectDrive(name);
+      const created = await createdPromise;
       setDriveName(created.name);
       onDriveUrlChange(created.url);
       setLoadedFolderName(created.name);

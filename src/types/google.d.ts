@@ -63,8 +63,14 @@ declare namespace google {
         token_type: string;
       }
 
+      interface TokenClientError {
+        type: "popup_failed_to_open" | "popup_closed" | "unknown";
+        message?: string;
+      }
+
       interface TokenClient {
         callback: (response: TokenResponse) => void;
+        error_callback?: (error: TokenClientError) => void;
         requestAccessToken(options?: { prompt?: string }): void;
       }
 
@@ -72,6 +78,7 @@ declare namespace google {
         client_id: string;
         scope: string;
         callback: (response: TokenResponse) => void;
+        error_callback?: (error: TokenClientError) => void;
       }
 
       function initTokenClient(config: TokenClientConfig): TokenClient;
