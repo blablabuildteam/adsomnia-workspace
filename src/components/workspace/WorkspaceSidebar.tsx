@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ClipboardList,
   Columns3,
   LayoutDashboard,
   Lightbulb,
@@ -16,7 +15,6 @@ import {
   Rocket,
 } from "lucide-react";
 import { STAGE_COLORS, type StageId } from "@/data/workflow";
-import { canViewFeedbackInbox } from "@/lib/permissions";
 import {
   SidebarProfile,
   type SidebarProfileUser,
@@ -298,26 +296,15 @@ export function WorkspaceSidebar({ user, collapsed, onToggle }: Props) {
         </ul>
       </nav>
 
-      {(user.role === "leadership" || canViewFeedbackInbox(user)) && (
+      {user.role === "leadership" && (
         <div className="space-y-1 border-t border-border px-2 py-3">
-          {user.role === "leadership" && (
-            <NavLink
-              href="/report"
-              label="Report"
-              icon={ClipboardList}
-              active={isActive(pathname, "/report")}
-              collapsed={collapsed}
-            />
-          )}
-          {canViewFeedbackInbox(user) && (
-            <NavLink
-              href="/feedback"
-              label="Feedback"
-              icon={MessageSquare}
-              active={isActive(pathname, "/feedback")}
-              collapsed={collapsed}
-            />
-          )}
+          <NavLink
+            href="/feedback"
+            label="Feedback"
+            icon={MessageSquare}
+            active={isActive(pathname, "/feedback")}
+            collapsed={collapsed}
+          />
         </div>
       )}
 

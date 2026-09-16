@@ -8,7 +8,7 @@
  *   Submit initiatives, follow them through later phases, and edit their own
  *   details while the item is still in Initiative or Validation.
  * - `production` — reserved; treated as team for write access today.
- * - Product Feedback inbox is gated by `@blablabuild.com`, not role.
+ * - Product Feedback inbox is leadership-only.
  */
 
 export type WorkspaceRole = "leadership" | "production" | "team";
@@ -146,9 +146,9 @@ export function canSubmitProductFeedback(user: PermissionUser | null): boolean {
   return user != null;
 }
 
-/** Feedback inbox is blablabuild-only — not Adsomnia leadership. */
-export function canViewFeedbackInbox(user: { email: string } | null): boolean {
-  return user != null && isBlablabuildAccount(user);
+/** Feedback inbox is leadership-only. */
+export function canViewFeedbackInbox(user: PermissionUser | null): boolean {
+  return user != null && isLeadership(user);
 }
 
 /**

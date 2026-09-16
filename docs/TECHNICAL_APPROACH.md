@@ -113,7 +113,7 @@ Product-issue reports from the workspace Feedback button. Distinct from pipeline
 | `status` | `enum('open', 'resolved')` | Inbox triage |
 | `created_at` | `timestamp` | When it was filed |
 
-The inbox at `/feedback` is **blablabuild-only** (`@blablabuild.com` email). Any signed-in workspace user can submit from the right-edge button.
+The inbox at `/feedback` is **leadership-only**. Any signed-in workspace user can submit from the right-edge button.
 
 ---
 
@@ -326,7 +326,7 @@ src/
         page.tsx                      # Initiative submission
         actions.ts                    # submitIdea Server Action
       feedback/
-        page.tsx                      # blablabuild-only product feedback inbox
+        page.tsx                      # leadership-only product feedback inbox
         actions.ts                    # submitProductFeedback / updateFeedbackStatus
       initiatives/[id]/
         page.tsx                      # Initiative detail
