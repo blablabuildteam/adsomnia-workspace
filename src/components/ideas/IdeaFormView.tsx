@@ -42,8 +42,6 @@ const IDEA_STAGE = STAGES.find((s) => s.id === "idea")!;
 
 const SPONSOR_OPTIONS = ["Sietse", "Jasper", "Oleg", "Coen"];
 
-const SHOW_FORM_PREFILL = true;
-
 const FORM_FIELDS: {
   name: IdeaFieldName;
   label: string;
@@ -326,7 +324,13 @@ function SimilarWorkSnapshot({ match }: { match: SimilarityMatch }) {
   );
 }
 
-export function IdeaFormView({ submitterName }: { submitterName: string }) {
+export function IdeaFormView({
+  submitterName,
+  showFormPrefill = false,
+}: {
+  submitterName: string;
+  showFormPrefill?: boolean;
+}) {
   const [state, formAction, pending] = useActionState(submitIdea, initial);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -507,7 +511,7 @@ export function IdeaFormView({ submitterName }: { submitterName: string }) {
             <span className="size-1.5 animate-pulse bg-foreground" aria-hidden />
             New Initiative
           </span>
-          {SHOW_FORM_PREFILL && (
+          {showFormPrefill && (
             <button
               type="button"
               onClick={() => setValues(DEV_PREFILL)}

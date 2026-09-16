@@ -72,8 +72,6 @@ import type { Attachment } from "@/lib/validation-data";
 
 const initial: ScopingResult = {};
 
-const SHOW_FORM_PREFILL = true;
-
 /* ─── Help text & icons ─────────────────────────────────── */
 
 const FIELD_HELP: Record<string, string> = {
@@ -858,9 +856,11 @@ function ProgressRing({ sections }: { sections: { done: boolean; label: string }
 function ScopingHeader({
   onPrefill,
   sections,
+  showFormPrefill = false,
 }: {
   onPrefill?: () => void;
   sections: { done: boolean; label: string }[];
+  showFormPrefill?: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3">
@@ -877,7 +877,7 @@ function ScopingHeader({
           </p>
         </div>
       </div>
-      {SHOW_FORM_PREFILL && onPrefill && (
+      {showFormPrefill && onPrefill && (
         <button
           type="button"
           onClick={onPrefill}
@@ -904,6 +904,7 @@ type Props = {
   canResubmit?: boolean;
   /** Leadership feedback shown above the form when the scope was bounced back. */
   feedback?: GoNoGoDecision | null;
+  showFormPrefill?: boolean;
 };
 
 function sameImpactState(
@@ -924,6 +925,7 @@ export function ScopingPhaseSection({
   resubmitting = false,
   canResubmit = false,
   feedback = null,
+  showFormPrefill = false,
 }: Props) {
   const boundSave = saveScopingData.bind(null, initiativeId);
   const boundSubmit = submitScopingForApproval.bind(null, initiativeId);
@@ -1161,7 +1163,11 @@ export function ScopingPhaseSection({
 
   return (
     <>
-      <ScopingHeader onPrefill={applyDevPrefill} sections={sections} />
+      <ScopingHeader
+        onPrefill={applyDevPrefill}
+        sections={sections}
+        showFormPrefill={showFormPrefill}
+      />
 
       {/* Hidden JSON fields for server action */}
       <input type="hidden" name="milestones" value={JSON.stringify(milestones)} />

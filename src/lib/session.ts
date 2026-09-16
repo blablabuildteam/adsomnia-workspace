@@ -105,4 +105,5 @@ export {
   canViewFeedbackInbox,
   canViewLeadershipReport,
   isBlablabuildAccount,
+  canUseFormPrefill,
 } from "./permissions";

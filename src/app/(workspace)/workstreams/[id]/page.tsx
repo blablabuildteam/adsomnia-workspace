@@ -12,6 +12,7 @@ import {
   canApprove,
   canManageSetup,
   canManageOnboarding,
+  canUseFormPrefill,
 } from "@/lib/session";
 import { createSharePath } from "@/lib/share";
 import type { ApprovalDecision } from "@/components/initiatives/ApprovalPanel";
@@ -108,6 +109,7 @@ export default async function InitiativePage({ params }: Props) {
       sharePath={createSharePath(initiative.id)}
       canUserManageSetup={canUserManageSetup}
       canUserManageOnboarding={canUserManageOnboarding}
+      showFormPrefill={user ? canUseFormPrefill(user) : false}
     />
   );
 }

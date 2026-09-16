@@ -146,6 +146,8 @@ type Props = {
   canUserManageSetup?: boolean;
   /** Whether the current user runs the onboarding session (Head of Production). */
   canUserManageOnboarding?: boolean;
+  /** Dev/test form prefill for allowlisted accounts. */
+  showFormPrefill?: boolean;
 };
 
 export function InitiativeDetailView({
@@ -164,6 +166,7 @@ export function InitiativeDetailView({
   sharePath,
   canUserManageSetup = false,
   canUserManageOnboarding = false,
+  showFormPrefill = false,
 }: Props) {
   const stage = STAGES.find(
     (s) => s.id === initiative.currentStage,
@@ -519,6 +522,7 @@ export function InitiativeDetailView({
                         feedback={displayedValidationDecision}
                         resubmitting={validationAwaitingDecision}
                         canResubmit={validationCanResubmit}
+                        showFormPrefill={showFormPrefill}
                       />
                     </form>
                   ) : (
@@ -564,6 +568,7 @@ export function InitiativeDetailView({
                         feedback={
                           scopingCanResubmit ? displayedGoNoGoDecision : null
                         }
+                        showFormPrefill={showFormPrefill}
                       />
                     </form>
                   ) : (

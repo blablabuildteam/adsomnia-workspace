@@ -86,6 +86,54 @@ export function canViewLeadershipReport(user: PermissionUser): boolean {
 
 const BLABLABUILD_DOMAIN = "blablabuild.com";
 
+/** Dev/test prefill (flask button) — Adsomnia leadership + Xennith only. */
+const FORM_PREFILL_DEFAULT_EMAILS = [
+  "sietse@adsomnia.com",
+  "sietse@godai.nl",
+  "oleg@adsomnia.com",
+  "jasper@adsomnia.com",
+  "jesper@godai.nl",
+  "coen@adsomnia.com",
+  "xennith@blablabuild.com",
+] as const;
+
+const FORM_PREFILL_EMAIL_ENV_KEYS = [
+  "LOGIN_SIETSE_EMAIL",
+  "LOGIN_OLEG_EMAIL",
+  "LOGIN_JASPER_EMAIL",
+  "LOGIN_COEN_EMAIL",
+  "LOGIN_XENNITH_EMAIL",
+] as const;
+
+function parseCommaSeparatedEmails(raw: string): string[] {
+  return raw
+    .split(",")
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+/** Emails allowed to see form prefill in Initiative / Validation / Scoping. */
+export function getFormPrefillEmails(): string[] {
+  const emails = new Set<string>(FORM_PREFILL_DEFAULT_EMAILS);
+  for (const key of FORM_PREFILL_EMAIL_ENV_KEYS) {
+    const value = process.env[key];
+    if (!value) continue;
+    for (const email of parseCommaSeparatedEmails(value)) {
+      emails.add(email);
+    }
+  }
+  return [...emails];
+}
+
+export function canUseFormPrefill(
+  user: { email: string } | null | undefined,
+): boolean {
+  if (!user?.email) return false;
+  const normalized = user.email.toLowerCase().trim();
+  if (!normalized) return false;
+  return getFormPrefillEmails().includes(normalized);
+}
+
 /** Party is not stored on users — blablabuild is the email domain. */
 export function isBlablabuildAccount(user: { email: string }): boolean {
   const at = user.email.lastIndexOf("@");

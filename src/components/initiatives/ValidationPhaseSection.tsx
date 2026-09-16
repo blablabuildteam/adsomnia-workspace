@@ -105,8 +105,6 @@ function resolveLeadPartyState(stored: string | undefined | null): {
   return { select: OTHER_PARTY_VALUE, other: stored };
 }
 
-const SHOW_FORM_PREFILL = true;
-
 const DEV_PREFILL = {
   businessValueTypes: ["speed", "cost-efficiency"] as BusinessValueType[],
   businessValueImpacts: {
@@ -201,8 +199,10 @@ function FieldLabel({
 
 function BusinessCaseHeader({
   onPrefill,
+  showFormPrefill = false,
 }: {
   onPrefill?: () => void;
+  showFormPrefill?: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3">
@@ -216,7 +216,7 @@ function BusinessCaseHeader({
           with confidence.
         </p>
       </div>
-      {SHOW_FORM_PREFILL && onPrefill && (
+      {showFormPrefill && onPrefill && (
         <button
           type="button"
           onClick={onPrefill}
@@ -241,6 +241,7 @@ type Props = {
   resubmitting?: boolean;
   /** Show Save Changes + Resubmit buttons for feedback / on-hold / rejected. */
   canResubmit?: boolean;
+  showFormPrefill?: boolean;
 };
 
 export function ValidationPhaseSection({
@@ -250,6 +251,7 @@ export function ValidationPhaseSection({
   feedback = null,
   resubmitting = false,
   canResubmit = false,
+  showFormPrefill = false,
 }: Props) {
   const boundSave = saveValidationData.bind(null, initiativeId);
   const boundSubmit = submitValidationForApproval.bind(null, initiativeId);
@@ -353,7 +355,10 @@ export function ValidationPhaseSection({
 
   return (
     <>
-      <BusinessCaseHeader onPrefill={applyDevPrefill} />
+      <BusinessCaseHeader
+        onPrefill={applyDevPrefill}
+        showFormPrefill={showFormPrefill}
+      />
       <div className="space-y-4 p-4">
         {feedback?.decision === "feedback" && (
           <div className="border border-feedback/50 bg-feedback/10 px-3 py-2.5">
