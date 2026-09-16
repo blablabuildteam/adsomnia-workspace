@@ -4,6 +4,8 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { initiatives, users } from "@/db/schema";
 import { getUserSlackLink, getWorkspace } from "@/lib/integrations/slack";
+import { uniqueMentionedPeople } from "@/lib/mentions";
+import { getMentionablePeople } from "@/lib/queries";
 
 export type SubmitterNotifyKind = "feedback" | "advanced";
 
@@ -223,5 +225,139 @@ export async function notifySubmitter(
     });
   } catch (err) {
     console.error("Slack submitter notify failed:", err);
+  }
+}
+
+export type NotifyChatMentionsInput = {
+  initiativeId: number;
+  actorUserId: string;
+  actorName: string;
+  body: string;
+};
+
+/**
+ * DM each @mentioned workspace user on the home Slack workspace.
+ * Never throws — Slack failures must not block saving the chat remark.
+ */
+export async function notifyChatMentions(
+  input: NotifyChatMentionsInput,
+): Promise<void> {
+  try {
+    const teamId = homeTeamId();
+    if (!teamId) {
+      console.warn(
+        "Slack chat mention notify skipped: SLACK_NOTIFICATIONS_TEAM_ID is not set.",
+      );
+      return;
+    }
+
+    const people = await getMentionablePeople();
+    const mentioned = uniqueMentionedPeople(input.body, people).filter(
+      (person) => person.id !== input.actorUserId,
+    );
+    if (mentioned.length === 0) return;
+
+    const [initiative] = await db
+      .select({
+        id: initiatives.id,
+        ticketId: initiatives.ticketId,
+        title: initiatives.title,
+      })
+      .from(initiatives)
+      .where(eq(initiatives.id, input.initiativeId))
+      .limit(1);
+
+    if (!initiative) return;
+
+    const workspace = await getWorkspace(teamId);
+    if (!workspace) {
+      console.warn(
+        `Slack chat mention notify skipped: home workspace ${teamId} is not connected.`,
+      );
+      return;
+    }
+
+    const origin = appOrigin();
+    if (!origin) {
+      console.warn(
+        "Slack chat mention notify skipped: NEXT_PUBLIC_APP_URL is not set.",
+      );
+      return;
+    }
+
+    const client = new WebClient(workspace.botToken, {
+      logLevel: LogLevel.ERROR,
+    });
+
+    const url = `${origin}/workstreams/${initiative.id}`;
+    const preview = input.body.trim().slice(0, 500);
+    const header = `${initiative.ticketId} — You were mentioned in chat`;
+
+    for (const person of mentioned) {
+      const [target] = await db
+        .select({ email: users.email })
+        .from(users)
+        .where(eq(users.id, person.id))
+        .limit(1);
+
+      if (!target?.email) continue;
+
+      const slackUserId = await resolveSlackUserId({
+        client,
+        teamId,
+        userId: person.id,
+        email: target.email,
+      });
+      if (!slackUserId) continue;
+
+      const opened = await client.conversations.open({ users: slackUserId });
+      const dmChannel = opened.channel?.id;
+      if (!opened.ok || !dmChannel) continue;
+
+      const blocks: KnownBlock[] = [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: header.slice(0, 150),
+            emoji: false,
+          },
+        },
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*${escapeMrkdwn(initiative.ticketId)}* — ${escapeMrkdwn(initiative.title)}\n${escapeMrkdwn(input.actorName)} mentioned you in workstream chat.`,
+          },
+        },
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `>${escapeMrkdwn(preview)}`,
+          },
+        },
+        {
+          type: "actions",
+          elements: [
+            {
+              type: "button",
+              text: { type: "plain_text", text: "Open workstream" },
+              url,
+            },
+          ],
+        },
+      ];
+
+      const fallback = `${initiative.ticketId} — ${initiative.title}. ${input.actorName} mentioned you in chat: "${preview}" ${url}`;
+
+      await client.chat.postMessage({
+        channel: dmChannel,
+        text: fallback,
+        blocks,
+      });
+    }
+  } catch (err) {
+    console.error("Slack chat mention notify failed:", err);
   }
 }

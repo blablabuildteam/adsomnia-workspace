@@ -107,6 +107,10 @@ Submitter-driven submits and informal comments are not notified.
 
 Each DM includes ticket id, title, remark (when present), actor name, and a button to `/workstreams/{id}`.
 
+## Workstream chat @mentions
+
+When a signed-in user posts a chat remark that `@` tags another workspace account, the bot DMs each tagged person on the same home workspace (`SLACK_NOTIFICATIONS_TEAM_ID`). The author is not notified for self-mentions. Guest remarks on shared links do not support `@` tags. Resolution uses the same email lookup as submitter DMs; Slack errors never fail saving the comment.
+
 ## Switch to a client Slack later
 
 1. Client Slack admin installs the **same** Slack app (OAuth).

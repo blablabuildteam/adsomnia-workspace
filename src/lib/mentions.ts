@@ -101,3 +101,19 @@ export function splitMentions(
   }
   return parts;
 }
+
+/** Distinct workspace users @mentioned in a chat remark (order preserved). */
+export function uniqueMentionedPeople(
+  body: string,
+  people: MentionPerson[],
+): MentionPerson[] {
+  const seen = new Set<string>();
+  const mentioned: MentionPerson[] = [];
+  for (const part of splitMentions(body, people)) {
+    if (part.kind !== "mention") continue;
+    if (seen.has(part.person.id)) continue;
+    seen.add(part.person.id);
+    mentioned.push(part.person);
+  }
+  return mentioned;
+}

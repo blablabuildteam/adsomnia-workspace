@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { initiatives, approvals, activityLog, comments } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { getCurrentUser } from "@/lib/session";
+import { displayName, getCurrentUser } from "@/lib/session";
 import {
   canApprove,
   canEditIdeaDetails,
@@ -55,7 +55,10 @@ import {
   createChannel,
   sanitizeChannelName,
 } from "@/lib/integrations/slack";
-import { notifySubmitter } from "@/lib/integrations/slack-notify";
+import {
+  notifyChatMentions,
+  notifySubmitter,
+} from "@/lib/integrations/slack-notify";
 import {
   clampJiraProjectName,
   createEpics,
@@ -332,6 +335,13 @@ export async function addComment(
     userId: user.id,
     action: "comment_added",
     details: { preview: body.slice(0, 120) },
+  });
+
+  await notifyChatMentions({
+    initiativeId,
+    actorUserId: user.id,
+    actorName: displayName(user),
+    body,
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
