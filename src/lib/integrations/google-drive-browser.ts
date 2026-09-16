@@ -404,14 +404,14 @@ async function ensureRecommendedFolders(
  */
 export async function createProjectDrive(
   name: string,
+  accessTokenOverride?: string,
 ): Promise<CreatedProjectDrive> {
   const trimmed = name.trim();
   if (!trimmed) {
     throw new Error("Drive name is required.");
   }
 
-  const tokenPromise = getDriveAccessToken();
-  const token = await tokenPromise;
+  const token = accessTokenOverride ?? (await getDriveAccessToken());
 
   let drive: CreatedProjectDrive;
   try {

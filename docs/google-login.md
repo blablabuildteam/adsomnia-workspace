@@ -15,6 +15,16 @@ Sign in with Google on `/login`. Uses a dedicated OAuth Web client (not the Driv
 
 Drive Picker keeps using `NEXT_PUBLIC_GOOGLE_CLIENT_ID` — do not reuse that client for login.
 
+Create Google Drive uses a **full-page redirect** on the Drive client (same idea as login), not a GIS popup. Ad blockers often block Google popups and leave Create spinning; they usually allow top-level navigation to `accounts.google.com`.
+
+On **Adsomnia Workspace Drive** add **Authorized redirect URIs**:
+
+- `http://localhost:3000/integrations/google-drive/callback`
+- `http://localhost:3001/integrations/google-drive/callback` (if you use that port)
+- `https://adsomnia-workspace.vercel.app/integrations/google-drive/callback`
+
+Keep **Authorized JavaScript origins** as well (Picker still uses GIS).
+
 ## Google Cloud setup
 
 Use the existing **Adsomnia** Google Cloud project.

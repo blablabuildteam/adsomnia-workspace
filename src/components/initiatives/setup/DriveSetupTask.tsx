@@ -17,13 +17,15 @@ import {
 import { inputClass } from "@/lib/form-styles";
 import {
   canCreateProjectDrive,
-  createProjectDrive,
   fetchDriveFolderName,
   preloadGoogleDriveAuth,
 } from "@/lib/integrations/google-drive-browser";
+import { startGoogleDriveCreateOAuth } from "@/lib/integrations/google-drive-oauth";
 import { SetupCreateOrLinkRow } from "./SetupCreateOrLinkRow";
 
 type Props = {
+  initiativeId: number;
+  returnTo: string;
   data: DriveSetupData;
   suggestedName?: string;
   driveUrl: string;
@@ -59,6 +61,8 @@ function DriveFolderLinks({ folders }: { folders: DriveFolderLink[] }) {
 }
 
 export function DriveSetupTask({
+  initiativeId,
+  returnTo,
   data,
   suggestedName,
   driveUrl,
@@ -88,6 +92,16 @@ export function DriveSetupTask({
     preloadGoogleDriveAuth();
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const driveError = params.get("driveError");
+    if (!driveError) return;
+    setError(driveError);
+    params.delete("driveError");
+    const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}${window.location.hash}`;
+    window.history.replaceState(null, "", next);
+  }, []);
+
   const handleCopy = async () => {
     await navigator.clipboard.writeText(driveName);
     setCopied(true);
@@ -107,37 +121,22 @@ export function DriveSetupTask({
       return;
     }
 
-    const createdPromise = createProjectDrive(name);
     setError(null);
     setInfo(null);
     setCreating(true);
     try {
-      const created = await createdPromise;
-      setDriveName(created.name);
-      onDriveUrlChange(created.url);
-      setLoadedFolderName(created.name);
-      if (created.folderError) {
-        setInfo(
-          created.kind === "folder"
-            ? `Created a project folder in your Google Drive. ${created.folderError}`
-            : created.folderError,
-        );
-      } else if (created.kind === "folder") {
-        setInfo(
-          "Created a project folder in your Google Drive, including the recommended folders. Shared Drive creation is not available for this account.",
-        );
-      }
-      setCreatedFolders(created.folders);
-      onComplete(created.name, created.url, created.folders);
-      setEditing(false);
+      startGoogleDriveCreateOAuth({
+        initiativeId,
+        driveName: name,
+        returnTo,
+      });
     } catch (err) {
+      setCreating(false);
       setError(
         err instanceof Error
           ? err.message
-          : "Could not create Google Drive. Try again.",
+          : "Could not start Google Drive sign-in. Try again.",
       );
-    } finally {
-      setCreating(false);
     }
   };
 
@@ -273,7 +272,7 @@ export function DriveSetupTask({
           configured
             ? {
                 label: "Create Google Drive with folders",
-                busyLabel: "Creating Drive and folders…",
+                busyLabel: "Opening Google…",
                 busy: creating,
                 disabled: !(driveName.trim() || suggestion),
                 icon: <HardDrive className="size-3.5" />,

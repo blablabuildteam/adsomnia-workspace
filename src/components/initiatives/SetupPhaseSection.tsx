@@ -422,6 +422,8 @@ function renderTaskContent(
     case "drive":
       return (
         <DriveSetupTask
+          initiativeId={ctx.initiativeId}
+          returnTo={ctx.returnTo}
           data={setupData.drive}
           suggestedName={ctx.suggestedDriveName}
           driveUrl={ctx.driveUrl}
