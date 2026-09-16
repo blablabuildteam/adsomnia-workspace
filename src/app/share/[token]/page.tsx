@@ -6,8 +6,10 @@ import type { ValidationDecision } from "@/components/initiatives/ValidationAppr
 import {
   getInitiativeById,
   getApprovalHistory,
+  getCommentsForInitiative,
 } from "@/lib/queries";
 import { verifyShareToken } from "@/lib/share";
+import { displayName, getCurrentUser } from "@/lib/session";
 
 type Props = {
   params: Promise<{ token: string }>;
@@ -44,6 +46,11 @@ export default async function SharedInitiativePage({ params }: Props) {
     notFound();
   }
 
+  const [user, comments] = await Promise.all([
+    getCurrentUser(),
+    getCommentsForInitiative(initiative.id),
+  ]);
+
   const approvals = await getApprovalHistory(initiative.id);
 
   const latestIdea = approvals.find((a) => a.fromStage === "idea");
@@ -72,10 +79,13 @@ export default async function SharedInitiativePage({ params }: Props) {
   return (
     <InitiativeDetailView
       initiative={initiative}
-      comments={[]}
+      comments={comments}
       canUserApprove={false}
-      canComment={false}
-      currentUserName=""
+      canComment
+      currentUserName={user ? displayName(user) : ""}
+      currentUserId={user?.id}
+      showChat
+      shareToken={user ? undefined : token}
       latestDecision={latestDecision}
       validationDecision={validationDecision}
       isCreator={false}

@@ -13,6 +13,7 @@ import {
   addComment,
   type CommentResult,
 } from "@/app/(workspace)/workstreams/[id]/actions";
+import { addShareComment } from "@/app/share/[token]/actions";
 import { inputClass } from "@/lib/form-styles";
 import {
   filterMentionablePeople,
@@ -26,6 +27,9 @@ import type { CommentEntry, MentionPerson } from "@/lib/queries";
 const initial: CommentResult = {};
 const MAX_BODY = 2000;
 const LATEST_PREVIEW_MS = 5000;
+const GUEST_NAME_STORAGE_KEY = "adsomnia-share-display-name";
+const GUEST_NAME_MIN = 2;
+const GUEST_NAME_MAX = 80;
 
 function asDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);
@@ -101,6 +105,8 @@ type Props = {
   currentUserName: string;
   currentUserId?: string;
   canComment: boolean;
+  /** Valid share token — enables guest remarks when there is no workspace session. */
+  shareToken?: string;
   /** Lift the dock so it clears the current-phase jump bar. */
   dockAbovePhaseBar?: boolean;
 };
@@ -112,10 +118,17 @@ export function WorkstreamChat({
   currentUserName,
   currentUserId,
   canComment,
+  shareToken,
   dockAbovePhaseBar = false,
 }: Props) {
+  const isGuestMode = Boolean(shareToken) && !currentUserId;
   const [open, setOpen] = useState(false);
-  const boundAction = addComment.bind(null, initiativeId);
+  const [guestName, setGuestName] = useState("");
+  const [guestNameDraft, setGuestNameDraft] = useState("");
+  const [guestNameReady, setGuestNameReady] = useState(false);
+  const boundAction = isGuestMode
+    ? addShareComment
+    : addComment.bind(null, initiativeId);
   const [state, formAction, pending] = useActionState(boundAction, initial);
   const [optimisticComments, addOptimistic] = useOptimistic(
     comments,
@@ -151,6 +164,37 @@ export function WorkstreamChat({
   useEffect(() => {
     mentionOpenRef.current = mentionOpen;
   }, [mentionOpen]);
+
+  useEffect(() => {
+    if (!isGuestMode) return;
+    try {
+      const stored = localStorage.getItem(GUEST_NAME_STORAGE_KEY)?.trim() ?? "";
+      if (stored.length >= GUEST_NAME_MIN) {
+        setGuestName(stored);
+        setGuestNameDraft(stored);
+        setGuestNameReady(true);
+      }
+    } catch {
+      /* ignore storage errors */
+    }
+  }, [isGuestMode]);
+
+  const authorLabel = isGuestMode ? guestName : currentUserName;
+
+  function saveGuestName() {
+    const trimmed = guestNameDraft.trim();
+    if (trimmed.length < GUEST_NAME_MIN || trimmed.length > GUEST_NAME_MAX) {
+      return;
+    }
+    try {
+      localStorage.setItem(GUEST_NAME_STORAGE_KEY, trimmed);
+    } catch {
+      /* ignore */
+    }
+    setGuestName(trimmed);
+    setGuestNameReady(true);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }
 
   const latest = optimisticComments[0] ?? null;
   const latestId = latest?.id ?? null;
@@ -227,8 +271,8 @@ export function WorkstreamChat({
         id: -Date.now(),
         body,
         createdAt: new Date(),
-        userId: currentUserId ?? "",
-        userName: currentUserName,
+        userId: currentUserId ?? null,
+        userName: authorLabel || "You",
       });
     }
     return formAction(formData);
@@ -278,8 +322,11 @@ export function WorkstreamChat({
             ) : (
               <div className="divide-y divide-border">
                 {thread.map((item) => {
-                  const mine =
-                    Boolean(currentUserId) && item.userId === currentUserId;
+                  const mine = currentUserId
+                    ? item.userId === currentUserId
+                    : isGuestMode &&
+                      guestName.length > 0 &&
+                      item.userName === guestName;
                   return (
                     <div key={item.id} className="px-4 py-3">
                       <div className="flex items-center justify-between gap-2">
@@ -310,20 +357,79 @@ export function WorkstreamChat({
           </div>
 
           {canComment ? (
+            isGuestMode && !guestNameReady ? (
+              <div className="border-t border-border p-3">
+                <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+                  Your name
+                </p>
+                <p className="mb-3 text-xs text-muted">
+                  Add your name once so others can see who posted each remark.
+                </p>
+                <input
+                  type="text"
+                  value={guestNameDraft}
+                  maxLength={GUEST_NAME_MAX}
+                  autoComplete="name"
+                  className={`${inputClass} text-xs`}
+                  placeholder="First and last name"
+                  onChange={(event) => setGuestNameDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      saveGuestName();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={saveGuestName}
+                  disabled={
+                    guestNameDraft.trim().length < GUEST_NAME_MIN ||
+                    guestNameDraft.trim().length > GUEST_NAME_MAX
+                  }
+                  className="mt-3 w-full border border-foreground bg-foreground px-3 py-2 font-display text-[10px] font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90 disabled:opacity-40"
+                >
+                  Continue to chat
+                </button>
+              </div>
+            ) : (
             <form
               ref={formRef}
               action={submitWithOptimistic}
               className="border-t border-border p-3"
             >
+              {isGuestMode && shareToken ? (
+                <>
+                  <input type="hidden" name="shareToken" value={shareToken} />
+                  <input type="hidden" name="guestName" value={guestName} />
+                </>
+              ) : null}
               {state.error && (
                 <p className="mb-2 text-xs text-btr">{state.error}</p>
               )}
+              {isGuestMode ? (
+                <div className="mb-2 flex items-center justify-between gap-2 text-[10px] text-muted">
+                  <span>
+                    Posting as{" "}
+                    <span className="font-medium text-foreground">
+                      {guestName}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    className="shrink-0 underline-offset-2 hover:underline"
+                    onClick={() => setGuestNameReady(false)}
+                  >
+                    Change name
+                  </button>
+                </div>
+              ) : null}
               <div className="flex items-end gap-2">
                 <span className="mb-2 flex size-6 shrink-0 items-center justify-center border border-border bg-surface-elevated font-display text-[9px] font-bold uppercase text-muted">
-                  {initials(currentUserName)}
+                  {initials(authorLabel)}
                 </span>
                 <div className="relative min-w-0 flex-1">
-                  {mentionOpen ? (
+                  {mentionOpen && !isGuestMode ? (
                     <ul
                       className="absolute inset-x-0 bottom-full z-10 mb-1 max-h-44 overflow-y-auto border border-border-strong bg-surface-elevated shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
                       role="listbox"
@@ -379,7 +485,11 @@ export function WorkstreamChat({
                     maxLength={MAX_BODY}
                     value={draft}
                     className={`${inputClass} resize-none py-2 pr-10 text-xs`}
-                    placeholder="Write a remark… Use @ to tag"
+                    placeholder={
+                      isGuestMode
+                        ? "Write a remark…"
+                        : "Write a remark… Use @ to tag"
+                    }
                     onChange={(event) => {
                       onDraftChange(
                         event.target.value,
@@ -398,7 +508,7 @@ export function WorkstreamChat({
                       }
                     }}
                     onKeyDown={(event) => {
-                      if (mentionMatches.length > 0) {
+                      if (!isGuestMode && mentionMatches.length > 0) {
                         if (event.key === "ArrowDown") {
                           event.preventDefault();
                           setMentionIndex(
@@ -445,6 +555,7 @@ export function WorkstreamChat({
                 </div>
               </div>
             </form>
+            )
           ) : (
             <p className="border-t border-border px-4 py-3 text-xs text-muted">
               Sign in to add a remark.

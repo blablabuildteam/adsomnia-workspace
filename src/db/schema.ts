@@ -115,9 +115,9 @@ export const comments = pgTable("comments", {
   initiativeId: serial("initiative_id")
     .notNull()
     .references(() => initiatives.id),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id),
+  userId: uuid("user_id").references(() => users.id),
+  /** Display name when the remark is from a visitor on a shared link. */
+  guestAuthorName: varchar("guest_author_name", { length: 120 }),
   body: text("body").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

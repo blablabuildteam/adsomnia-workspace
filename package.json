@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "node --env-file=.env.local ./node_modules/.bin/drizzle-kit migrate",
     "db:seed": "tsx src/db/seed.ts",
     "env:sync-vercel": "tsx scripts/sync-vercel-env.ts"
   },

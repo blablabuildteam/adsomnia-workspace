@@ -134,8 +134,10 @@ type Props = {
   canComment: boolean;
   currentUserName: string;
   currentUserId?: string;
-  /** Hide on public share links — chat is for signed-in workspace users. */
+  /** Floating workstream chat (workspace users and shared links). */
   showChat?: boolean;
+  /** When set, visitors without a session comment via the share guest flow. */
+  shareToken?: string;
   latestDecision?: ApprovalDecision | null;
   validationDecision?: ValidationDecision | null;
   goNoGoDecision?: GoNoGoDecision | null;
@@ -159,6 +161,7 @@ export function InitiativeDetailView({
   currentUserName,
   currentUserId,
   showChat = false,
+  shareToken,
   latestDecision = null,
   validationDecision = null,
   goNoGoDecision = null,
@@ -679,6 +682,7 @@ export function InitiativeDetailView({
           currentUserName={currentUserName}
           currentUserId={currentUserId}
           canComment={canComment}
+          shareToken={shareToken}
           dockAbovePhaseBar={currentNum >= 4}
         />
       )}

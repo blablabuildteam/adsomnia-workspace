@@ -7,7 +7,17 @@ import {
   comments,
   feedbackSubmissions,
 } from "@/db/schema";
-import { eq, desc, asc, count, inArray, isNull, notInArray, and } from "drizzle-orm";
+import {
+  eq,
+  desc,
+  asc,
+  count,
+  inArray,
+  isNull,
+  notInArray,
+  and,
+  sql,
+} from "drizzle-orm";
 import { displayName } from "@/lib/session";
 import type {
   ValidationData,
@@ -400,7 +410,7 @@ export type CommentEntry = {
   id: number;
   body: string;
   createdAt: Date;
-  userId: string;
+  userId: string | null;
   userName: string;
 };
 
@@ -413,10 +423,10 @@ export async function getCommentsForInitiative(
       body: comments.body,
       createdAt: comments.createdAt,
       userId: comments.userId,
-      userName: users.name,
+      userName: sql<string>`coalesce(${users.name}, ${comments.guestAuthorName}, 'Guest')`,
     })
     .from(comments)
-    .innerJoin(users, eq(comments.userId, users.id))
+    .leftJoin(users, eq(comments.userId, users.id))
     .where(eq(comments.initiativeId, initiativeId))
     .orderBy(desc(comments.createdAt));
 }
