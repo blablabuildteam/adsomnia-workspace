@@ -1,5 +1,171 @@
 @import "tailwindcss";
 
+@property --background {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #000000;
+}
+@property --surface {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #0b0b0b;
+}
+@property --surface-elevated {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #111111;
+}
+@property --surface-input {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #181818;
+}
+@property --foreground {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ffffff;
+}
+@property --muted {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #a1a1a1;
+}
+@property --border {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #222222;
+}
+@property --border-strong {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #3a3a3a;
+}
+@property --border-input {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #333333;
+}
+@property --hover {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(255, 255, 255, 0.03);
+}
+@property --hover-strong {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(255, 255, 255, 0.06);
+}
+@property --fill-subtle {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(255, 255, 255, 0.04);
+}
+@property --fill-muted {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(255, 255, 255, 0.08);
+}
+@property --scrim {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(0, 0, 0, 0.7);
+}
+@property --grid-line {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(255, 255, 255, 0.055);
+}
+@property --adsomnia {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ffffff;
+}
+@property --adsomnia-ink {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ffffff;
+}
+@property --btr-ink {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #e8a07c;
+}
+@property --hn-ink {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #7e90a3;
+}
+@property --bbb-ink {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ceff00;
+}
+@property --as {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ffffff;
+}
+@property --danger {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ff3b3b;
+}
+@property --success {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #22c55e;
+}
+@property --feedback {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #a855f7;
+}
+@property --info {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #38bdf8;
+}
+@property --warning {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #eab308;
+}
+@property --stage-idea {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #9ca3af;
+}
+@property --stage-validation {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #22d3ee;
+}
+@property --stage-scoping {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #3b82f6;
+}
+@property --stage-go-nogo {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #9333ea;
+}
+@property --stage-setup {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f472b6;
+}
+@property --stage-onboarding {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #fb923c;
+}
+@property --stage-production {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #22c55e;
+}
+
 :root {
   --background: #000000;
   --surface: #0b0b0b;
@@ -119,10 +285,50 @@ html.light {
 
 html {
   color-scheme: dark;
+  transition:
+    --background 420ms ease,
+    --surface 420ms ease,
+    --surface-elevated 420ms ease,
+    --surface-input 420ms ease,
+    --foreground 420ms ease,
+    --muted 420ms ease,
+    --border 420ms ease,
+    --border-strong 420ms ease,
+    --border-input 420ms ease,
+    --hover 420ms ease,
+    --hover-strong 420ms ease,
+    --fill-subtle 420ms ease,
+    --fill-muted 420ms ease,
+    --scrim 420ms ease,
+    --grid-line 420ms ease,
+    --adsomnia 420ms ease,
+    --adsomnia-ink 420ms ease,
+    --btr-ink 420ms ease,
+    --hn-ink 420ms ease,
+    --bbb-ink 420ms ease,
+    --as 420ms ease,
+    --danger 420ms ease,
+    --success 420ms ease,
+    --feedback 420ms ease,
+    --info 420ms ease,
+    --warning 420ms ease,
+    --stage-idea 420ms ease,
+    --stage-validation 420ms ease,
+    --stage-scoping 420ms ease,
+    --stage-go-nogo 420ms ease,
+    --stage-setup 420ms ease,
+    --stage-onboarding 420ms ease,
+    --stage-production 420ms ease;
 }
 
 html.light {
   color-scheme: light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    transition: none;
+  }
 }
 
 body {

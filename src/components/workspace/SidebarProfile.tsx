@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, Check, LogOut, User, X } from "lucide-react";
+import { AlertCircle, Check, LogOut, X } from "lucide-react";
 import { logout, updateProfile, type ProfileFormResult } from "@/lib/auth";
 import { inputClass } from "@/lib/form-styles";
 import { roleLabel } from "@/lib/permissions";
@@ -52,44 +52,31 @@ export function SidebarProfile({ user, collapsed }: Props) {
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="flex min-w-0 flex-1 items-start gap-2 px-1 text-left transition-colors hover:text-foreground"
+            className="min-w-0 flex-1 px-1 text-left transition-colors hover:text-foreground"
           >
-            <User className="mt-0.5 size-3.5 shrink-0 text-muted" />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs text-foreground">
-                {user.name}
+            <span className="block truncate text-xs text-foreground">
+              {user.name}
+            </span>
+            {title ? (
+              <span className="mt-0.5 block truncate text-[10px] text-muted">
+                {title}
               </span>
-              {title ? (
-                <span className="mt-0.5 block truncate text-[10px] text-muted">
-                  {title}
-                </span>
-              ) : (
-                <span className="mt-0.5 block truncate text-[10px] text-muted/70">
-                  Edit profile
-                </span>
-              )}
-              <span className="mt-0.5 block truncate text-[10px] uppercase tracking-wide text-muted/60">
-                {accountRole}
+            ) : (
+              <span className="mt-0.5 block truncate text-[10px] text-muted/70">
+                Edit profile
               </span>
+            )}
+            <span className="mt-0.5 block truncate text-[10px] uppercase tracking-wide text-muted/60">
+              {accountRole}
             </span>
           </button>
         </div>
       )}
 
       {collapsed && (
-        <>
-          <div className="mb-2">
-            <ThemeToggle collapsed />
-          </div>
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            title={user.name}
-            className="mb-2 flex w-full items-center justify-center py-2 text-muted transition-colors hover:text-foreground"
-          >
-            <User className="size-3.5" />
-          </button>
-        </>
+        <div className="mb-2">
+          <ThemeToggle collapsed />
+        </div>
       )}
 
       <form action={logout}>
