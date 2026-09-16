@@ -63,9 +63,11 @@ import {
   clampJiraProjectName,
   createEpics,
   createProject,
+  getInstanceLabel,
   getProjectUrl,
+  isJiraInstance,
   milestonesToEpicSeeds,
-  resolveSetupJiraInstance,
+  resolveJiraInstance,
   sanitizeEpicSeeds,
   ticketIdToProjectKeyHint,
   validateJiraProjectName,
@@ -1684,12 +1686,13 @@ export async function createAndCompleteSlackChannel(
 }
 
 /**
- * Creates a Jira software project on the lead party's Cloud site, seeds
+ * Creates a Jira software project on the selected party's Cloud site, seeds
  * the reviewed epics, then marks Create Jira complete.
  */
 export async function createAndCompleteJiraBoard(
   initiativeId: number,
   input: {
+    instance: JiraInstance;
     name: string;
     template?: "scrum" | "kanban";
     epics?: {
@@ -1729,7 +1732,6 @@ export async function createAndCompleteJiraBoard(
       title: initiatives.title,
       setupData: initiatives.setupData,
       scopingData: initiatives.scopingData,
-      validationData: initiatives.validationData,
       currentStage: initiatives.currentStage,
     })
     .from(initiatives)
@@ -1746,12 +1748,13 @@ export async function createAndCompleteJiraBoard(
     return { error: "Complete Environment Setup before Kickoff Preparation." };
   }
 
-  const validation = row.validationData as ValidationData | null;
-  const target = resolveSetupJiraInstance(validation?.leadProductionParty);
+  if (!isJiraInstance(input.instance)) {
+    return { error: "Choose a Jira environment before creating the board." };
+  }
+  const target = resolveJiraInstance(input.instance);
   if (!target) {
     return {
-      error:
-        "No Jira site is connected for this lead production partner. Paste a board URL instead, or add that partner's Jira credentials.",
+      error: `${getInstanceLabel(input.instance)} Jira is not connected. Paste a board URL instead, or add that site's credentials.`,
     };
   }
 

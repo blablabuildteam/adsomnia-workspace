@@ -244,7 +244,7 @@ Each stage gate (Validation → Scoping, Scoping → Go/No-Go, etc.) will have i
 - Budget & capacity sign-off
 
 ### Phase 5: Project Setup
-- Jira integration — create board/project via API on the **lead party’s** Cloud site (Adsomnia / BTR / HN); see [`jira-integration.md`](./jira-integration.md)
+- Jira integration — create board/project via API on the **selected** Cloud site (Adsomnia / BTR / HN / BBB); see [`jira-integration.md`](./jira-integration.md)
 - Resource booking from Scoping hour estimates
 - Dual-system tracking (Workspace + Jira)
 

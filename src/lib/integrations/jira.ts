@@ -63,14 +63,34 @@ export type JiraSetupTarget = {
   instance: JiraInstance;
   label: string;
   host: string;
-  reason: "lead" | "fallback";
+  reason: "lead" | "fallback" | "selected";
 };
 
+export type JiraEnvironmentOption = {
+  id: JiraInstance;
+  label: string;
+  host: string | null;
+  configured: boolean;
+};
+
+/** Resolve a user-selected Jira Cloud instance for Project Setup create. */
+export function resolveJiraInstance(
+  instance: string | null | undefined,
+): JiraSetupTarget | null {
+  if (!isJiraInstance(instance)) return null;
+  const config = getInstanceConfig(instance);
+  if (!config) return null;
+  return {
+    instance,
+    label: INSTANCE_LABELS[instance],
+    host: config.host,
+    reason: "selected",
+  };
+}
+
 /**
- * Site to create the Project Setup board on.
- * Partner sites are used only when their env is present. An unconfigured
- * partner (e.g. BTR) returns null so the UI can keep the paste-URL fallback
- * instead of creating on the wrong site.
+ * Suggested default for the Project Setup picker (lead party when that
+ * site is connected). Creation always uses the explicit selected instance.
  */
 export function resolveSetupJiraInstance(
   leadParty: string | null | undefined,
@@ -240,23 +260,28 @@ function createClient(config: JiraConfig) {
   });
 }
 
+export function listJiraEnvironments(): JiraEnvironmentOption[] {
+  return JIRA_INSTANCES.map((id) => {
+    const config = getInstanceConfig(id);
+    return {
+      id,
+      label: INSTANCE_LABELS[id],
+      host: config?.host ?? null,
+      configured: Boolean(config),
+    };
+  });
+}
+
 export function getAvailableInstances(): {
   id: JiraInstance;
   label: string;
   host: string;
 }[] {
-  const instances: { id: JiraInstance; label: string; host: string }[] = [];
-  for (const id of JIRA_INSTANCES) {
-    const config = getInstanceConfig(id);
-    if (config) {
-      instances.push({
-        id,
-        label: INSTANCE_LABELS[id],
-        host: config.host,
-      });
-    }
-  }
-  return instances;
+  return listJiraEnvironments().flatMap((site) =>
+    site.configured && site.host
+      ? [{ id: site.id, label: site.label, host: site.host }]
+      : [],
+  );
 }
 
 export type { JiraEpicSeed } from "./jira-plan";

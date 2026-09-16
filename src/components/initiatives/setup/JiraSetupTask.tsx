@@ -30,25 +30,38 @@ import {
 
 type JiraInstance = "adsomnia" | "btr" | "hn" | "bbb";
 
-const PARTY_JIRA_LABEL: Record<string, string> = {
-  as: "Adsomnia",
+const JIRA_INSTANCES: JiraInstance[] = ["adsomnia", "btr", "hn", "bbb"];
+
+const PARTY_JIRA_LABEL: Record<JiraInstance, string> = {
   adsomnia: "Adsomnia",
   btr: "Bending The Rules",
   hn: "Harlem Next",
   bbb: "blablabuild",
 };
 
+const PARTY_JIRA_LOGOS: Record<JiraInstance, string> = {
+  adsomnia: "/logos/adsomnia.png",
+  btr: "/logos/bendingtherules.jpeg",
+  hn: "/logos/harlemnext.webp",
+  bbb: "/logos/blablabuild.png",
+};
+
+function isJiraInstance(value: string | null | undefined): value is JiraInstance {
+  return JIRA_INSTANCES.includes(value as JiraInstance);
+}
+
 type JiraWorkspaceOption = {
   id: JiraInstance;
   label: string;
-  host: string;
+  host: string | null;
+  configured: boolean;
 };
 
 type SuggestedTarget = {
   instance: JiraInstance;
   label: string;
   host: string;
-  reason: "lead" | "fallback";
+  reason: "lead" | "fallback" | "selected";
 };
 
 type EditableEpic = {
@@ -135,13 +148,25 @@ export function JiraSetupTask({
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const [suggested, setSuggested] = useState<SuggestedTarget | null>(null);
+  const [sites, setSites] = useState<JiraWorkspaceOption[]>([]);
+  const [selectedInstance, setSelectedInstance] = useState<JiraInstance | null>(
+    () => (isJiraInstance(data.workspace) ? data.workspace : null),
+  );
   const [loadingSites, setLoadingSites] = useState(true);
   const [optimistic, setOptimistic] = useState<JiraSetupData | null>(null);
 
   const view = optimistic ?? data;
-  const target = suggested;
+  const selectedSite = sites.find((site) => site.id === selectedInstance);
+  const target =
+    selectedSite?.configured && selectedSite.host
+      ? {
+          instance: selectedSite.id,
+          label: selectedSite.label,
+          host: selectedSite.host,
+        }
+      : null;
   const canCreate = Boolean(target);
+  const hasConfiguredSite = sites.some((site) => site.configured);
 
   const loadSites = useCallback(async () => {
     setLoadingSites(true);
@@ -155,14 +180,31 @@ export function JiraSetupTask({
           error?: string;
         } | null;
         setError(body?.error ?? "Could not load Jira sites.");
-        setSuggested(null);
+        setSites([]);
         return;
       }
       const body = (await res.json()) as {
         instances: JiraWorkspaceOption[];
         suggested: SuggestedTarget | null;
       };
-      setSuggested(body.suggested ?? null);
+      const instances = body.instances ?? [];
+      setSites(instances);
+      setSelectedInstance((current) => {
+        if (
+          current &&
+          instances.some((site) => site.id === current && site.configured)
+        ) {
+          return current;
+        }
+        const suggested = body.suggested?.instance;
+        if (
+          suggested &&
+          instances.some((site) => site.id === suggested && site.configured)
+        ) {
+          return suggested;
+        }
+        return null;
+      });
     } catch {
       setError("Could not load Jira sites.");
     } finally {
@@ -206,7 +248,7 @@ export function JiraSetupTask({
       return;
     }
     if (!target) {
-      setError("No Jira site is connected for this lead production partner.");
+      setError("Choose a Jira environment before creating the board.");
       return;
     }
     const readyEpics = epics
@@ -227,6 +269,7 @@ export function JiraSetupTask({
     setCreating(true);
     try {
       const result = await createAndCompleteJiraBoard(initiativeId, {
+        instance: target.instance,
         name,
         epics: readyEpics,
       });
@@ -280,6 +323,9 @@ export function JiraSetupTask({
   };
 
   if (view.status === "completed" && !editing) {
+    const workspaceLabel = isJiraInstance(view.workspace)
+      ? PARTY_JIRA_LABEL[view.workspace]
+      : null;
     return (
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
@@ -293,6 +339,9 @@ export function JiraSetupTask({
                 </span>
               ) : null}
             </p>
+            {workspaceLabel && (
+              <p className="mt-0.5 text-[10px] text-muted">{workspaceLabel}</p>
+            )}
             {savedUrl && (
               <a
                 href={view.boardUrl || savedUrl}
@@ -314,6 +363,9 @@ export function JiraSetupTask({
                 (view.projectName || savedName).slice(0, JIRA_PROJECT_NAME_MAX),
               );
               onBoardUrlChange(view.boardUrl || savedUrl);
+              if (isJiraInstance(view.workspace)) {
+                setSelectedInstance(view.workspace);
+              }
               setError(null);
               setInfo(null);
               setEditing(true);
@@ -332,16 +384,22 @@ export function JiraSetupTask({
     return <div className="text-xs text-muted">Awaiting Jira setup.</div>;
   }
 
-  const partnerLabel =
-    target?.label ?? (leadParty ? PARTY_JIRA_LABEL[leadParty] : null);
+  const environmentOptions =
+    sites.length > 0
+      ? sites
+      : JIRA_INSTANCES.map((id) => ({
+          id,
+          label: PARTY_JIRA_LABEL[id],
+          host: null,
+          configured: false,
+        }));
 
   return (
     <div className="space-y-4">
       {!editing && (
         <p className="text-xs text-muted">
-          Create Jira for this workstream
-          {partnerLabel ? ` on ${partnerLabel}` : ""}. Review the recommended
-          space title and epics before creating
+          Choose which Jira environment this board should be created in, then
+          review the space title and epics
           {projectKeyHint ? (
             <>
               {" "}
@@ -353,34 +411,86 @@ export function JiraSetupTask({
         </p>
       )}
 
-      {loadingSites ? (
-        <p className="flex items-center gap-2 text-xs text-muted">
-          <Loader2 className="size-3.5 animate-spin" />
-          Checking Jira connection…
-        </p>
-      ) : target ? (
-        <p className="text-xs text-muted">
-          Site:{" "}
-          <span className="text-foreground">
-            {target.label}
-            {target.host ? ` · ${target.host.replace(/^https?:\/\//, "")}` : ""}
-          </span>
-          {target.reason === "fallback" ? (
-            <span className="ml-1">
-              (no dedicated Jira for this lead partner — using Adsomnia)
+      <fieldset className="space-y-2">
+        <legend className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+          Jira environment<span className="ml-1 text-btr">*</span>
+        </legend>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {environmentOptions.map((site) => {
+            const selected = selectedInstance === site.id;
+            return (
+              <button
+                key={site.id}
+                type="button"
+                disabled={creating || loadingSites || !site.configured}
+                onClick={() => {
+                  setSelectedInstance(site.id);
+                  setError(null);
+                }}
+                aria-pressed={selected}
+                title={
+                  site.configured
+                    ? site.host
+                      ? `${site.label} · ${site.host.replace(/^https?:\/\//, "")}`
+                      : site.label
+                    : `${site.label} Jira is not connected yet`
+                }
+                className={[
+                  "flex flex-col items-center justify-center gap-2 border px-3 py-3 transition-colors",
+                  selected
+                    ? "border-foreground bg-foreground/[0.06] text-foreground"
+                    : "border-border text-muted hover:border-foreground hover:text-foreground",
+                  !site.configured || loadingSites
+                    ? "cursor-not-allowed opacity-40"
+                    : "",
+                ].join(" ")}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={PARTY_JIRA_LOGOS[site.id]}
+                  alt=""
+                  className="h-6 w-auto max-w-full object-contain"
+                />
+                <span className="font-display flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide">
+                  {selected && (
+                    <Check className="animate-check-pop size-3 shrink-0" />
+                  )}
+                  {site.label}
+                </span>
+                {!loadingSites && !site.configured && (
+                  <span className="text-[9px] text-muted">Not connected</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        {loadingSites ? (
+          <p className="flex items-center gap-2 text-xs text-muted">
+            <Loader2 className="size-3.5 animate-spin" />
+            Checking Jira connections…
+          </p>
+        ) : target ? (
+          <p className="text-xs text-muted">
+            Create on{" "}
+            <span className="text-foreground">
+              {target.label}
+              {target.host
+                ? ` · ${target.host.replace(/^https?:\/\//, "")}`
+                : ""}
             </span>
-          ) : null}
-        </p>
-      ) : leadParty && PARTY_JIRA_LABEL[leadParty] && !target ? (
-        <p className="text-xs text-btr">
-          {partnerLabel ?? "This partner"} Jira is not connected yet. Paste a
-          URL below, or add that site&apos;s credentials.
-        </p>
-      ) : (
-        <p className="text-xs text-muted">
-          No Jira site is configured. Paste a URL to confirm an existing space.
-        </p>
-      )}
+          </p>
+        ) : hasConfiguredSite ? (
+          <p className="text-xs text-muted">
+            Select a Jira environment first. This is independent of the lead
+            production party.
+          </p>
+        ) : (
+          <p className="text-xs text-muted">
+            No Jira site is configured. Paste a URL to confirm an existing
+            space.
+          </p>
+        )}
+      </fieldset>
 
       <div>
         <label className="block">
@@ -587,11 +697,14 @@ export function JiraSetupTask({
 
       <SetupCreateOrLinkRow
         create={
-          canCreate
+          loadingSites || hasConfiguredSite
             ? {
                 label: "Create Jira",
                 busy: creating,
-                disabled: !(spaceTitle.trim() || suggestion),
+                disabled:
+                  loadingSites ||
+                  !target ||
+                  !(spaceTitle.trim() || suggestion),
                 icon: <SquareKanban className="size-3.5" />,
                 onClick: () => void handleCreate(),
               }

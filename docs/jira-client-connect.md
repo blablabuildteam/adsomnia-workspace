@@ -70,8 +70,8 @@ The technical contact will set server environment variables (e.g. `JIRA_ADSOMNIA
 After env is configured:
 
 1. Sign in to Adsomnia Workspace as someone who can manage **Project Setup**.
-2. Open an initiative whose **lead production party** matches this Jira (e.g. Adsomnia Internal for Adsomnia Jira).
-3. In **Create Jira**, review the recommended space title and epic list, then create (or paste a URL). Create writes the reviewed epics and dates. The next step is adding tickets under each epic.
+2. Open an initiative in **Project Setup**.
+3. In **Create Jira**, choose this party’s Jira environment, review the recommended space title and epic list, then create (or paste a URL). Create writes the reviewed epics and dates. The next step is adding tickets under each epic.
 4. Confirm the new project appears in **your** Jira under the expected site.
 5. Optionally create a sample Epic with a few tasks; tech verifies the Production Overview API can read dates and status counts.
 

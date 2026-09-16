@@ -6,7 +6,7 @@ Adsomnia Workspace talks to **up to four separate Jira Cloud sites** via REST AP
 
 | Capability | Status | Notes |
 |------------|--------|-------|
-| **Create Jira** in Project Setup | Done | Review space title + epics, then create on the lead party’s Cloud site; paste URL remains as fallback |
+| **Create Jira** in Project Setup | Done | Choose a Jira environment (4 parties), review space title + epics, then create; paste URL remains as fallback |
 | **Store board link** on initiative | Done | `setupData.jira` (`boardUrl`, `projectKey`, `workspace`, …) |
 | **Tickets per epic** | Manual confirm | Epics are seeded on create; this step is adding tickets/tasks under each epic |
 | **Production Overview** (cross-board progress) | Planned | Read epics + nested task status from each lead’s Jira |
@@ -15,12 +15,12 @@ Adsomnia Workspace talks to **up to four separate Jira Cloud sites** via REST AP
 
 | Instance id | Party | Env prefix | When used |
 |-------------|-------|------------|-----------|
-| `adsomnia` | Adsomnia | `JIRA_ADSOMNIA_*` | Lead party Adsomnia Internal (`as` / `adsomnia`) — **connect first** |
-| `btr` | Bending The Rules | `JIRA_BTR_*` | Lead party `btr` |
-| `hn` | Harlem Next | `JIRA_HN_*` | Lead party `hn` |
-| `bbb` | blablabuild | `JIRA_BBB_*` | Lead party `bbb` |
+| `adsomnia` | Adsomnia | `JIRA_ADSOMNIA_*` | Selected in Project Setup |
+| `btr` | Bending The Rules | `JIRA_BTR_*` | Selected in Project Setup |
+| `hn` | Harlem Next | `JIRA_HN_*` | Selected in Project Setup |
+| `bbb` | blablabuild | `JIRA_BBB_*` | Selected in Project Setup |
 
-Lead party is stored on the initiative as `validationData.leadProductionParty`. Mapping helpers live in `src/lib/integrations/jira.ts` (`leadPartyToJiraInstance`).
+Project Setup **does not** create from lead party automatically. The setup task shows all four parties; the user picks the Jira Cloud site first. Lead party (`validationData.leadProductionParty`) is only a **pre-selected suggestion** when that site is connected. Mapping helpers live in `src/lib/integrations/jira.ts` (`leadPartyToJiraInstance`, `resolveJiraInstance`).
 
 ## Identity model (vs Slack / Drive)
 
@@ -100,27 +100,27 @@ Client-facing steps: [`docs/jira-client-connect.md`](./jira-client-connect.md).
 
 | Path | Role |
 |------|------|
-| `src/lib/integrations/jira.ts` | Clients, create project, instance list, lead-party map, epic progress reads |
-| `GET /api/integrations/jira/workspaces` | Configured instances (`canManageSetup`) |
+| `src/lib/integrations/jira.ts` | Clients, create project, instance list, epic progress reads |
+| `GET /api/integrations/jira/workspaces` | All four environments + suggested default (`canManageSetup`) |
 | `POST /api/integrations/jira/create-project` | Create scrum/kanban software project |
 | `GET /api/integrations/jira/users?instance=&query=` | User search for project lead |
-| `src/components/initiatives/setup/JiraSetupTask.tsx` | Create Board (lead party → site) + paste fallback |
-| `createAndCompleteJiraBoard` | Server action — create project, seed scoping epics, persist setup |
+| `src/components/initiatives/setup/JiraSetupTask.tsx` | Choose Jira environment, then create board + paste fallback |
+| `createAndCompleteJiraBoard` | Server action — create on the selected instance, seed scoping epics, persist setup |
 
 Persisted on complete: `setupData.jira` (`workspace`, `projectKey`, `projectId`, `boardUrl`, `projectName`, `template`).
 
-## Lead party → board instance
+## Project Setup — choose Jira environment
 
-During Project Setup, default the Jira instance from `leadProductionParty`:
+During Project Setup, the user **manually selects** which of the four Jira Cloud sites the board is created on. Lead party is only used to pre-select a suggestion:
 
-| `leadProductionParty` | Default `JiraInstance` |
-|-----------------------|------------------------|
+| `leadProductionParty` | Suggested `JiraInstance` |
+|-----------------------|--------------------------|
 | `as` / `adsomnia` | `adsomnia` |
 | `btr` | `btr` |
 | `hn` | `hn` |
 | `bbb` | `bbb` |
 
-Only offer instances that appear in `getAvailableInstances()` (env present).
+Unconfigured sites stay visible but disabled. Create is sent as `instance` on `createAndCompleteJiraBoard` and persisted as `setupData.jira.workspace`.
 
 ## Production Overview (planned product)
 
@@ -141,7 +141,7 @@ Date fields vary by site (Due date, Start date, Target start/end). Document the 
 ## Rollout order
 
 1. ~~**Adsomnia** — connect env and smoke-test auth / create-project permission.~~
-2. ~~Wire **Create Jira Board** UI (like Slack), preselect instance from lead party, seed scoping epics.~~
+2. ~~Wire **Create Jira Board** UI (like Slack), choose instance in Project Setup, seed scoping epics.~~
 3. Build **Production Overview** against Adsomnia boards first.
 4. Repeat connect guide for **BTR** (HN env is already present).
 5. Optional: push child tasks under seeded epics.
