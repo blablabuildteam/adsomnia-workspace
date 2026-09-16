@@ -3,6 +3,7 @@ import {
   listFastTrackIssues,
   type FastTrackJiraIssue,
 } from "@/lib/integrations/jira";
+import { isLeadership, type PermissionUser } from "@/lib/permissions";
 import {
   getFastTrackInitiatives,
   getFastTrackRemarks,
@@ -96,12 +97,14 @@ function fromJiraOnly(issue: FastTrackJiraIssue): FastTrackItem {
   };
 }
 
-export async function loadFastTrackOverview(): Promise<{
+export async function loadFastTrackOverview(
+  user: PermissionUser,
+): Promise<{
   items: FastTrackItem[];
   boardUrl: string | null;
   fetchError: string | null;
 }> {
-  const workspaceItems = await getFastTrackInitiatives();
+  const workspaceItems = await getFastTrackInitiatives(user);
   const remarks = await getFastTrackRemarks(workspaceItems.map((item) => item.id));
 
   let jiraIssues: FastTrackJiraIssue[] = [];
@@ -133,14 +136,16 @@ export async function loadFastTrackOverview(): Promise<{
     );
   }
 
-  for (const issue of jiraIssues) {
-    if (seenKeys.has(issue.key)) continue;
-    items.push(fromJiraOnly(issue));
+  if (isLeadership(user)) {
+    for (const issue of jiraIssues) {
+      if (seenKeys.has(issue.key)) continue;
+      items.push(fromJiraOnly(issue));
+    }
   }
 
   return {
     items,
-    boardUrl: getFastTrackBoardUrl(),
+    boardUrl: isLeadership(user) ? getFastTrackBoardUrl() : null,
     fetchError,
   };
 }

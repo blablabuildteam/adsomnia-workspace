@@ -13,6 +13,7 @@ import {
   canManageSetup,
   canManageOnboarding,
   canUseFormPrefill,
+  canViewInitiative,
 } from "@/lib/session";
 import { createSharePath } from "@/lib/share";
 import type { ApprovalDecision } from "@/components/initiatives/ApprovalPanel";
@@ -36,14 +37,18 @@ export default async function InitiativePage({ params }: Props) {
     getCurrentUser(),
   ]);
 
-  if (!initiative) {
+  if (
+    !initiative ||
+    !user ||
+    !canViewInitiative(user, { submitterId: initiative.submitter.id })
+  ) {
     return (
       <div className="mx-auto flex max-w-lg flex-1 flex-col items-center justify-center px-4 py-16 text-center">
         <p className="font-display text-2xl font-extrabold uppercase">
           Initiative Not Found
         </p>
         <p className="mt-2 text-sm text-muted">
-          No initiative with ID <span className="font-mono">{id}</span>.
+          This workstream is not available.
         </p>
       </div>
     );

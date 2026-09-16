@@ -17,7 +17,9 @@ import {
   notInArray,
   and,
   sql,
+  type SQL,
 } from "drizzle-orm";
+import { isLeadership, type PermissionUser } from "@/lib/permissions";
 import { displayName } from "@/lib/session";
 import type {
   ValidationData,
@@ -138,6 +140,23 @@ type InitiativeRow = {
   sponsorId: string;
 };
 
+/** Team accounts are limited to their own submissions; leadership sees all. */
+function ownerVisibility(user: PermissionUser): SQL | undefined {
+  if (isLeadership(user)) return undefined;
+  return eq(initiatives.submitterId, user.id);
+}
+
+function whereVisible(
+  user: PermissionUser,
+  ...conditions: SQL[]
+): SQL | undefined {
+  const extra = ownerVisibility(user);
+  const parts = extra ? [...conditions, extra] : conditions;
+  if (parts.length === 0) return undefined;
+  if (parts.length === 1) return parts[0];
+  return and(...parts);
+}
+
 async function hydrateInitiatives(
   rows: InitiativeRow[],
 ): Promise<InitiativeWithUsers[]> {
@@ -181,12 +200,14 @@ async function hydrateInitiatives(
 
 export async function getInitiativesByStage(
   stage: string,
+  user: PermissionUser,
 ): Promise<InitiativeWithUsers[]> {
   const rows = await db
     .select(initiativeSelect)
     .from(initiatives)
     .where(
-      and(
+      whereVisible(
+        user,
         eq(
           initiatives.currentStage,
           stage as (typeof initiatives.$inferSelect)["currentStage"],
@@ -199,21 +220,25 @@ export async function getInitiativesByStage(
   return hydrateInitiatives(rows);
 }
 
-export async function getAllInitiatives(): Promise<InitiativeWithUsers[]> {
+export async function getAllInitiatives(
+  user: PermissionUser,
+): Promise<InitiativeWithUsers[]> {
   const rows = await db
     .select(initiativeSelect)
     .from(initiatives)
-    .where(eq(initiatives.isFastTrack, false))
+    .where(whereVisible(user, eq(initiatives.isFastTrack, false)))
     .orderBy(desc(initiatives.updatedAt));
 
   return hydrateInitiatives(rows);
 }
 
-export async function getFastTrackInitiatives(): Promise<InitiativeWithUsers[]> {
+export async function getFastTrackInitiatives(
+  user: PermissionUser,
+): Promise<InitiativeWithUsers[]> {
   const rows = await db
     .select(initiativeSelect)
     .from(initiatives)
-    .where(eq(initiatives.isFastTrack, true))
+    .where(whereVisible(user, eq(initiatives.isFastTrack, true)))
     .orderBy(desc(initiatives.updatedAt));
 
   return hydrateInitiatives(rows);

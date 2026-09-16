@@ -150,6 +150,7 @@ export {
   canManageSetup,
   canSubmitProductFeedback,
   canViewFeedbackInbox,
+  canViewInitiative,
   canViewLeadershipReport,
   isBlablabuildAccount,
   canUseFormPrefill,

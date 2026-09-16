@@ -15,6 +15,7 @@ import {
   canResubmitIdea,
   canResubmitScoping,
   canResubmitValidation,
+  canViewInitiative,
 } from "@/lib/permissions";
 import {
   isBusinessValueComplete,
@@ -324,6 +325,16 @@ export async function addComment(
   }
   if (body.length > 2000) {
     return { error: "Comment must be 2000 characters or fewer." };
+  }
+
+  const [existing] = await db
+    .select({ submitterId: initiatives.submitterId })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
+  if (!existing || !canViewInitiative(user, existing)) {
+    return { error: "Initiative not found." };
   }
 
   await db.insert(comments).values({

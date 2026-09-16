@@ -3,6 +3,7 @@ import {
   getProjectEpicProgress,
   type JiraInstance,
 } from "@/lib/integrations/jira";
+import type { PermissionUser } from "@/lib/permissions";
 import {
   getActivityForInitiative,
   getInitiativesByStage,
@@ -233,8 +234,10 @@ export type ProductionOverviewData = {
   archived: ProductionProject[];
 };
 
-export async function getProductionOverview(): Promise<ProductionOverviewData> {
-  const initiatives = await getInitiativesByStage("production");
+export async function getProductionOverview(
+  user: PermissionUser,
+): Promise<ProductionOverviewData> {
+  const initiatives = await getInitiativesByStage("production", user);
   const today = todayIso();
   const projects = await Promise.all(
     initiatives.map((item) => toProductionProject(item, today)),

@@ -20,12 +20,12 @@ export default async function DashboardPage() {
 
   const [items, activity, ideaFeedback, validationFeedback, gonogoFeedback, fastTrack] =
     await Promise.all([
-      getAllInitiatives(),
+      getAllInitiatives(user),
       getRecentWorkspaceActivity(12),
       getInitiativeIdsWithLatestDecision("idea", "feedback"),
       getInitiativeIdsWithLatestDecision("validation", "feedback"),
       getInitiativeIdsWithLatestDecision("go-nogo", "feedback"),
-      isLeadership(user) ? loadFastTrackOverview() : Promise.resolve(EMPTY_FAST_TRACK),
+      isLeadership(user) ? loadFastTrackOverview(user) : Promise.resolve(EMPTY_FAST_TRACK),
     ]);
 
   const feedbackIds = [

@@ -1,8 +1,12 @@
 import { OverviewView } from "@/components/overview/OverviewView";
 import { getAllInitiatives } from "@/lib/queries";
+import { getCurrentUser } from "@/lib/session";
 
 export default async function OverviewPage() {
-  const initiatives = await getAllInitiatives();
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const initiatives = await getAllInitiatives(user);
 
   return <OverviewView initiatives={initiatives} />;
 }

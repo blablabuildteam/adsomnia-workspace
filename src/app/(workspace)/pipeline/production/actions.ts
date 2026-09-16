@@ -9,6 +9,7 @@ import {
   getJiraProject,
   resolveJiraSpaceForLeadParty,
 } from "@/lib/integrations/jira";
+import { canViewInitiative } from "@/lib/permissions";
 import { isTrackedLeadParty } from "@/lib/production/health";
 import {
   getProductionJourney,
@@ -40,6 +41,14 @@ export async function loadProductionJourney(
 ): Promise<JourneyStage[]> {
   const user = await getCurrentUser();
   if (!user) return [];
+
+  const [existing] = await db
+    .select({ submitterId: initiatives.submitterId })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
+  if (!existing || !canViewInitiative(user, existing)) return [];
   return getProductionJourney(initiativeId);
 }
 

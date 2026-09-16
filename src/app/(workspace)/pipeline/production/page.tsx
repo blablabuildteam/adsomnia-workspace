@@ -16,9 +16,11 @@ export default async function PipelineProductionPage({
   searchParams,
 }: PageProps) {
   await connection();
-  const [data, user, params] = await Promise.all([
-    getProductionOverview(),
-    getCurrentUser(),
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const [data, params] = await Promise.all([
+    getProductionOverview(user),
     searchParams,
   ]);
   const parsed = Number.parseInt(params.project ?? "", 10);

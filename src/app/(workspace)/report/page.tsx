@@ -12,7 +12,7 @@ export default async function LeadershipReportPage() {
     redirect("/dashboard");
   }
 
-  const data = await getProductionOverview();
+  const data = await getProductionOverview(user);
   const report = buildProductionReport(data.active);
 
   return <ProductionReportView report={report} />;

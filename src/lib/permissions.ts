@@ -5,8 +5,8 @@
  *   Godai aliases sietse@godai.nl / jesper@godai.nl and seeded blablabuild
  *   admins). Approve, hold, set up projects, run onboarding.
  * - `team` — every other allowed-domain account (Adsomnia, Godai, blablabuild).
- *   Submit initiatives, follow them through later phases, and edit their own
- *   details while the item is still in Initiative or Validation.
+ *   Submit initiatives, follow only their own items through later phases, and
+ *   edit their own details while the item is still in Initiative or Validation.
  * - `production` — reserved; treated as team for write access today.
  * - Product Feedback inbox is leadership-only.
  */
@@ -42,6 +42,14 @@ function isCreatorOrLeadership(
   initiative: Pick<InitiativeAccess, "submitterId">,
 ): boolean {
   return isCreator(user, initiative) || isLeadership(user);
+}
+
+/** Leadership sees every workstream; team members see only what they submitted. */
+export function canViewInitiative(
+  user: PermissionUser,
+  initiative: Pick<InitiativeAccess, "submitterId">,
+): boolean {
+  return isCreatorOrLeadership(user, initiative);
 }
 
 /** Any signed-in workspace account can file a new initiative. */
