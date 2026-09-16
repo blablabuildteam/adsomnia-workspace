@@ -1,5 +1,6 @@
 import { LeadershipDashboard } from "@/components/dashboard/LeadershipDashboard";
 import { TeamDashboard } from "@/components/dashboard/TeamDashboard";
+import type { FastTrackItem } from "@/lib/fast-track";
 import { isLeadership } from "@/lib/permissions";
 import type {
   InitiativeWithUsers,
@@ -9,6 +10,8 @@ import type {
 type DashboardProps = {
   initiatives: InitiativeWithUsers[];
   activity: WorkspaceActivityEntry[];
+  fastTrackItems: FastTrackItem[];
+  fastTrackError?: string | null;
   feedbackIds: number[];
   user: {
     id: string;
@@ -20,6 +23,8 @@ type DashboardProps = {
 export function DashboardView({
   initiatives,
   activity,
+  fastTrackItems,
+  fastTrackError,
   feedbackIds,
   user,
 }: DashboardProps) {
@@ -28,6 +33,8 @@ export function DashboardView({
       <LeadershipDashboard
         initiatives={initiatives}
         activity={activity}
+        fastTrackItems={fastTrackItems}
+        fastTrackError={fastTrackError}
         firstName={user.firstName}
         role={user.role}
       />

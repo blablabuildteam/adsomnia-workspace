@@ -1,4 +1,6 @@
 import { DashboardView } from "@/components/dashboard/DashboardView";
+import { loadFastTrackOverview, type FastTrackItem } from "@/lib/fast-track";
+import { isLeadership } from "@/lib/permissions";
 import {
   getAllInitiatives,
   getInitiativeIdsWithLatestDecision,
@@ -6,18 +8,25 @@ import {
 } from "@/lib/queries";
 import { displayName, getCurrentUser } from "@/lib/session";
 
+const EMPTY_FAST_TRACK: Awaited<ReturnType<typeof loadFastTrackOverview>> = {
+  items: [] as FastTrackItem[],
+  boardUrl: null,
+  fetchError: null,
+};
+
 export default async function DashboardPage() {
-  const [items, activity, ideaFeedback, validationFeedback, gonogoFeedback, user] =
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const [items, activity, ideaFeedback, validationFeedback, gonogoFeedback, fastTrack] =
     await Promise.all([
       getAllInitiatives(),
       getRecentWorkspaceActivity(12),
       getInitiativeIdsWithLatestDecision("idea", "feedback"),
       getInitiativeIdsWithLatestDecision("validation", "feedback"),
       getInitiativeIdsWithLatestDecision("go-nogo", "feedback"),
-      getCurrentUser(),
+      isLeadership(user) ? loadFastTrackOverview() : Promise.resolve(EMPTY_FAST_TRACK),
     ]);
-
-  if (!user) return null;
 
   const feedbackIds = [
     ...ideaFeedback,
@@ -32,6 +41,8 @@ export default async function DashboardPage() {
     <DashboardView
       initiatives={items}
       activity={activity}
+      fastTrackItems={fastTrack.items}
+      fastTrackError={fastTrack.fetchError}
       feedbackIds={feedbackIds}
       user={{ id: user.id, firstName, role: user.role }}
     />

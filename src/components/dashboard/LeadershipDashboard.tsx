@@ -10,9 +10,11 @@ import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { ConsensusPriorityChip } from "@/components/production/ConsensusPriorityChip";
 import { DashboardGreeting } from "@/components/dashboard/DashboardGreeting";
+import { FastTrackGlance } from "@/components/dashboard/FastTrackGlance";
 import { KanbanFullscreen } from "@/components/dashboard/KanbanFullscreen";
 import { formatActivityLabel } from "@/lib/activity-labels";
 import { headlinePriority } from "@/lib/validation-data";
+import type { FastTrackItem } from "@/lib/fast-track";
 import type {
   InitiativeWithUsers,
   WorkspaceActivityEntry,
@@ -30,6 +32,8 @@ import {
 type Props = {
   initiatives: InitiativeWithUsers[];
   activity: WorkspaceActivityEntry[];
+  fastTrackItems: FastTrackItem[];
+  fastTrackError?: string | null;
   firstName: string;
   role: string;
 };
@@ -37,6 +41,8 @@ type Props = {
 export function LeadershipDashboard({
   initiatives: rawItems,
   activity,
+  fastTrackItems,
+  fastTrackError,
   firstName,
   role,
 }: Props) {
@@ -221,6 +227,8 @@ export function LeadershipDashboard({
           </div>
         )}
       </section>
+
+      <FastTrackGlance items={fastTrackItems} fetchError={fastTrackError} />
 
       {activity.length > 0 && (
         <section>
