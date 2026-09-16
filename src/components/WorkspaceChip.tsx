@@ -15,7 +15,7 @@ export function WorkspaceChip({
   return (
     <span
       className={[
-        "mx-0.5 inline-flex max-w-full items-center gap-1 rounded-full border border-foreground/35 bg-white/10 px-2 py-0.5 align-middle font-display text-[10px] font-bold uppercase tracking-[0.08em] text-foreground",
+        "mx-0.5 inline-flex max-w-full items-center gap-1 rounded-full border border-foreground/35 bg-fill-muted px-2 py-0.5 align-middle font-display text-[10px] font-bold uppercase tracking-[0.08em] text-foreground",
         className,
       ].join(" ")}
     >

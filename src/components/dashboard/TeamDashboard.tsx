@@ -94,7 +94,7 @@ export function TeamDashboard({
                   <Link
                     href={`/workstreams/${item.id}`}
                     className={[
-                      "group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-white/[0.03]",
+                      "group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-hover",
                       index > 0 ? "border-t border-border" : "",
                     ].join(" ")}
                   >
@@ -181,7 +181,7 @@ function WorkstreamCard({
   return (
     <Link
       href={`/workstreams/${item.id}`}
-      className="group block border border-border bg-surface p-4 transition-colors hover:border-border-strong hover:bg-white/[0.03]"
+      className="group block border border-border bg-surface p-4 transition-colors hover:border-border-strong hover:bg-hover"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">

@@ -6,6 +6,7 @@ import { JiraChip } from "@/components/JiraChip";
 import { WorkspaceChip } from "@/components/WorkspaceChip";
 import {
   getParty,
+  getPartyInk,
   stageAccent,
   WORKSPACE_SYSTEM,
   type PartyId,
@@ -52,7 +53,7 @@ export function StageCard({
           : "border-border hover:border-border-strong",
         dimmed || !partyMatch ? "opacity-35 grayscale" : "opacity-100",
         bypassed ? "opacity-30 saturate-0" : "",
-        landing ? "fast-track-pulse bg-white/[0.04]" : "",
+        landing ? "fast-track-pulse bg-fill-subtle" : "",
       ].join(" ")}
       style={{
         borderTopColor: selected || partyMatch || landing ? accent : undefined,
@@ -92,7 +93,7 @@ export function StageCard({
       </div>
 
       {(touchesWorkspace || touchesJira) && (
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-border bg-white/[0.03] px-4 py-2">
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-border bg-fill-subtle px-4 py-2">
           {touchesWorkspace && <WorkspaceChip />}
           {touchesJira && <JiraChip />}
         </div>
@@ -173,7 +174,7 @@ export function StageCard({
                     ].join(" ")}
                     style={{
                       borderColor: party.color,
-                      color: party.color,
+                      color: party.background ? party.color : getPartyInk(party.id),
                       backgroundColor: party.background,
                     }}
                   >
@@ -187,8 +188,8 @@ export function StageCard({
       )}
 
       {bypassed && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/55">
-          <span className="border border-foreground bg-black px-2 py-1 font-display text-[10px] font-bold uppercase tracking-[0.2em] text-foreground">
+        <div className="absolute inset-0 flex items-center justify-center bg-scrim">
+          <span className="border border-foreground bg-background px-2 py-1 font-display text-[10px] font-bold uppercase tracking-[0.2em] text-foreground">
             Bypassed
           </span>
         </div>

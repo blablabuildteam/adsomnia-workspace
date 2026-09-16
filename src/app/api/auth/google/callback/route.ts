@@ -4,7 +4,10 @@ import { randomBytes } from "node:crypto";
 import { hashSync } from "bcryptjs";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { createSession, needsProfileCompletion } from "@/lib/session";
+import {
+  needsProfileCompletion,
+  writeSessionCookie,
+} from "@/lib/session";
 import {
   exchangeGoogleLoginCode,
   isEmailDomainAllowed,
@@ -115,18 +118,11 @@ export async function GET(request: Request) {
       userId = created.id;
     }
 
-    await createSession(userId);
-
     const [sessionUser] = await db
       .select({
-        id: users.id,
-        name: users.name,
         firstName: users.firstName,
         lastName: users.lastName,
         jobTitle: users.jobTitle,
-        email: users.email,
-        role: users.role,
-        profileCompletedAt: users.profileCompletedAt,
       })
       .from(users)
       .where(eq(users.id, userId))
@@ -136,8 +132,11 @@ export async function GET(request: Request) {
       sessionUser && needsProfileCompletion(sessionUser)
         ? "/complete-profile"
         : "/dashboard";
-    return NextResponse.redirect(new URL(dest, origin));
-  } catch {
+    const response = NextResponse.redirect(new URL(dest, origin));
+    await writeSessionCookie(response, userId);
+    return response;
+  } catch (err) {
+    console.error("Google login callback failed:", err);
     return loginErrorRedirect(origin, "google_failed");
   }
 }

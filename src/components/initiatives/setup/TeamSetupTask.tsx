@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check, Plus, Trash2, Users } from "lucide-react";
 import type { SetupTeamMember } from "@/lib/validation-data";
-import { PARTIES } from "@/data/workflow";
+import { PARTIES, getPartyInk } from "@/data/workflow";
 import { inputClass } from "@/lib/form-styles";
 
 type Props = {
@@ -61,7 +61,7 @@ export function TeamSetupTask({ members: initial, readOnly, onComplete }: Props)
                 {party && (
                   <span
                     className="font-display text-[9px] font-bold uppercase tracking-wider"
-                    style={{ color: party.color }}
+                    style={{ color: getPartyInk(party.id) }}
                   >
                     {party.label}
                   </span>

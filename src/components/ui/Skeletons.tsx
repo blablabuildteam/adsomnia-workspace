@@ -98,7 +98,7 @@ export function DetailViewSkeleton() {
       </header>
 
       <div
-        className="mb-8 animate-card-enter bg-[#0D0D0D]"
+        className="mb-8 animate-card-enter bg-surface-elevated"
         style={{ "--enter-delay": "70ms" } as React.CSSProperties}
       >
         <SkeletonBlock className="h-[2px] w-full" />

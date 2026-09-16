@@ -9,7 +9,7 @@ import { ConsensusPriorityChip } from "@/components/production/ConsensusPriority
 import { ProductionHealthBadge } from "@/components/production/ProductionHealthBadge";
 import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
-import { PARTIES } from "@/data/workflow";
+import { PARTIES, getPartyInk } from "@/data/workflow";
 import {
   formatShortDate,
   HEALTH_META,
@@ -48,8 +48,10 @@ function partyLabel(id: ReportPartyId) {
 }
 
 function partyColor(id: ReportPartyId) {
-  if (id === "unassigned") return "#A1A1A1";
-  return PARTIES.find((party) => party.id === id)?.color ?? "#FFFFFF";
+  if (id === "unassigned") return "var(--muted)";
+  const party = PARTIES.find((p) => p.id === id);
+  if (!party) return "var(--foreground)";
+  return getPartyInk(party.id);
 }
 
 function formatWeekOf(iso: string): string {
@@ -167,7 +169,7 @@ function PortfolioRow({
       <Link
         href={projectHref(row.projectId)}
         className={[
-          "group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-3 py-2.5 transition-colors hover:bg-white/[0.03] sm:grid-cols-[auto_minmax(0,1.4fr)_auto_auto_auto_auto] sm:gap-4",
+          "group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-3 py-2.5 transition-colors hover:bg-hover sm:grid-cols-[auto_minmax(0,1.4fr)_auto_auto_auto_auto] sm:gap-4",
           bordered ? "border-t border-border" : "",
         ].join(" ")}
       >
@@ -323,7 +325,7 @@ export function ProductionReportView({ report }: Props) {
                     <Link
                       href={projectHref(item.projectId)}
                       className={[
-                        "group flex items-start gap-3 px-3 py-3 transition-colors hover:bg-white/[0.03]",
+                        "group flex items-start gap-3 px-3 py-3 transition-colors hover:bg-hover",
                         index > 0 ? "border-t border-border" : "",
                       ].join(" ")}
                     >
@@ -346,7 +348,7 @@ export function ProductionReportView({ report }: Props) {
                         {party && (
                           <span
                             className="font-display text-[10px] font-bold uppercase tracking-wide"
-                            style={{ color: party.color }}
+                            style={{ color: getPartyInk(party.id) }}
                           >
                             {party.short}
                           </span>
@@ -388,7 +390,7 @@ export function ProductionReportView({ report }: Props) {
                     <Link
                       href={projectHref(item.projectId)}
                       className={[
-                        "group flex items-center gap-3 px-3 py-3 transition-colors hover:bg-white/[0.03]",
+                        "group flex items-center gap-3 px-3 py-3 transition-colors hover:bg-hover",
                         index > 0 ? "border-t border-border" : "",
                       ].join(" ")}
                     >
@@ -415,7 +417,7 @@ export function ProductionReportView({ report }: Props) {
                       {party && (
                         <span
                           className="shrink-0 font-display text-[10px] font-bold uppercase tracking-wide"
-                          style={{ color: party.color }}
+                          style={{ color: getPartyInk(party.id) }}
                         >
                           {party.short}
                         </span>

@@ -44,7 +44,7 @@ export function DocsSetupTask({ data, driveUrl, readOnly, onComplete }: Props) {
             href={driveUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex shrink-0 items-center gap-1.5 border border-border bg-white/[0.04] px-3 py-2 text-xs text-muted transition-colors hover:border-foreground/30 hover:text-foreground"
+            className="inline-flex shrink-0 items-center gap-1.5 border border-border bg-fill-subtle px-3 py-2 text-xs text-muted transition-colors hover:border-foreground/30 hover:text-foreground"
           >
             Open Google Drive
             <ExternalLink className="size-3" />

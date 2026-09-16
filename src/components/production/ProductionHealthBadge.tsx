@@ -14,8 +14,8 @@ export function ProductionHealthBadge({ health, compact = false }: Props) {
         compact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]",
       ].join(" ")}
       style={{
-        borderColor: `${meta.color}66`,
-        backgroundColor: `${meta.color}1A`,
+        borderColor: `color-mix(in srgb, ${meta.color} 40%, transparent)`,
+        backgroundColor: `color-mix(in srgb, ${meta.color} 10%, transparent)`,
         color: meta.color,
       }}
     >

@@ -48,7 +48,7 @@ export function Modal({
       aria-labelledby="modal-title"
     >
       <div
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-fade-in"
+        className="absolute inset-0 bg-scrim backdrop-blur-sm animate-fade-in"
         onClick={onClose}
       />
 

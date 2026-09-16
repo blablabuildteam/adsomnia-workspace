@@ -295,11 +295,11 @@ export function MilestoneGantt({
 
   return (
     <div
-      className={["border border-white/[0.12] bg-white/[0.05]", className]
+      className={["border border-border bg-fill-subtle", className]
         .filter(Boolean)
         .join(" ")}
     >
-      <div className="flex items-center justify-between gap-3 border-b border-white/[0.08] bg-white/[0.04] px-3 py-2">
+      <div className="flex items-center justify-between gap-3 border-b border-border bg-fill-subtle px-3 py-2">
         <span className="font-display text-[9px] font-bold uppercase tracking-widest text-muted/50">
           Timeline
         </span>

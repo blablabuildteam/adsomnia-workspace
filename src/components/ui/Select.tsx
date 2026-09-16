@@ -133,7 +133,7 @@ export function Select({
           open ? "border-muted" : ""
         } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
       >
-        <span className={selectedOption ? "text-white" : "text-muted/50"}>
+        <span className={selectedOption ? "text-foreground" : "text-muted/50"}>
           {selectedOption?.label ?? placeholder}
         </span>
         <ChevronDown

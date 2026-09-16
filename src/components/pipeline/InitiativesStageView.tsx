@@ -30,12 +30,12 @@ const stageColor = getStageColor(stage.id);
 type FilterKey = "all" | "submitted" | "feedback" | "approved" | "on-hold" | "rejected";
 
 const FILTERS: { key: FilterKey; label: string; color: string }[] = [
-  { key: "all", label: "All", color: "#FFFFFF" },
-  { key: "submitted", label: "Review", color: "#38BDF8" },
-  { key: "feedback", label: "Feedback", color: "#A855F7" },
-  { key: "approved", label: "Approved", color: "#22c55e" },
-  { key: "on-hold", label: "On Hold", color: "#7E90A3" },
-  { key: "rejected", label: "Rejected", color: "#FF3B1F" },
+  { key: "all", label: "All", color: "var(--foreground)" },
+  { key: "submitted", label: "Review", color: "var(--info)" },
+  { key: "feedback", label: "Feedback", color: "var(--feedback)" },
+  { key: "approved", label: "Approved", color: "var(--success)" },
+  { key: "on-hold", label: "On Hold", color: "var(--hn-ink)" },
+  { key: "rejected", label: "Rejected", color: "var(--danger)" },
 ];
 
 const STATUS_META: Record<
@@ -43,11 +43,11 @@ const STATUS_META: Record<
   { label: string; color: string; icon: React.ComponentType<{ className?: string }> }
 > = {
   draft: { label: "Draft", color: "#666666", icon: Clock },
-  submitted: { label: "Review", color: "#38BDF8", icon: ArrowUpRight },
-  "feedback-received": { label: "Feedback", color: "#A855F7", icon: MessageCircle },
-  approved: { label: "Approved", color: "#22c55e", icon: CheckCircle2 },
-  rejected: { label: "Rejected", color: "#FF3B1F", icon: XCircle },
-  "on-hold": { label: "On Hold", color: "#7E90A3", icon: PauseCircle },
+  submitted: { label: "Review", color: "var(--info)", icon: ArrowUpRight },
+  "feedback-received": { label: "Feedback", color: "var(--feedback)", icon: MessageCircle },
+  approved: { label: "Approved", color: "var(--success)", icon: CheckCircle2 },
+  rejected: { label: "Rejected", color: "var(--danger)", icon: XCircle },
+  "on-hold": { label: "On Hold", color: "var(--hn-ink)", icon: PauseCircle },
 };
 
 function StatusBadge({ status, hasFeedback }: { status: string; hasFeedback?: boolean }) {
@@ -73,7 +73,7 @@ function InitiativeCard({ item, hasFeedback }: { item: InitiativeWithUsers; hasF
   return (
     <Link
       href={`/workstreams/${item.id}`}
-      className="group relative flex h-full flex-col border border-border bg-surface transition-colors hover:border-border-strong hover:bg-white/[0.02]"
+      className="group relative flex h-full flex-col border border-border bg-surface transition-colors hover:border-border-strong hover:bg-hover"
     >
       <CornerTicks className={hoverTicks} />
       {/* Card header */}

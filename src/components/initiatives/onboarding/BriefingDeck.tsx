@@ -160,7 +160,7 @@ export function BriefingDeck({
             <button
               type="button"
               onClick={startPresenting}
-              className="inline-flex items-center gap-2 border px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-wide transition-colors hover:bg-white/[0.06]"
+              className="inline-flex items-center gap-2 border px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-wide transition-colors hover:bg-hover-strong"
               style={{ borderColor: `${ACCENT}66`, color: ACCENT }}
             >
               <Maximize2 className="size-3" />
@@ -216,7 +216,7 @@ export function BriefingDeck({
                           : "Mark reviewed"
                     }
                     className={`relative z-10 flex size-8 shrink-0 items-center justify-center rounded border transition-colors ${
-                      reviewed ? "" : "border-white/[0.12] text-muted/40"
+                      reviewed ? "" : "border-border text-muted/40"
                     } ${
                       readOnly || busy
                         ? "cursor-not-allowed opacity-60"
@@ -362,7 +362,7 @@ export function BriefingDeck({
                   <span
                     key={block.taskId}
                     aria-hidden
-                    className="h-1 w-8 bg-white/[0.12]"
+                    className="h-1 w-8 bg-fill-muted"
                   >
                     {(index === slide || isReviewed(data, block.dataKey)) && (
                       <span

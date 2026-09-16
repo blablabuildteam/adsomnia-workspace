@@ -10,15 +10,27 @@
   --border: #222222;
   --border-strong: #3a3a3a;
   --border-input: #333333;
+  --hover: rgba(255, 255, 255, 0.03);
+  --hover-strong: rgba(255, 255, 255, 0.06);
+  --fill-subtle: rgba(255, 255, 255, 0.04);
+  --fill-muted: rgba(255, 255, 255, 0.08);
+  --scrim: rgba(0, 0, 0, 0.7);
+  --grid-line: rgba(255, 255, 255, 0.055);
   /* Party accents */
   --adsomnia: #ffffff;
+  --adsomnia-ink: #ffffff;
   --btr: #e8a07c;
+  --btr-ink: #e8a07c;
   --hn: #7e90a3;
+  --hn-ink: #7e90a3;
   --bbb: #ceff00;
+  --bbb-ink: #ceff00;
   --as: #ffffff;
   --danger: #ff3b3b;
   --success: #22c55e;
   --feedback: #a855f7;
+  --info: #38bdf8;
+  --warning: #eab308;
   /* Phase / stage accents (shared with STAGE_COLORS in workflow.ts) */
   --stage-idea: #9ca3af;
   --stage-validation: #22d3ee;
@@ -27,6 +39,42 @@
   --stage-setup: #f472b6;
   --stage-onboarding: #fb923c;
   --stage-production: #22c55e;
+}
+
+html.light {
+  --background: #f2f2f2;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-input: #ffffff;
+  --foreground: #0b0b0b;
+  --muted: #3f3f3f;
+  --border: #d6d6d6;
+  --border-strong: #b0b0b0;
+  --border-input: #c4c4c4;
+  --hover: rgba(11, 11, 11, 0.04);
+  --hover-strong: rgba(11, 11, 11, 0.07);
+  --fill-subtle: rgba(11, 11, 11, 0.04);
+  --fill-muted: rgba(11, 11, 11, 0.08);
+  --scrim: rgba(11, 11, 11, 0.48);
+  --grid-line: rgba(11, 11, 11, 0.06);
+  --adsomnia: #0b0b0b;
+  --adsomnia-ink: #0b0b0b;
+  --btr-ink: #9a4f28;
+  --hn-ink: #3d4e5c;
+  --bbb-ink: #4a5600;
+  --as: #0b0b0b;
+  --danger: #c81e1e;
+  --success: #157a3a;
+  --feedback: #7e22ce;
+  --info: #0369a1;
+  --warning: #a16207;
+  --stage-idea: #4b5563;
+  --stage-validation: #0e7490;
+  --stage-scoping: #1d4ed8;
+  --stage-go-nogo: #6b21a8;
+  --stage-setup: #be185d;
+  --stage-onboarding: #c2410c;
+  --stage-production: #15803d;
 }
 
 @theme inline {
@@ -39,6 +87,11 @@
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-border-input: var(--border-input);
+  --color-hover: var(--hover);
+  --color-hover-strong: var(--hover-strong);
+  --color-fill-subtle: var(--fill-subtle);
+  --color-fill-muted: var(--fill-muted);
+  --color-scrim: var(--scrim);
   --color-adsomnia: var(--adsomnia);
   --color-btr: var(--btr);
   --color-hn: var(--hn);
@@ -47,6 +100,8 @@
   --color-success: var(--success);
   --color-danger: var(--danger);
   --color-feedback: var(--feedback);
+  --color-info: var(--info);
+  --color-warning: var(--warning);
   --color-stage-idea: var(--stage-idea);
   --color-stage-validation: var(--stage-validation);
   --color-stage-scoping: var(--stage-scoping);
@@ -64,6 +119,10 @@
 
 html {
   color-scheme: dark;
+}
+
+html.light {
+  color-scheme: light;
 }
 
 body {
@@ -122,12 +181,39 @@ body {
   position: relative;
   background-color: var(--background);
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size:
     48px 48px,
     48px 48px;
   background-position: 0 0;
+}
+
+html.light .text-bbb {
+  color: var(--bbb-ink);
+}
+
+html.light .text-btr {
+  color: var(--btr-ink);
+}
+
+html.light .text-hn {
+  color: var(--hn-ink);
+}
+
+html.light .text-adsomnia,
+html.light .text-as {
+  color: var(--adsomnia-ink);
+}
+
+html.light .logo-invert {
+  filter: invert(1);
+}
+
+html.light .jira-chip {
+  color: #1d4ed8;
+  border-color: rgb(38 132 255 / 0.45);
+  background-color: rgb(38 132 255 / 0.1);
 }
 
 .font-display {
@@ -203,6 +289,19 @@ body {
   );
 }
 
+html.light .brand-texture {
+  mix-blend-mode: multiply;
+  filter: grayscale(1) contrast(1.1) brightness(0.72);
+}
+
+html.light .brand-texture--hero {
+  opacity: 0.16;
+}
+
+html.light .brand-texture--page {
+  opacity: 0.2;
+}
+
 /* Form controls — replace native OS chrome with workspace styling */
 .form-control {
   appearance: none;
@@ -234,6 +333,10 @@ select.form-control {
   cursor: pointer;
 }
 
+html.light select.form-control {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23525252' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
 select.form-control option {
   background: var(--surface-input);
   color: var(--foreground);
@@ -263,6 +366,12 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
   cursor: pointer;
 }
 
+html.light input[type="date"].form-control::-webkit-calendar-picker-indicator,
+html.light input[type="datetime-local"].form-control::-webkit-calendar-picker-indicator,
+html.light input[type="time"].form-control::-webkit-calendar-picker-indicator {
+  filter: none;
+}
+
 /* Scoping date inputs — polished dark calendar trigger */
 .date-input::-webkit-calendar-picker-indicator {
   filter: invert(0.8) brightness(1.2);
@@ -273,9 +382,13 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
   border-radius: 2px;
 }
 
+html.light .date-input::-webkit-calendar-picker-indicator {
+  filter: none;
+}
+
 .date-input::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
 .date-input:focus::-webkit-calendar-picker-indicator {
@@ -303,20 +416,20 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
 .date-input::-webkit-datetime-edit-day-field:focus,
 .date-input::-webkit-datetime-edit-month-field:focus,
 .date-input::-webkit-datetime-edit-year-field:focus {
-  background-color: rgba(206, 255, 0, 0.15);
-  color: #ffffff;
+  background-color: color-mix(in srgb, var(--bbb) 18%, transparent);
+  color: var(--foreground);
   outline: none;
 }
 
 .date-input::-webkit-datetime-edit-text {
-  color: rgba(255, 255, 255, 0.3);
+  color: color-mix(in srgb, var(--foreground) 30%, transparent);
   padding: 0 1px;
 }
 
 /* Horizontal timeline scrollbar */
 .timeline-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #333 transparent;
+  scrollbar-color: var(--border-input) transparent;
 }
 
 .timeline-scroll::-webkit-scrollbar {
@@ -328,8 +441,8 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
 }
 
 .timeline-scroll::-webkit-scrollbar-thumb {
-  background: #333;
-  border: 2px solid #000;
+  background: var(--border-input);
+  border: 2px solid var(--background);
 }
 
 @keyframes drawer-in {
@@ -355,10 +468,10 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
 @keyframes pulse-accent {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.35);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--foreground) 35%, transparent);
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(255, 255, 255, 0);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--foreground) 0%, transparent);
   }
 }
 
@@ -430,6 +543,25 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
   filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.35));
 }
 
+html.light .approval-action-border {
+  background:
+    conic-gradient(
+      from var(--approval-angle),
+      transparent 0deg,
+      transparent 250deg,
+      rgba(11, 11, 11, 0.12) 290deg,
+      rgba(11, 11, 11, 0.55) 320deg,
+      #0b0b0b 345deg,
+      rgba(11, 11, 11, 0.55) 355deg,
+      transparent 360deg
+    ),
+    linear-gradient(
+      rgba(11, 11, 11, 0.18),
+      rgba(11, 11, 11, 0.18)
+    );
+  filter: drop-shadow(0 0 4px rgba(11, 11, 11, 0.25));
+}
+
 /* Login form: full revolution synced to sequential corner ticks (2s each) */
 .approval-action-border--slow {
   animation-duration: 8s;
@@ -469,6 +601,35 @@ input[type="time"].form-control::-webkit-calendar-picker-indicator {
   opacity: 0;
   border-color: transparent;
   animation: corner-tick-appear 8s linear infinite;
+}
+
+html.light .corner-tick-glow {
+  animation-name: corner-tick-appear-light;
+}
+
+@keyframes corner-tick-appear-light {
+  0%,
+  100% {
+    opacity: 0;
+    border-color: transparent;
+    filter: none;
+  }
+  2% {
+    opacity: 1;
+    border-color: #0b0b0b;
+    filter: drop-shadow(0 0 5px rgba(11, 11, 11, 0.55));
+  }
+  20% {
+    opacity: 1;
+    border-color: #0b0b0b;
+    filter: drop-shadow(0 0 3px rgba(11, 11, 11, 0.25));
+  }
+  25%,
+  99% {
+    opacity: 0;
+    border-color: transparent;
+    filter: none;
+  }
 }
 
 /* Clockwise: TR → BR → BL → TL, 2s apart */

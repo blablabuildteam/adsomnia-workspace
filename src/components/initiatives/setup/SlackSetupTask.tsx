@@ -205,7 +205,7 @@ export function SlackSetupTask({
                 href={view.channelUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-[#38BDF8] hover:text-foreground"
+                className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-info hover:text-foreground"
               >
                 Open in Slack
                 <ExternalLink className="size-3" />

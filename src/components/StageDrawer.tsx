@@ -7,6 +7,7 @@ import { JiraChip } from "@/components/JiraChip";
 import { WorkspaceChip } from "@/components/WorkspaceChip";
 import {
   getParty,
+  getPartyInk,
   stageAccent,
   WORKSPACE_SYSTEM,
   type WorkflowStage,
@@ -36,7 +37,7 @@ export function StageDrawer({ stage, onClose }: StageDrawerProps) {
       <button
         type="button"
         aria-label="Close details"
-        className="absolute inset-0 bg-black/70 animate-fade-in"
+        className="absolute inset-0 bg-scrim animate-fade-in"
         onClick={onClose}
       />
       <aside
@@ -83,7 +84,7 @@ export function StageDrawer({ stage, onClose }: StageDrawerProps) {
                   className="border px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wider"
                   style={{
                     borderColor: party.color,
-                    color: party.color,
+                    color: party.background ? party.color : getPartyInk(party.id),
                     backgroundColor: party.background,
                   }}
                 >
@@ -102,7 +103,7 @@ export function StageDrawer({ stage, onClose }: StageDrawerProps) {
             const hasJira = text.some((t) => /\bJira\b|\bJIRA\b/.test(t));
             if (!hasWorkspace && !hasJira) return null;
             return (
-              <div className="mt-4 flex flex-wrap items-center gap-2 border border-border bg-white/[0.03] px-3 py-2">
+              <div className="mt-4 flex flex-wrap items-center gap-2 border border-border bg-fill-subtle px-3 py-2">
                 <p className="text-xs leading-snug text-muted">Systems in play</p>
                 {hasWorkspace && <WorkspaceChip />}
                 {hasJira && <JiraChip />}
@@ -167,7 +168,7 @@ export function StageDrawer({ stage, onClose }: StageDrawerProps) {
                   : "Execution Branches"}
               </h3>
               {stage.leadPartyChoice && (
-                <div className="mb-4 border border-border bg-white/[0.03] px-3 py-3">
+                <div className="mb-4 border border-border bg-fill-subtle px-3 py-3">
                   <p className="text-sm leading-relaxed text-foreground">
                     {stage.leadPartyChoice.rule}
                   </p>
@@ -197,7 +198,7 @@ export function StageDrawer({ stage, onClose }: StageDrawerProps) {
                         <span
                           className="border px-1.5 py-0.5 font-display text-[10px] font-bold uppercase tracking-wider"
                           style={{
-                            color: party.color,
+                            color: party.background ? party.color : getPartyInk(party.id),
                             borderColor: party.color,
                             backgroundColor: party.background ?? "transparent",
                           }}

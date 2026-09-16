@@ -119,9 +119,9 @@ const stageColor = getStageColor("setup");
 type FilterKey = "all" | "in-progress" | "complete";
 
 const FILTERS: { key: FilterKey; label: string; color: string }[] = [
-  { key: "all", label: "All", color: "#FFFFFF" },
-  { key: "in-progress", label: "In Progress", color: "#EAB308" },
-  { key: "complete", label: "Complete", color: "#22C55E" },
+  { key: "all", label: "All", color: "var(--foreground)" },
+  { key: "in-progress", label: "In Progress", color: "var(--warning)" },
+  { key: "complete", label: "Complete", color: "var(--success)" },
 ];
 
 function getEffectiveStatus(
@@ -151,7 +151,7 @@ function SetupCard({ item }: { item: InitiativeWithUsers }) {
   const href = `/workstreams/${item.id}`;
 
   return (
-    <div className="group relative flex h-full flex-col border border-border bg-surface transition-colors hover:border-border-strong hover:bg-white/[0.02]">
+    <div className="group relative flex h-full flex-col border border-border bg-surface transition-colors hover:border-border-strong hover:bg-hover">
       <CornerTicks className={hoverTicks} />
 
       <Link href={href} className="flex flex-1 flex-col">
@@ -206,7 +206,7 @@ function SetupCard({ item }: { item: InitiativeWithUsers }) {
           {/* Progress bar */}
           <div className="mt-3 flex items-center gap-3">
             <div className="flex-1">
-              <div className="h-1.5 w-full bg-white/[0.04]">
+              <div className="h-1.5 w-full bg-fill-subtle">
                 <div
                   className="h-full transition-all"
                   style={{

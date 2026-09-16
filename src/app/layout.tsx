@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Libre_Franklin, Sen } from "next/font/google";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { getCurrentUser } from "@/lib/session";
+import { THEME_COOKIE, parseThemePreference } from "@/lib/theme";
 import "./globals.css";
 
 const sen = Sen({
@@ -20,18 +24,27 @@ export const metadata: Metadata = {
     "Concept previews for the Adsomnia Workspace System — dashboard, initiative intake, initiative tracking, and the Production Framework process map.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const [user, cookieStore] = await Promise.all([getCurrentUser(), cookies()]);
+  const theme = parseThemePreference(
+    user?.themePreference ?? cookieStore.get(THEME_COOKIE)?.value,
+  );
+
   return (
     <html
       lang="en"
-      className={`${sen.variable} ${libreFranklin.variable} h-full overflow-x-hidden antialiased`}
+      className={`${sen.variable} ${libreFranklin.variable} h-full overflow-x-hidden antialiased${theme === "light" ? " light" : ""}`}
+      style={{ colorScheme: theme }}
+      suppressHydrationWarning
     >
       <body className="flex min-h-full min-w-0 flex-col overflow-x-hidden">
-        {children}
+        <ThemeProvider initialTheme={theme} canPersist={Boolean(user)}>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -621,7 +621,7 @@ function TeamMemberCard({
           <div
             className="flex size-6 items-center justify-center border text-[10px] font-bold uppercase"
             style={{
-              borderColor: partyColor ?? "#333",
+              borderColor: partyColor ?? "var(--border-input)",
               color: partyColor ?? "#666",
             }}
           >
@@ -827,7 +827,7 @@ function ProgressRing({ sections }: { sections: { done: boolean; label: string }
   return (
     <div className="flex items-center gap-3">
       <svg width="44" height="44" viewBox="0 0 44 44" className="-rotate-90">
-        <circle cx="22" cy="22" r={r} fill="none" stroke="#222" strokeWidth="3" />
+        <circle cx="22" cy="22" r={r} fill="none" stroke="var(--border)" strokeWidth="3" />
         <circle
           cx="22"
           cy="22"
@@ -1724,7 +1724,7 @@ function ScopingReadOnly({
                       <div
                         className="flex size-5 items-center justify-center border text-[9px] font-bold"
                         style={{
-                          borderColor: partyColor ?? "#333",
+                          borderColor: partyColor ?? "var(--border-input)",
                           color: partyColor ?? "#666",
                         }}
                       >

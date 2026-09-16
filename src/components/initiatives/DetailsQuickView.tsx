@@ -302,7 +302,7 @@ export function DetailsQuickView({
 
   return (
     <div
-      className={["mb-10 bg-black", className].filter(Boolean).join(" ")}
+      className={["mb-10 bg-background", className].filter(Boolean).join(" ")}
       style={style}
     >
       {/* Hero stats — from Scoping onward. Consensus priority leads; t-shirt sizing drops out. */}

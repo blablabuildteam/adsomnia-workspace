@@ -49,7 +49,7 @@ function DriveFolderLinks({ folders }: { folders: DriveFolderLink[] }) {
             href={folder.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 font-mono text-[11px] text-[#38BDF8] hover:underline"
+            className="inline-flex items-center gap-1 font-mono text-[11px] text-info hover:underline"
           >
             {folder.name}
             <ExternalLink className="size-2.5" />
@@ -173,7 +173,7 @@ export function DriveSetupTask({
                 href={savedUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-[#38BDF8] hover:underline"
+                className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-info hover:underline"
               >
                 Open in Google Drive
                 <ExternalLink className="size-2.5" />

@@ -82,7 +82,7 @@ function FastTrackDrawer({
     <div className="fixed inset-0 z-50 flex justify-end">
       <button
         type="button"
-        className="absolute inset-0 bg-black/60"
+        className="absolute inset-0 bg-scrim"
         aria-label="Close task details"
         onClick={onClose}
       />
@@ -304,7 +304,7 @@ export function FastTrackView({ items, boardUrl, fetchError }: Props) {
                 <tr
                   key={item.id}
                   tabIndex={0}
-                  className="group relative cursor-pointer border-b border-border last:border-b-0 hover:bg-white/[0.03] focus-visible:bg-white/[0.03] focus-visible:outline-none"
+                  className="group relative cursor-pointer border-b border-border last:border-b-0 hover:bg-hover focus-visible:bg-hover focus-visible:outline-none"
                   onClick={() => setSelectedId(item.id)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {

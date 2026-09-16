@@ -12,7 +12,7 @@ import {
   StatusFillBar,
   ticketShare,
 } from "@/components/production/epic-tickets";
-import { PARTIES } from "@/data/workflow";
+import { PARTIES, getPartyInk } from "@/data/workflow";
 import {
   dateToMs,
   formatShortDate,
@@ -328,7 +328,7 @@ export function ProductionTimelineView({ projects, onOpen }: Props) {
               <button
                 type="button"
                 onClick={() => onOpen(project.id)}
-                className="border-r border-border px-4 py-3 text-left transition-colors hover:bg-white/[0.03]"
+                className="border-r border-border px-4 py-3 text-left transition-colors hover:bg-hover"
               >
                 <div className="flex items-start justify-between gap-3">
                   <p className="min-w-0 truncate text-sm font-semibold">
@@ -352,7 +352,7 @@ export function ProductionTimelineView({ projects, onOpen }: Props) {
                     {party ? (
                       <p
                         className="font-display text-[10px] font-bold uppercase tracking-wide"
-                        style={{ color: party.color }}
+                        style={{ color: getPartyInk(party.id) }}
                       >
                         {party.label}
                       </p>
@@ -370,12 +370,12 @@ export function ProductionTimelineView({ projects, onOpen }: Props) {
               <button
                 type="button"
                 onClick={() => onOpen(project.id)}
-                className="relative overflow-visible px-0 py-3 text-left hover:bg-white/[0.02]"
+                className="relative overflow-visible px-0 py-3 text-left hover:bg-hover"
               >
                 {ticks.map((tick) => (
                   <span
                     key={`${project.id}-${tick.ms}`}
-                    className="absolute inset-y-0 w-px bg-white/[0.04]"
+                    className="absolute inset-y-0 w-px bg-fill-subtle"
                     style={{ left: `${leftPct(tick.ms, range)}%` }}
                   />
                 ))}

@@ -135,7 +135,7 @@ function PipelineNav({
             const phaseColor = item.stageId
               ? STAGE_COLORS[item.stageId]
               : undefined;
-            const lineColor = phaseColor ?? "#FFFFFF";
+            const lineColor = phaseColor ?? "var(--foreground)";
             return (
               <li key={item.href}>
                 <Link

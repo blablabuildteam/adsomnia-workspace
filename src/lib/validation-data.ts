@@ -29,10 +29,10 @@ export const PRIORITY_OPTIONS: {
 ];
 
 export const PRIORITY_META: Record<string, { color: string; hint: string }> = {
-  Now: { color: "#FF3B1F", hint: "Urgent / blocking" },
-  Near: { color: "#EAB308", hint: "Next up" },
-  Later: { color: "#7E90A3", hint: "Lower priority" },
-  Backlog: { color: "#FFFFFF80", hint: "On the radar" },
+  Now: { color: "var(--danger)", hint: "Urgent / blocking" },
+  Near: { color: "var(--warning)", hint: "Next up" },
+  Later: { color: "var(--hn-ink)", hint: "Lower priority" },
+  Backlog: { color: "var(--muted)", hint: "On the radar" },
 };
 
 export type ValidationData = {

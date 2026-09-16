@@ -15,7 +15,7 @@ import {
   UsersRound,
   Zap,
 } from "lucide-react";
-import { PARTIES, getStageColor } from "@/data/workflow";
+import { PARTIES, getPartyInk, getStageColor } from "@/data/workflow";
 import { MilestoneGantt } from "../MilestoneGantt";
 import type { InitiativeWithUsers } from "@/lib/queries";
 import {
@@ -500,7 +500,7 @@ export function ScopingBriefBody({
                     {party && (
                       <span
                         className="border px-1.5 font-display text-[9px] font-bold uppercase tracking-wide"
-                        style={{ borderColor: party.color, color: party.color }}
+                        style={{ borderColor: party.color, color: getPartyInk(party.id) }}
                       >
                         {party.short}
                       </span>

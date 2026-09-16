@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { statusLabel } from "@/components/dashboard/shared";
 import type { SimilarityMatch, WorkLocation } from "@/lib/idea-analysis";
-import { STAGES, getStageColor } from "@/data/workflow";
+import { STAGES, getStageColor, stageInk } from "@/data/workflow";
 import { PipelineStrip } from "@/components/pipeline/PipelineStrip";
 import { WorkspaceChip } from "@/components/WorkspaceChip";
 import {
@@ -193,7 +193,7 @@ function FieldRow({
           "font-display w-9 shrink-0 select-none pt-0.5 text-2xl font-extrabold leading-none transition-colors duration-200",
           complete
             ? "text-success [text-shadow:0_0_10px_rgba(34,197,94,0.4)]"
-            : "text-white/15 group-focus-within:text-white/50",
+            : "text-foreground/15 group-focus-within:text-foreground/50",
         ].join(" ")}
       >
         {number}
@@ -269,7 +269,7 @@ function SimilarWorkSnapshot({ match }: { match: SimilarityMatch }) {
           className="border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
           style={{
             borderColor: getStageColor(match.stageId),
-            color: getStageColor(match.stageId),
+            color: stageInk(match.stageId),
           }}
         >
           {match.stageLabel}
@@ -642,7 +642,7 @@ export function IdeaFormView({
           <div className="grid divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
             {NEXT_STEPS.map((step, i) => (
               <div key={step.title} className="p-4">
-                <p className="font-display text-lg font-extrabold leading-none text-white/20">
+                <p className="font-display text-lg font-extrabold leading-none text-foreground/20">
                   {fieldNumber(i)}
                 </p>
                 <p className="font-display mt-2 text-xs font-bold uppercase tracking-wide text-foreground">

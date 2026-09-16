@@ -67,7 +67,7 @@ export function JiraPlanningTask({
             href={boardUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex shrink-0 items-center gap-1.5 border border-[#38BDF8]/30 bg-[#38BDF8]/10 px-3 py-2 text-xs text-[#38BDF8] hover:bg-[#38BDF8]/20"
+            className="inline-flex shrink-0 items-center gap-1.5 border border-info/30 bg-info/10 px-3 py-2 text-xs text-info hover:bg-info/20"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -108,7 +108,7 @@ export function JiraPlanningTask({
                       href={epic.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 hover:text-[#38BDF8]"
+                      className="inline-flex items-center gap-1 hover:text-info"
                     >
                       <span className="font-mono text-[10px] text-muted">
                         {epic.key}

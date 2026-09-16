@@ -20,8 +20,8 @@ export function ConsensusPriorityChip({ value, compact = false }: Props) {
       style={
         color
           ? {
-              borderColor: `${color}66`,
-              backgroundColor: `${color}1A`,
+              borderColor: `color-mix(in srgb, ${color} 40%, transparent)`,
+              backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`,
               color,
             }
           : undefined

@@ -10,3 +10,7 @@
 - [ ] Review the experience for a **non-leadership** (team) account
 - [ ] **Switch Jira account** to the generic email (service account)
 - [ ] Test **Slack notifications** on chat mentions
+
+# Overall to-do (post-go-live)
+
+- [ ] Update the **folder structure** on Google Drive creation

@@ -155,8 +155,8 @@ function MenuSelect({
                   }}
                   className={`flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left text-xs transition-colors ${
                     active
-                      ? "bg-white/[0.06] text-foreground"
-                      : "text-muted hover:bg-white/[0.04] hover:text-foreground"
+                      ? "bg-fill-muted text-foreground"
+                      : "text-muted hover:bg-hover-strong hover:text-foreground"
                   }`}
                 >
                   <span className="min-w-0 truncate">{option.label}</span>
@@ -421,7 +421,7 @@ export function AbsenceLogTask({
                   onClick={() => setKind(entry.id, "day")}
                   className={`px-2 py-1.5 font-display text-[10px] font-bold uppercase tracking-wide transition-colors ${
                     kind === "day"
-                      ? "bg-white/[0.08] text-foreground"
+                      ? "bg-fill-muted text-foreground"
                       : "text-muted hover:text-foreground"
                   }`}
                 >
@@ -432,7 +432,7 @@ export function AbsenceLogTask({
                   onClick={() => setKind(entry.id, "period")}
                   className={`border-l border-border px-2 py-1.5 font-display text-[10px] font-bold uppercase tracking-wide transition-colors ${
                     kind === "period"
-                      ? "bg-white/[0.08] text-foreground"
+                      ? "bg-fill-muted text-foreground"
                       : "text-muted hover:text-foreground"
                   }`}
                 >

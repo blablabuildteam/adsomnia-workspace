@@ -31,11 +31,11 @@ const stageColor = getStageColor("go-nogo");
 type FilterKey = "all" | "awaiting" | "feedback" | "approved" | "rejected";
 
 const FILTERS: { key: FilterKey; label: string; color: string }[] = [
-  { key: "all", label: "All", color: "#FFFFFF" },
-  { key: "awaiting", label: "Awaiting Decision", color: "#38BDF8" },
-  { key: "feedback", label: "Feedback", color: "#A855F7" },
-  { key: "approved", label: "GO", color: "#22C55E" },
-  { key: "rejected", label: "NO-GO", color: "#FF3B1F" },
+  { key: "all", label: "All", color: "var(--foreground)" },
+  { key: "awaiting", label: "Awaiting Decision", color: "var(--info)" },
+  { key: "feedback", label: "Feedback", color: "var(--feedback)" },
+  { key: "approved", label: "GO", color: "var(--success)" },
+  { key: "rejected", label: "NO-GO", color: "var(--danger)" },
 ];
 
 function getEffectiveStatus(
@@ -67,12 +67,12 @@ const STATUS_META: Record<
     icon: React.ComponentType<{ className?: string }>;
   }
 > = {
-  draft: { label: "Feedback", color: "#A855F7", icon: MessageCircle },
-  "feedback-received": { label: "Feedback", color: "#A855F7", icon: MessageCircle },
-  submitted: { label: "Awaiting Decision", color: "#38BDF8", icon: Eye },
-  approved: { label: "GO", color: "#22C55E", icon: Rocket },
-  rejected: { label: "NO-GO", color: "#FF3B1F", icon: Ban },
-  "on-hold": { label: "On Hold", color: "#7E90A3", icon: PauseCircle },
+  draft: { label: "Feedback", color: "var(--feedback)", icon: MessageCircle },
+  "feedback-received": { label: "Feedback", color: "var(--feedback)", icon: MessageCircle },
+  submitted: { label: "Awaiting Decision", color: "var(--info)", icon: Eye },
+  approved: { label: "GO", color: "var(--success)", icon: Rocket },
+  rejected: { label: "NO-GO", color: "var(--danger)", icon: Ban },
+  "on-hold": { label: "On Hold", color: "var(--hn-ink)", icon: PauseCircle },
 };
 
 function StatusBadge({ status, hasFeedback }: { status: string; hasFeedback?: boolean }) {
@@ -206,7 +206,7 @@ function MiniGantt({ data }: { data: ScopingData | null }) {
         const end = new Date(m.endDate!).getTime();
         const left = ((start - min) / range) * 100;
         const width = Math.max(((end - start) / range) * 100, 3);
-        const color = m.color || "#FF3B1F";
+        const color = m.color || "var(--danger)";
         const label = m.epic?.trim() || `Milestone ${i + 1}`;
         const detail = m.milestone?.trim();
         return (
@@ -216,7 +216,7 @@ function MiniGantt({ data }: { data: ScopingData | null }) {
               title={detail ? `${label} — ${detail}` : label}
               className="w-[88px] shrink-0 text-[9px] text-muted/70"
             />
-            <div className="relative h-1.5 min-w-0 flex-1 bg-white/[0.04]">
+            <div className="relative h-1.5 min-w-0 flex-1 bg-fill-subtle">
               <div
                 className="absolute inset-y-0"
                 style={{
@@ -258,7 +258,7 @@ function GoNoGoCard({ item, hasFeedback }: { item: InitiativeWithUsers; hasFeedb
   return (
     <Link
       href={`/workstreams/${item.id}`}
-      className="group relative flex h-full flex-col border border-border bg-surface transition-colors hover:border-border-strong hover:bg-white/[0.02]"
+      className="group relative flex h-full flex-col border border-border bg-surface transition-colors hover:border-border-strong hover:bg-hover"
     >
       <CornerTicks className={hoverTicks} />
 

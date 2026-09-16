@@ -91,7 +91,7 @@ export function ProjectBriefCard({
       {/* Header */}
       <div className="flex items-center justify-between gap-4 border-b border-border bg-surface-elevated px-4 py-3 sm:px-5">
         <div className="flex items-center gap-3">
-          <FileText className="size-4 text-[#38BDF8]" />
+          <FileText className="size-4 text-info" />
           <h2 className="font-display text-sm font-bold uppercase tracking-wide">
             Project Brief
           </h2>

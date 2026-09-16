@@ -64,7 +64,7 @@ export function FloatingDetailBar({
           >
             {stageName}
           </span>
-          <span className="text-white/20">/</span>
+          <span className="text-foreground/20">/</span>
           <h2 className="font-display min-w-0 flex-1 truncate text-base font-extrabold uppercase tracking-tight text-foreground">
             {title}
           </h2>

@@ -42,7 +42,7 @@ function InitiativeCard({ initiative }: { initiative: InitiativeWithUsers }) {
   return (
     <Link
       href={`/workstreams/${initiative.id}`}
-      className="group relative block border border-border bg-surface-elevated p-3 transition-colors hover:border-border-strong hover:bg-white/[0.04]"
+      className="group relative block border border-border bg-surface-elevated p-3 transition-colors hover:border-border-strong hover:bg-hover-strong"
     >
       <CornerTicks className={hoverTicks} />
       <div className="flex items-center justify-between gap-2">

@@ -189,6 +189,7 @@ export async function exchangeGoogleLoginCode(
   const { payload } = await jwtVerify(data.id_token, GOOGLE_JWKS, {
     issuer: ["https://accounts.google.com", "accounts.google.com"],
     audience: clientId,
+    clockTolerance: 60,
   });
 
   const email =

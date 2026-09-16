@@ -98,7 +98,7 @@ export function InviteTeamTask({
                 href={tool.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-[#38BDF8] hover:text-foreground"
+                className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-info hover:text-foreground"
               >
                 {tool.openLabel}
               </a>

@@ -44,13 +44,13 @@ const stageColor = getStageColor(stage.id);
 type FilterKey = "all" | "in-progress" | "review" | "feedback" | "approved" | "on-hold" | "rejected";
 
 const FILTERS: { key: FilterKey; label: string; color: string }[] = [
-  { key: "all", label: "All", color: "#FFFFFF" },
-  { key: "in-progress", label: "In Progress", color: "#EAB308" },
-  { key: "review", label: "Review", color: "#38BDF8" },
-  { key: "feedback", label: "Feedback", color: "#A855F7" },
-  { key: "approved", label: "Approved", color: "#22c55e" },
-  { key: "on-hold", label: "On Hold", color: "#7E90A3" },
-  { key: "rejected", label: "Rejected", color: "#FF3B1F" },
+  { key: "all", label: "All", color: "var(--foreground)" },
+  { key: "in-progress", label: "In Progress", color: "var(--warning)" },
+  { key: "review", label: "Review", color: "var(--info)" },
+  { key: "feedback", label: "Feedback", color: "var(--feedback)" },
+  { key: "approved", label: "Approved", color: "var(--success)" },
+  { key: "on-hold", label: "On Hold", color: "var(--hn-ink)" },
+  { key: "rejected", label: "Rejected", color: "var(--danger)" },
 ];
 
 function getEffectiveStatus(
@@ -88,12 +88,12 @@ const STATUS_META: Record<
     icon: React.ComponentType<{ className?: string }>;
   }
 > = {
-  draft: { label: "In Progress", color: "#EAB308", icon: Loader2 },
-  approved: { label: "In Progress", color: "#EAB308", icon: Loader2 },
-  submitted: { label: "Review", color: "#38BDF8", icon: Eye },
-  "feedback-received": { label: "Feedback", color: "#A855F7", icon: MessageCircle },
-  rejected: { label: "Rejected", color: "#FF3B1F", icon: XCircle },
-  "on-hold": { label: "On Hold", color: "#7E90A3", icon: PauseCircle },
+  draft: { label: "In Progress", color: "var(--warning)", icon: Loader2 },
+  approved: { label: "In Progress", color: "var(--warning)", icon: Loader2 },
+  submitted: { label: "Review", color: "var(--info)", icon: Eye },
+  "feedback-received": { label: "Feedback", color: "var(--feedback)", icon: MessageCircle },
+  rejected: { label: "Rejected", color: "var(--danger)", icon: XCircle },
+  "on-hold": { label: "On Hold", color: "var(--hn-ink)", icon: PauseCircle },
 };
 
 function StatusBadge({ status, hasFeedback }: { status: string; hasFeedback?: boolean }) {
@@ -198,7 +198,7 @@ function ValidationCard({ item, hasFeedback }: { item: InitiativeWithUsers; hasF
   return (
     <Link
       href={`/workstreams/${item.id}`}
-      className="group relative flex h-full flex-col border border-border bg-surface transition-colors hover:border-border-strong hover:bg-white/[0.02]"
+      className="group relative flex h-full flex-col border border-border bg-surface transition-colors hover:border-border-strong hover:bg-hover"
     >
       <CornerTicks className={hoverTicks} />
       <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">

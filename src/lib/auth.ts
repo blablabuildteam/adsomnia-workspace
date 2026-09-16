@@ -11,7 +11,13 @@ import {
   destroySession,
   getCurrentUser,
   needsProfileCompletion,
+  setThemeCookie,
 } from "./session";
+import {
+  isThemePreference,
+  parseThemePreference,
+  type ThemePreference,
+} from "./theme";
 
 export type LoginResult = {
   error?: string;
@@ -53,17 +59,9 @@ export async function login(
   }
 
   await createSession(user.id);
+  await setThemeCookie(parseThemePreference(user.themePreference));
 
-  if (needsProfileCompletion({
-    id: user.id,
-    name: user.name,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    jobTitle: user.jobTitle,
-    email: user.email,
-    role: user.role,
-    profileCompletedAt: user.profileCompletedAt,
-  })) {
+  if (needsProfileCompletion(user)) {
     redirect("/complete-profile");
   }
 
@@ -138,4 +136,27 @@ export async function updateProfile(
 
   revalidatePath("/", "layout");
   return { success: true };
+}
+
+export async function updateThemePreference(
+  theme: ThemePreference,
+): Promise<{ error?: string }> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "Sign in to save a theme preference." };
+  }
+
+  if (!isThemePreference(theme)) {
+    return { error: "Invalid theme preference." };
+  }
+
+  await db
+    .update(users)
+    .set({ themePreference: theme })
+    .where(eq(users.id, user.id));
+
+  await setThemeCookie(theme);
+
+  revalidatePath("/", "layout");
+  return {};
 }

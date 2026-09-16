@@ -10,7 +10,7 @@ export type Party = {
 };
 
 export const PARTIES: Party[] = [
-  { id: "adsomnia", label: "Adsomnia", short: "AS", color: "#FFFFFF" },
+  { id: "adsomnia", label: "Adsomnia", short: "AS", color: "var(--adsomnia)" },
   { id: "btr", label: "Bending The Rules", short: "BTR", color: "#E8A07C" },
   { id: "hn", label: "Harlem Next", short: "HN", color: "#7E90A3" },
   { id: "bbb", label: "blablabuild", short: "BBB", color: "#CEFF00" },
@@ -291,6 +291,27 @@ export function getParty(id: PartyId): Party {
   return PARTIES.find((p) => p.id === id)!;
 }
 
+/** Readable party text on a theme surface (volt/white fail on light backgrounds). */
+export function getPartyInk(id: PartyId): string {
+  switch (id) {
+    case "bbb":
+      return "var(--bbb-ink)";
+    case "btr":
+      return "var(--btr-ink)";
+    case "hn":
+      return "var(--hn-ink)";
+    default:
+      return "var(--adsomnia-ink)";
+  }
+}
+
+/** Text sitting on a filled party-color chip. */
+export function getPartyOnFill(id: PartyId): string {
+  if (id === "bbb") return "#000000";
+  if (id === "adsomnia" || id === "as") return "var(--background)";
+  return "#FFFFFF";
+}
+
 /**
  * Lead-party accent for a stage (process visualizer / ownership cue).
  * Prefer {@link getStageColor} when indicating *which phase* something is in.
@@ -299,7 +320,7 @@ export function stageAccent(stage: WorkflowStage): string {
   if (stage.parties.length === 1) {
     return getParty(stage.parties[0]).color;
   }
-  return "#FFFFFF";
+  return "var(--foreground)";
 }
 
 /** Canonical stage IDs — matches DB `initiative_stage` enum. */
@@ -338,6 +359,12 @@ export function getStageColor(stageId: string): string {
     return FAST_TRACK_COLOR;
   }
   return "#FFFFFF";
+}
+
+/** Theme-aware stage text on a surface (darker in light mode for contrast). */
+export function stageInk(stageId: string): string {
+  if (isStageId(stageId)) return `var(--stage-${stageId})`;
+  return "var(--foreground)";
 }
 
 /** In-progress fill: phase accent at ~60% strength. Complete: success green. */

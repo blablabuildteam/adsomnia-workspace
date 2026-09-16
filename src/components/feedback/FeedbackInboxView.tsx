@@ -140,7 +140,7 @@ function FeedbackCard({
   }
 
   return (
-    <article className="group relative flex h-full flex-col border border-border bg-surface transition-colors hover:border-border-strong hover:bg-white/[0.02]">
+    <article className="group relative flex h-full flex-col border border-border bg-surface transition-colors hover:border-border-strong hover:bg-hover">
       <CornerTicks className={hoverTicks} />
       <button
         type="button"
@@ -287,7 +287,7 @@ function FeedbackScreenshot({ item }: { item: FeedbackSubmissionEntry }) {
       <img
         src={image.imageData}
         alt={image.imageFileName ?? "Feedback screenshot"}
-        className="max-h-80 w-full bg-black object-contain"
+        className="max-h-80 w-full bg-background object-contain"
       />
     </div>
   );

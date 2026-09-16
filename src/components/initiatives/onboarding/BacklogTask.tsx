@@ -39,7 +39,7 @@ export function BacklogTask({ data, boardUrl, readOnly, onComplete }: Props) {
             href={boardUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex shrink-0 items-center gap-1.5 border border-[#38BDF8]/30 bg-[#38BDF8]/10 px-3 py-2 text-xs text-[#38BDF8] transition-colors hover:bg-[#38BDF8]/20"
+            className="inline-flex shrink-0 items-center gap-1.5 border border-info/30 bg-info/10 px-3 py-2 text-xs text-info transition-colors hover:bg-info/20"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img

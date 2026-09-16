@@ -21,7 +21,7 @@ function WorkstreamRow({
   return (
     <Link
       href={`/workstreams/${initiative.id}`}
-      className="group relative flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-white/[0.03]"
+      className="group relative flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-hover"
     >
       <CornerTicks className={hoverTicks} />
       <div className="min-w-0 flex-1">

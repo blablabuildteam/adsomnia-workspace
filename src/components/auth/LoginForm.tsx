@@ -109,7 +109,7 @@ export function LoginForm({ googleEnabled, errorCode }: LoginFormProps) {
             alt="Traffic Never Sleeps"
             width={716}
             height={178}
-            className="animate-logo-write-in h-16 w-auto sm:h-20"
+            className="animate-logo-write-in logo-invert h-16 w-auto sm:h-20"
           />
         </div>
       </div>

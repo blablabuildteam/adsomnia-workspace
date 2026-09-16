@@ -347,7 +347,7 @@ export function JiraSetupTask({
                 href={view.boardUrl || savedUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-[#38BDF8] hover:underline"
+                className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-info hover:underline"
               >
                 Open in Jira
                 <ExternalLink className="size-2.5" />

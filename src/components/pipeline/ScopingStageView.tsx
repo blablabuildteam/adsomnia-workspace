@@ -38,10 +38,10 @@ const stageColor = getStageColor(stage.id);
 type FilterKey = "all" | "in-progress" | "in-review" | "rejected";
 
 const FILTERS: { key: FilterKey; label: string; color: string }[] = [
-  { key: "all", label: "All", color: "#FFFFFF" },
-  { key: "in-progress", label: "In Progress", color: "#CEFF00" },
-  { key: "in-review", label: "In Review", color: "#38BDF8" },
-  { key: "rejected", label: "Rejected", color: "#FF3B1F" },
+  { key: "all", label: "All", color: "var(--foreground)" },
+  { key: "in-progress", label: "In Progress", color: "var(--bbb-ink)" },
+  { key: "in-review", label: "In Review", color: "var(--info)" },
+  { key: "rejected", label: "Rejected", color: "var(--danger)" },
 ];
 
 function matchesScopingFilter(
@@ -77,11 +77,11 @@ const STATUS_META: Record<
     icon: React.ComponentType<{ className?: string }>;
   }
 > = {
-  draft: { label: "In Progress", color: "#CEFF00", icon: Loader2 },
-  approved: { label: "In Progress", color: "#CEFF00", icon: Loader2 },
-  submitted: { label: "In Review", color: "#38BDF8", icon: Eye },
-  rejected: { label: "Rejected", color: "#FF3B1F", icon: XCircle },
-  "on-hold": { label: "On Hold", color: "#7E90A3", icon: PauseCircle },
+  draft: { label: "In Progress", color: "var(--bbb-ink)", icon: Loader2 },
+  approved: { label: "In Progress", color: "var(--bbb-ink)", icon: Loader2 },
+  submitted: { label: "In Review", color: "var(--info)", icon: Eye },
+  rejected: { label: "Rejected", color: "var(--danger)", icon: XCircle },
+  "on-hold": { label: "On Hold", color: "var(--hn-ink)", icon: PauseCircle },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -227,7 +227,7 @@ function MiniGantt({ data }: { data: ScopingData | null }) {
         const end = new Date(m.endDate!).getTime();
         const left = ((start - min) / range) * 100;
         const width = Math.max(((end - start) / range) * 100, 3);
-        const color = m.color || "#CEFF00";
+        const color = m.color || "var(--bbb)";
         const label = m.epic?.trim() || `Milestone ${i + 1}`;
         const detail = m.milestone?.trim();
         return (
@@ -237,7 +237,7 @@ function MiniGantt({ data }: { data: ScopingData | null }) {
               title={detail ? `${label} — ${detail}` : label}
               className="w-[88px] shrink-0 text-[9px] text-muted/70"
             />
-            <div className="relative h-1.5 min-w-0 flex-1 bg-white/[0.04]">
+            <div className="relative h-1.5 min-w-0 flex-1 bg-fill-subtle">
               <div
                 className="absolute inset-y-0"
                 style={{
@@ -287,7 +287,7 @@ function ScopingCard({ item }: { item: InitiativeWithUsers }) {
   return (
     <Link
       href={`/workstreams/${item.id}`}
-      className="group relative flex h-full flex-col border border-border bg-surface transition-colors hover:border-border-strong hover:bg-white/[0.02]"
+      className="group relative flex h-full flex-col border border-border bg-surface transition-colors hover:border-border-strong hover:bg-hover"
     >
       <CornerTicks className={hoverTicks} />
 

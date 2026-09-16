@@ -32,10 +32,10 @@ const stageColor = getStageColor(stage.id);
 type FilterKey = "all" | "briefing" | "action-items" | "complete";
 
 const FILTERS: { key: FilterKey; label: string; color: string }[] = [
-  { key: "all", label: "All", color: "#FFFFFF" },
+  { key: "all", label: "All", color: "var(--foreground)" },
   { key: "briefing", label: "Briefing", color: stageColor },
-  { key: "action-items", label: "Action Items", color: "#EAB308" },
-  { key: "complete", label: "Complete", color: "#22C55E" },
+  { key: "action-items", label: "Action Items", color: "var(--warning)" },
+  { key: "complete", label: "Complete", color: "var(--success)" },
 ];
 
 function resolveOnboardingData(item: InitiativeWithUsers): OnboardingData {
@@ -68,7 +68,7 @@ function OnboardingCard({ item }: { item: InitiativeWithUsers }) {
   return (
     <Link
       href={`/workstreams/${item.id}`}
-      className="group relative flex h-full flex-col border border-border bg-surface transition-colors hover:border-border-strong hover:bg-white/[0.02]"
+      className="group relative flex h-full flex-col border border-border bg-surface transition-colors hover:border-border-strong hover:bg-hover"
     >
       <CornerTicks className={hoverTicks} />
 
@@ -114,7 +114,7 @@ function OnboardingCard({ item }: { item: InitiativeWithUsers }) {
 
         <div className="mt-3 flex items-center gap-3">
           <div className="flex-1">
-            <div className="h-1.5 w-full bg-white/[0.04]">
+            <div className="h-1.5 w-full bg-fill-subtle">
               <div
                 className="h-full transition-all"
                 style={{

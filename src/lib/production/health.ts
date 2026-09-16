@@ -108,10 +108,10 @@ export const HEALTH_META: Record<
   ProductionHealth,
   { label: string; color: string }
 > = {
-  critical: { label: "Critical", color: "#FF3B3B" },
-  "at-risk": { label: "At Risk", color: "#EAB308" },
-  "on-track": { label: "On Track", color: "#22C55E" },
-  unscored: { label: "Unscored", color: "#A1A1A1" },
+  critical: { label: "Critical", color: "var(--danger)" },
+  "at-risk": { label: "At Risk", color: "var(--warning)" },
+  "on-track": { label: "On Track", color: "var(--success)" },
+  unscored: { label: "Unscored", color: "var(--muted)" },
 };
 
 const CRITICAL_THRESHOLD = -30;

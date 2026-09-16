@@ -2,7 +2,7 @@
 
 import { Filter, Zap } from "lucide-react";
 import { WorkspaceChip } from "@/components/WorkspaceChip";
-import { PARTIES, type PartyId } from "@/data/workflow";
+import { PARTIES, getPartyInk, getPartyOnFill, type PartyId } from "@/data/workflow";
 
 type VisualizerToolbarProps = {
   fastTrackActive: boolean;
@@ -36,8 +36,8 @@ export function VisualizerToolbar({
           className={[
             "relative h-8 w-[52px] border transition-colors",
             fastTrackActive
-              ? "border-foreground bg-white/15 fast-track-pulse"
-              : "border-border bg-black",
+              ? "border-foreground bg-fill-muted fast-track-pulse"
+              : "border-border bg-background",
           ].join(" ")}
         >
           <span
@@ -72,7 +72,7 @@ export function VisualizerToolbar({
           className={[
             "border px-2.5 py-1.5 font-display text-[10px] font-bold uppercase tracking-wider transition-colors",
             activeParty === null
-              ? "border-foreground bg-foreground text-black"
+              ? "border-foreground bg-foreground text-background"
               : "border-border text-muted hover:border-border-strong hover:text-foreground",
           ].join(" ")}
         >
@@ -80,8 +80,7 @@ export function VisualizerToolbar({
         </button>
         {filterParties.map((party) => {
           const active = activeParty === party.id;
-          const activeText =
-            party.id === "adsomnia" || party.id === "bbb" ? "#000000" : "#FFFFFF";
+          const activeText = getPartyOnFill(party.id);
           return (
             <button
               key={party.id}
@@ -89,11 +88,11 @@ export function VisualizerToolbar({
               onClick={() => onSelectParty(active ? null : party.id)}
               className={[
                 "border px-2.5 py-1.5 font-display text-[10px] font-bold uppercase tracking-wider transition-all",
-                active ? "" : "bg-transparent hover:bg-white/5",
+                active ? "" : "bg-transparent hover:bg-hover",
               ].join(" ")}
               style={{
                 borderColor: party.color,
-                color: active ? activeText : party.color,
+                color: active ? activeText : getPartyInk(party.id),
                 backgroundColor: active ? party.color : undefined,
               }}
             >

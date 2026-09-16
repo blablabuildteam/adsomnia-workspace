@@ -17,6 +17,11 @@ export const userRoleEnum = pgEnum("user_role", [
   "team",
 ]);
 
+export const themePreferenceEnum = pgEnum("theme_preference", [
+  "dark",
+  "light",
+]);
+
 export const stageEnum = pgEnum("initiative_stage", [
   "idea",
   "validation",
@@ -52,6 +57,9 @@ export const users = pgTable("users", {
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   role: userRoleEnum("role").notNull().default("team"),
   profileCompletedAt: timestamp("profile_completed_at", { withTimezone: true }),
+  themePreference: themePreferenceEnum("theme_preference")
+    .notNull()
+    .default("dark"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

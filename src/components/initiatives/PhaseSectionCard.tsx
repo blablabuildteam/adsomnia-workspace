@@ -16,8 +16,8 @@ export function PhaseSectionCard({
   bodyClassName?: string;
 }) {
   return (
-    <section className="border border-border bg-white/[0.02]">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-white/[0.03] px-4 py-2.5">
+    <section className="border border-border bg-hover">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-fill-subtle px-4 py-2.5">
         {header}
       </div>
       <div className={bodyClassName}>{children}</div>

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { STAGES, getStageColor } from "@/data/workflow";
+import { STAGES, getStageColor, stageInk } from "@/data/workflow";
 
 export const hoverTicks =
   "opacity-0 transition-opacity duration-300 group-hover:opacity-100";
@@ -23,11 +23,11 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_COLOR: Record<string, string> = {
-  submitted: "#38BDF8",
-  approved: "#22c55e",
-  rejected: "#FF3B1F",
-  "on-hold": "#7E90A3",
-  draft: "#666666",
+  submitted: "var(--info)",
+  approved: "var(--success)",
+  rejected: "var(--danger)",
+  "on-hold": "var(--hn-ink)",
+  draft: "var(--muted)",
 };
 
 export function statusLabel(status: string): string {
@@ -35,7 +35,7 @@ export function statusLabel(status: string): string {
 }
 
 export function statusColor(status: string): string {
-  return STATUS_COLOR[status] ?? "#FFFFFF";
+  return STATUS_COLOR[status] ?? "var(--foreground)";
 }
 
 export function timeAgo(date: Date): string {
@@ -95,11 +95,12 @@ export function nextStage(stageId: string) {
 
 export function StageChip({ stageId }: { stageId: string }) {
   const stage = STAGES.find((item) => item.id === stageId);
-  const color = getStageColor(stageId);
+  const border = getStageColor(stageId);
+  const color = stageInk(stageId);
   return (
     <span
       className="border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-      style={{ borderColor: color, color }}
+      style={{ borderColor: border, color }}
     >
       {stage?.name ?? stageId}
     </span>
@@ -122,8 +123,8 @@ export function StageProgress({ currentStageId }: { currentStageId: string }) {
               backgroundColor: current
                 ? getStageColor(stage.id)
                 : done
-                  ? "rgba(255,255,255,0.35)"
-                  : "rgba(255,255,255,0.08)",
+                  ? "color-mix(in srgb, var(--foreground) 35%, transparent)"
+                  : "color-mix(in srgb, var(--foreground) 8%, transparent)",
             }}
           />
         );

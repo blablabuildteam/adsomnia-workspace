@@ -27,7 +27,7 @@ import {
   STATUS_COLORS,
   StatusFillBar,
 } from "@/components/production/epic-tickets";
-import { getStageColor, PARTIES, STAGES } from "@/data/workflow";
+import { getPartyInk, getStageColor, PARTIES, STAGES } from "@/data/workflow";
 import {
   formatShortDate,
   HEALTH_META,
@@ -133,7 +133,7 @@ function EpicRow({ epic }: { epic: ProductionEpic }) {
   const openCount = Math.max(epic.total - epic.done - epic.inProgress, 0);
 
   return (
-    <div className="border border-border bg-white/[0.02] px-3 py-3">
+    <div className="border border-border bg-hover px-3 py-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{epic.name}</p>
@@ -301,8 +301,8 @@ function PriorityControl({
         style={
           color
             ? {
-                borderColor: `${color}66`,
-                backgroundColor: `${color}1A`,
+                borderColor: `color-mix(in srgb, ${color} 40%, transparent)`,
+                backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`,
                 color,
               }
             : undefined
@@ -416,7 +416,7 @@ export function ProductionDetailDrawer({
       <button
         type="button"
         aria-label="Close production details"
-        className="absolute inset-0 bg-black/70 animate-fade-in"
+        className="absolute inset-0 bg-scrim animate-fade-in"
         onClick={onClose}
       />
       <aside
@@ -454,7 +454,7 @@ export function ProductionDetailDrawer({
                   {party ? (
                     <span
                       className="inline-flex border px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide"
-                      style={{ borderColor: party.color, color: party.color }}
+                      style={{ borderColor: party.color, color: getPartyInk(party.id) }}
                     >
                       {party.label}
                     </span>
@@ -559,7 +559,7 @@ export function ProductionDetailDrawer({
 
           <section className="mt-8">
             {project.addedManually ? (
-              <div className="border border-border bg-white/[0.02] px-4 py-4">
+              <div className="border border-border bg-hover px-4 py-4">
                 <h3 className="font-display mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
                   Added manually
                 </h3>

@@ -133,7 +133,7 @@ export function OnboardingPhaseSection({
       {/* Progress */}
       <div className="flex items-center gap-4 px-1">
         <div className="flex-1">
-          <div className="h-1.5 w-full bg-white/[0.04]">
+          <div className="h-1.5 w-full bg-fill-subtle">
             <div
               className="h-full transition-all duration-500"
               style={{

@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { ArrowUpRight, Check, Rocket } from "lucide-react";
-import { STAGES, getStageColor, type WorkflowStage } from "@/data/workflow";
+import { STAGES, getStageColor, stageInk, type WorkflowStage } from "@/data/workflow";
 import type {
   InitiativeWithUsers,
   CommentEntry,
@@ -385,7 +385,7 @@ export function InitiativeDetailView({
                 </span>
                 <span
                   className="font-display text-[10px] font-bold uppercase tracking-wide"
-                  style={{ color: getStageColor(initiative.currentStage) }}
+                  style={{ color: stageInk(initiative.currentStage) }}
                 >
                   {stage?.name ?? initiative.currentStage}
                 </span>

@@ -3,6 +3,7 @@ import { ArrowRight, ArrowUpRight } from "lucide-react";
 import {
   PARTIES,
   STAGES,
+  getPartyInk,
   getStageColor,
   type PartyId,
 } from "@/data/workflow";
@@ -90,7 +91,7 @@ export function LeadershipDashboard({
                   <Link
                     href={`/workstreams/${item.id}`}
                     className={[
-                      "group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-white/[0.03]",
+                      "group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-hover",
                       index > 0 ? "border-t border-border" : "",
                     ].join(" ")}
                   >
@@ -176,7 +177,7 @@ export function LeadershipDashboard({
                     <Link
                       key={item.id}
                       href={`/workstreams/${item.id}`}
-                      className="group relative block border border-border bg-surface-elevated p-2.5 transition-colors hover:border-border-strong hover:bg-white/[0.04]"
+                      className="group relative block border border-border bg-surface-elevated p-2.5 transition-colors hover:border-border-strong hover:bg-hover-strong"
                     >
                       <CornerTicks className={hoverTicks} />
                       <div className="flex items-center justify-between gap-2">
@@ -239,7 +240,7 @@ export function LeadershipDashboard({
                 key={entry.id}
                 href={`/workstreams/${entry.initiativeId}`}
                 className={[
-                  "group flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-white/[0.03]",
+                  "group flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-hover",
                   index > 0 ? "border-t border-border" : "",
                 ].join(" ")}
               >
@@ -277,7 +278,7 @@ function ProductionOverviewCard({ item }: { item: InitiativeWithUsers }) {
   return (
     <Link
       href={`/workstreams/${item.id}`}
-      className="group relative flex flex-col border border-border bg-surface p-4 transition-colors hover:border-border-strong hover:bg-white/[0.03]"
+      className="group relative flex flex-col border border-border bg-surface p-4 transition-colors hover:border-border-strong hover:bg-hover"
     >
       <CornerTicks className={hoverTicks} />
       <div className="flex items-start justify-between gap-3">
@@ -290,7 +291,7 @@ function ProductionOverviewCard({ item }: { item: InitiativeWithUsers }) {
               className="border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
               style={{
                 borderColor: party.color,
-                color: party.color,
+                color: party.background ? party.color : getPartyInk(party.id),
                 backgroundColor: party.background,
               }}
             >

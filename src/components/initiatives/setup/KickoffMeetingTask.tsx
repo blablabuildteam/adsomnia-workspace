@@ -41,7 +41,7 @@ export function KickoffMeetingTask({ data, readOnly, onComplete }: Props) {
           href={CALENDAR_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex shrink-0 items-center gap-1.5 border border-border bg-white/[0.04] px-3 py-2 text-xs text-muted transition-colors hover:border-foreground/30 hover:text-foreground"
+          className="inline-flex shrink-0 items-center gap-1.5 border border-border bg-fill-subtle px-3 py-2 text-xs text-muted transition-colors hover:border-foreground/30 hover:text-foreground"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

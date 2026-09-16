@@ -6,7 +6,7 @@ import {
   STATUS_COLORS,
   StatusFillBar,
 } from "@/components/production/epic-tickets";
-import { PARTIES } from "@/data/workflow";
+import { PARTIES, getPartyInk } from "@/data/workflow";
 import {
   daysUntil,
   formatShortDate,
@@ -108,7 +108,7 @@ export function ProductionProjectCard({ project, onOpen }: Props) {
     <button
       type="button"
       onClick={() => onOpen(project.id)}
-      className="group relative flex h-full w-full flex-col border border-border bg-surface text-left transition-colors hover:border-border-strong hover:bg-white/[0.02]"
+      className="group relative flex h-full w-full flex-col border border-border bg-surface text-left transition-colors hover:border-border-strong hover:bg-hover"
     >
       <CornerTicks className={hoverTicks} />
       <span
@@ -127,7 +127,7 @@ export function ProductionProjectCard({ project, onOpen }: Props) {
         {party && (
           <span
             className="shrink-0 border px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide"
-            style={{ borderColor: party.color, color: party.color }}
+            style={{ borderColor: party.color, color: getPartyInk(party.id) }}
           >
             {party.label}
           </span>

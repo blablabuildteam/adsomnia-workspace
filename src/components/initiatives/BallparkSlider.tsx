@@ -181,7 +181,7 @@ export function BallparkSlider({
         {/* Draggable bar */}
         <div
           className={[
-            "ballpark-bar absolute inset-y-0 flex items-center justify-center bg-white/[0.06]",
+            "ballpark-bar absolute inset-y-0 flex items-center justify-center bg-fill-muted",
             isActive
               ? "border border-white"
               : "border border-transparent",
@@ -194,7 +194,7 @@ export function BallparkSlider({
           <GripVertical
             className={[
               "size-4 opacity-0 transition-opacity group-hover:opacity-100",
-              isActive ? "text-white/50" : "text-muted/30",
+              isActive ? "text-foreground/50" : "text-muted/30",
             ].join(" ")}
           />
         </div>

@@ -57,7 +57,7 @@ export function ProcessVisualizer() {
                 width={716}
                 height={178}
                 priority
-                className="h-auto w-[220px] sm:w-[260px] lg:w-[300px]"
+                className="logo-invert h-auto w-[220px] sm:w-[260px] lg:w-[300px]"
               />
               <div className="flex items-center gap-2 border border-border px-3 py-2 text-xs text-muted">
                 <Gauge className="size-3.5 text-foreground" />
@@ -78,7 +78,7 @@ export function ProcessVisualizer() {
       <main className="mx-auto flex w-full min-w-0 max-w-[1600px] flex-1 flex-col py-6">
         <div className="px-4 sm:px-6 lg:px-8">
           {fastTrackActive && (
-            <div className="mb-5 flex items-start gap-3 border border-foreground/40 bg-white/5 px-4 py-3 animate-fade-in">
+            <div className="mb-5 flex items-start gap-3 border border-foreground/40 bg-fill-subtle px-4 py-3 animate-fade-in">
               <Sparkles className="mt-0.5 size-4 shrink-0 text-foreground" />
               <div>
               <p className="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-foreground">
@@ -108,7 +108,7 @@ export function ProcessVisualizer() {
           <div className="flex w-max items-stretch gap-0 px-4 py-2 sm:px-6 lg:px-8">
             {fastTrackActive ? (
               <>
-                <div className="flex w-[280px] shrink-0 flex-col border border-foreground bg-white/5 fast-track-pulse">
+                <div className="flex w-[280px] shrink-0 flex-col border border-foreground bg-fill-subtle fast-track-pulse">
                   <div className="border-b border-foreground/30 px-4 py-3">
                     <p className="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-foreground">
                       Exception

@@ -131,19 +131,19 @@ const STAGE_STYLES = {
     accent: STAGE_COLORS.idea,
     shell: "border-stage-idea/30 bg-stage-idea/[0.03]",
     header: "border-stage-idea/20 bg-stage-idea/[0.07]",
-    field: "border-stage-idea/15 bg-black/40",
+    field: "border-stage-idea/15 bg-fill-subtle",
   },
   validation: {
     accent: STAGE_COLORS.validation,
     shell: "border-stage-validation/40 bg-stage-validation/[0.07]",
     header: "border-stage-validation/30 bg-stage-validation/[0.12]",
-    field: "border-stage-validation/25 bg-black/35",
+    field: "border-stage-validation/25 bg-fill-subtle",
   },
   scoping: {
     accent: STAGE_COLORS.scoping,
     shell: "border-stage-scoping/35 bg-stage-scoping/[0.05]",
     header: "border-stage-scoping/30 bg-stage-scoping/[0.09]",
-    field: "border-stage-scoping/20 bg-black/40",
+    field: "border-stage-scoping/20 bg-fill-subtle",
   },
 } as const;
 

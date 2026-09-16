@@ -104,7 +104,7 @@ export function SetupTaskCard({
         "group/step border border-border transition-colors duration-200",
         locked
           ? "opacity-45"
-          : "hover:border-border-strong hover:bg-white/[0.03]",
+          : "hover:border-border-strong hover:bg-hover",
       ].join(" ")}
     >
       <div

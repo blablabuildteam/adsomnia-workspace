@@ -46,7 +46,7 @@ export function ConfirmRow({
             style={
               confirmed
                 ? accentFillStyle(accent, true)
-                : { borderColor: "rgb(255 255 255 / 0.3)", color: "transparent" }
+                : { borderColor: "var(--border-strong)", color: "transparent" }
             }
           >
             <Check className="size-3.5" strokeWidth={3} />

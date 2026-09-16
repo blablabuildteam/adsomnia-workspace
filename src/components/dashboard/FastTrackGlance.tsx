@@ -91,7 +91,7 @@ export function FastTrackGlance({ items, fetchError }: Props) {
                   target={external ? "_blank" : undefined}
                   rel={external ? "noreferrer" : undefined}
                   className={[
-                    "group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-white/[0.03]",
+                    "group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-hover",
                     index > 0 ? "border-t border-border" : "",
                   ].join(" ")}
                 >
