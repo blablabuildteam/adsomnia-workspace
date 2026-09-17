@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { FastTrackView } from "@/components/fast-track/FastTrackView";
 import { loadFastTrackOverview } from "@/lib/fast-track";
+import { canAddFastTrack } from "@/lib/permissions";
 import { getCurrentUser } from "@/lib/session";
 
 export default async function FastTrackPage() {
@@ -9,5 +10,5 @@ export default async function FastTrackPage() {
   if (!user) return null;
 
   const overview = await loadFastTrackOverview(user);
-  return <FastTrackView {...overview} />;
+  return <FastTrackView {...overview} canAdd={canAddFastTrack(user)} />;
 }

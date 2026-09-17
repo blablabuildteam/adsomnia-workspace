@@ -17,6 +17,11 @@ export const FEEDBACK_FIELD_LIMITS = {
   description: { min: 20, max: 2000 },
 } as const;
 
+export const FAST_TRACK_FIELD_LIMITS = {
+  title: { max: 255 },
+  description: { max: 2000 },
+} as const;
+
 export const VALIDATION_FIELD_LIMITS = {
   solutionDirection: { min: 50, max: 500 },
   leadPartyOther: { min: 8, max: 80 },

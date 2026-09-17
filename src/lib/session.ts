@@ -143,6 +143,7 @@ export function displayName(user: {
 }
 
 export {
+  canAddFastTrack,
   canAddProductionProject,
   canAdjustProductionPriority,
   canApprove,

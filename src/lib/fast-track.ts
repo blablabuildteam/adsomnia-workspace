@@ -70,7 +70,7 @@ function fromInitiative(
     priority: jira?.priority ?? "—",
     assignee: jira?.assignee ?? null,
     reporter: jira?.reporter ?? null,
-    description: jira?.description ?? "",
+    description: jira?.description || item.description || "",
     created: jira?.created ?? item.createdAt.toISOString(),
     updated: jira?.updated ?? item.updatedAt.toISOString(),
     url: jira?.url ?? item.fastTrackJiraUrl,

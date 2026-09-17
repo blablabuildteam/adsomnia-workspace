@@ -2,11 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { activityLog, initiatives } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
-import { canApprove } from "@/lib/permissions";
+import { canAddFastTrack, canApprove } from "@/lib/permissions";
+import { FAST_TRACK_FIELD_LIMITS } from "@/lib/field-limits";
 import { createFastTrackIssue } from "@/lib/integrations/jira";
 import { notifySubmitter } from "@/lib/integrations/slack-notify";
 import type { ApprovalResult } from "@/app/(workspace)/workstreams/[id]/actions";
@@ -112,4 +113,96 @@ export async function convertToFastTrack(
   revalidatePath("/dashboard");
   revalidatePath("/overview");
   redirect("/fast-track");
+}
+
+export type CreateFastTrackResult = {
+  error?: string;
+  key?: string;
+};
+
+function revalidateFastTrack(initiativeId?: number) {
+  if (initiativeId != null) revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/fast-track");
+  revalidatePath("/dashboard");
+  revalidatePath("/overview");
+}
+
+export async function createFastTrackTask(input: {
+  title: string;
+  description: string;
+}): Promise<CreateFastTrackResult> {
+  const user = await getCurrentUser();
+  if (!user || !canAddFastTrack(user)) {
+    return { error: "Only leadership can add a task from Fast-Track." };
+  }
+
+  const title = input.title.trim();
+  const description = input.description.trim();
+
+  if (!title) {
+    return { error: "Title is required." };
+  }
+  if (title.length > FAST_TRACK_FIELD_LIMITS.title.max) {
+    return {
+      error: `Title must be ${FAST_TRACK_FIELD_LIMITS.title.max} characters or fewer.`,
+    };
+  }
+  if (description.length > FAST_TRACK_FIELD_LIMITS.description.max) {
+    return {
+      error: `Description must be ${FAST_TRACK_FIELD_LIMITS.description.max} characters or fewer.`,
+    };
+  }
+
+  const [{ nextVal }] = await db
+    .select({ nextVal: sql<number>`coalesce(max(${initiatives.id}), 999) + 1` })
+    .from(initiatives);
+  const ticketId = `WS-${nextVal + 1000}`;
+
+  let created: { key: string; url: string };
+  try {
+    created = await createFastTrackIssue({
+      title,
+      description,
+      ticketId,
+    });
+  } catch (error) {
+    console.error("Fast-Track Jira create failed:", error);
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Could not create the Fast-Track task in Jira.",
+    };
+  }
+
+  const [row] = await db
+    .insert(initiatives)
+    .values({
+      ticketId,
+      title,
+      description,
+      submitterId: user.id,
+      sponsorId: user.id,
+      currentStage: "idea",
+      status: "approved",
+      isFastTrack: true,
+      fastTrackJiraKey: created.key,
+      fastTrackJiraUrl: created.url,
+    })
+    .returning({ id: initiatives.id });
+
+  await db.insert(activityLog).values({
+    initiativeId: row.id,
+    userId: user.id,
+    action: "fast_track_created",
+    details: {
+      title,
+      by: user.name,
+      jiraKey: created.key,
+      jiraUrl: created.url,
+    },
+  });
+
+  revalidateFastTrack(row.id);
+  return { key: created.key };
 }

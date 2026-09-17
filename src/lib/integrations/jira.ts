@@ -1032,6 +1032,7 @@ export async function listFastTrackIssues(): Promise<FastTrackJiraIssue[]> {
 
 export async function createFastTrackIssue(input: {
   title: string;
+  description?: string | null;
   problemStatement?: string | null;
   opportunitySolution?: string | null;
   expectedImpact?: string | null;
@@ -1058,6 +1059,7 @@ export async function createFastTrackIssue(input: {
   }
 
   const description = adfFromParagraphs([
+    input.description ?? "",
     input.ticketId ? `Workspace ticket: ${input.ticketId}` : "",
     input.problemStatement ? `Problem: ${input.problemStatement}` : "",
     input.opportunitySolution

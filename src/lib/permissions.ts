@@ -82,6 +82,11 @@ export function canAddProductionProject(user: PermissionUser): boolean {
   return isLeadership(user);
 }
 
+/** Leadership — add a task directly on the Fast Track overview. */
+export function canAddFastTrack(user: PermissionUser): boolean {
+  return isLeadership(user);
+}
+
 /** Leadership — Jira API token rotation reminder. */
 export function canSeeJiraTokenReminder(user: PermissionUser): boolean {
   return isLeadership(user);
