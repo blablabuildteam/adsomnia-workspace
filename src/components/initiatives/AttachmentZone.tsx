@@ -58,104 +58,6 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/* ─── Google Picker API loader ─────────────────────────── */
-
-const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY ?? "";
-const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
-const GOOGLE_APP_ID = GOOGLE_CLIENT_ID.split("-")[0] ?? "";
-const PICKER_SCOPE = "https://www.googleapis.com/auth/drive.readonly";
-
-let googleApisReady: Promise<void> | null = null;
-
-function loadScript(src: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>(
-      `script[src="${src}"]`,
-    );
-    if (existing) {
-      if (existing.dataset.loaded === "true") {
-        resolve();
-        return;
-      }
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener(
-        "error",
-        () => reject(new Error(`Failed to load ${src}`)),
-        { once: true },
-      );
-      return;
-    }
-    const s = document.createElement("script");
-    s.src = src;
-    s.async = true;
-    s.onload = () => {
-      s.dataset.loaded = "true";
-      resolve();
-    };
-    s.onerror = () => reject(new Error(`Failed to load ${src}`));
-    document.head.appendChild(s);
-  });
-}
-
-function waitFor(check: () => boolean, label: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (check()) {
-      resolve();
-      return;
-    }
-    const started = Date.now();
-    const id = window.setInterval(() => {
-      if (check()) {
-        window.clearInterval(id);
-        resolve();
-      } else if (Date.now() - started > 8000) {
-        window.clearInterval(id);
-        reject(new Error(`${label} failed to initialize`));
-      }
-    }, 40);
-  });
-}
-
-/** gapi must load first — it overwrites `window.google`. GIS is attached after. */
-function ensureGoogleApis(): Promise<void> {
-  if (!googleApisReady) {
-    googleApisReady = (async () => {
-      await loadScript("https://apis.google.com/js/api.js");
-      await waitFor(() => Boolean(window.gapi?.load), "Google API client");
-      await new Promise<void>((resolve) => {
-        window.gapi.load("picker", { callback: resolve });
-      });
-      await waitFor(() => Boolean(window.google?.picker), "Google Picker");
-
-      await loadScript("https://accounts.google.com/gsi/client");
-      await waitFor(
-        () => Boolean(window.google?.accounts?.oauth2),
-        "Google Identity",
-      );
-    })().catch((error) => {
-      googleApisReady = null;
-      throw error;
-    });
-  }
-  return googleApisReady;
-}
-
-type DrivePickedFile = {
-  id: string;
-  name: string;
-  mimeType: string;
-  url: string;
-  sizeBytes?: number;
-};
-
-function mimeToKind(mimeType: string): AttachmentKind {
-  if (mimeType === "application/vnd.google-apps.document") return "google-doc";
-  if (mimeType === "application/vnd.google-apps.spreadsheet") return "google-sheet";
-  if (mimeType === "application/vnd.google-apps.presentation") return "google-slides";
-  if (mimeType === "application/vnd.google-apps.form") return "google-form";
-  return "google-drive";
-}
-
 /* ─── Attachment Chip ──────────────────────────────────── */
 
 function AttachmentChip({
@@ -288,17 +190,11 @@ export function AttachmentZone({
   const [dragging, setDragging] = useState(false);
   const [linkInput, setLinkInput] = useState("");
   const [showLinkInput, setShowLinkInput] = useState(false);
-  const [pickerLoading, setPickerLoading] = useState(false);
-  const [pickerError, setPickerError] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const attachmentsRef = useRef(attachments);
   attachmentsRef.current = attachments;
   const dragCounter = useRef(0);
-  const tokenClientRef = useRef<google.accounts.oauth2.TokenClient | null>(null);
-  const accessTokenRef = useRef<string | null>(null);
-
-  const hasPickerConfig = Boolean(GOOGLE_API_KEY && GOOGLE_CLIENT_ID);
 
   /* ── Helpers ─────────────────────────────────────────── */
 
@@ -348,107 +244,8 @@ export function AttachmentZone({
     });
   }
 
-  function addDriveFiles(files: DrivePickedFile[]) {
-    const newAttachments: Attachment[] = files.map((f) => ({
-      id: attachUid(),
-      kind: mimeToKind(f.mimeType),
-      title: f.name,
-      url: f.url,
-      fileName: f.name,
-      fileSize: f.sizeBytes,
-      mimeType: f.mimeType,
-    }));
-    onChange([...attachments, ...newAttachments]);
-  }
-
   function removeAttachment(id: string) {
     onChange(attachments.filter((a) => a.id !== id));
-  }
-
-  /* ── Google Drive Picker ─────────────────────────────── */
-
-  async function openPicker() {
-    if (!hasPickerConfig) {
-      setPickerError("Google Drive Picker requires NEXT_PUBLIC_GOOGLE_CLIENT_ID to be configured.");
-      return;
-    }
-
-    setPickerLoading(true);
-    setPickerError(null);
-
-    try {
-      await ensureGoogleApis();
-
-      if (!tokenClientRef.current) {
-        tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
-          client_id: GOOGLE_CLIENT_ID,
-          scope: PICKER_SCOPE,
-          callback: () => {},
-        });
-      }
-
-      const getToken = (): Promise<string> =>
-        new Promise((resolve, reject) => {
-          if (accessTokenRef.current) {
-            resolve(accessTokenRef.current);
-            return;
-          }
-          tokenClientRef.current!.callback = (response) => {
-            if (response.error) {
-              reject(new Error(response.error));
-              return;
-            }
-            accessTokenRef.current = response.access_token;
-            resolve(response.access_token);
-          };
-          tokenClientRef.current!.requestAccessToken({ prompt: "" });
-        });
-
-      const token = await getToken();
-
-      const docsView = new window.google.picker.DocsView()
-        .setIncludeFolders(true)
-        .setSelectFolderEnabled(false);
-
-      const builder = new window.google.picker.PickerBuilder()
-        .addView(docsView)
-        .addView(new window.google.picker.DocsView(window.google.picker.ViewId.RECENTLY_PICKED))
-        .setOAuthToken(token)
-        .setDeveloperKey(GOOGLE_API_KEY)
-        .setOrigin(window.location.origin)
-        .setCallback((data: google.picker.ResponseObject) => {
-          if (data.action === window.google.picker.Action.PICKED) {
-            const files: DrivePickedFile[] = data.docs.map((doc) => ({
-              id: doc.id,
-              name: doc.name,
-              mimeType: doc.mimeType,
-              url: doc.url,
-              sizeBytes: doc.sizeBytes,
-            }));
-            addDriveFiles(files);
-          }
-        })
-        .setTitle("Select files from Google Drive")
-        .enableFeature(window.google.picker.Feature.MULTISELECT_ENABLED);
-
-      if (GOOGLE_APP_ID) builder.setAppId(GOOGLE_APP_ID);
-
-      const picker = builder.build();
-      picker.setVisible(true);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to open picker";
-      if (msg.includes("popup_closed") || msg.includes("access_denied")) {
-        // user cancelled — not an error
-      } else if (/invalid|developer key|api.?key/i.test(msg)) {
-        setPickerError(
-          "Google rejected the API key. Enable the Google Picker API on the same Cloud project as the OAuth client, and add http://localhost:3000/* as an allowed HTTP referrer.",
-        );
-      } else {
-        setPickerError(msg);
-      }
-    } finally {
-      setPickerLoading(false);
-    }
   }
 
   /* ── Drag & Drop ─────────────────────────────────────── */
@@ -527,9 +324,7 @@ export function AttachmentZone({
           </div>
         )}
 
-        {/* Three action buttons */}
-        <div className="grid grid-cols-3 divide-x divide-border">
-          {/* Upload */}
+        <div className="grid grid-cols-2 divide-x divide-border">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -541,25 +336,6 @@ export function AttachmentZone({
             </span>
           </button>
 
-          {/* Google Drive */}
-          <button
-            type="button"
-            onClick={openPicker}
-            disabled={pickerLoading}
-            className="group flex flex-col items-center gap-2 px-3 py-4 transition-colors hover:bg-foreground/[0.03] disabled:opacity-50"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logos/google-drive.png"
-              alt=""
-              className="size-5 object-contain transition-opacity group-hover:opacity-80"
-            />
-            <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted transition-colors group-hover:text-foreground">
-              {pickerLoading ? "Loading…" : "Google Drive"}
-            </span>
-          </button>
-
-          {/* URL */}
           <button
             type="button"
             onClick={() => setShowLinkInput((v) => !v)}
@@ -583,13 +359,6 @@ export function AttachmentZone({
           }}
         />
       </div>
-
-      {/* Picker error */}
-      {pickerError && (
-        <p className="text-[11px] text-btr">
-          {pickerError}
-        </p>
-      )}
 
       {/* URL input */}
       {showLinkInput && (

@@ -1,58 +1,6 @@
-/** Minimal type declarations for Google Picker API + Google Identity Services. */
+/** Minimal type declarations for Google Identity Services. */
 
 declare namespace google {
-  namespace picker {
-    enum Action {
-      PICKED = "picked",
-      CANCEL = "cancel",
-    }
-
-    enum ViewId {
-      DOCS = "all",
-      RECENTLY_PICKED = "recently-picked",
-    }
-
-    enum Feature {
-      MULTISELECT_ENABLED = "multiselectEnabled",
-    }
-
-    interface Document {
-      id: string;
-      name: string;
-      mimeType: string;
-      url: string;
-      sizeBytes?: number;
-    }
-
-    interface ResponseObject {
-      action: Action;
-      docs: Document[];
-    }
-
-    class DocsView {
-      constructor(viewId?: ViewId);
-      setIncludeFolders(include: boolean): this;
-      setSelectFolderEnabled(enabled: boolean): this;
-      setMimeTypes(mimeTypes: string): this;
-    }
-
-    class PickerBuilder {
-      addView(view: DocsView): this;
-      setOAuthToken(token: string): this;
-      setDeveloperKey(key: string): this;
-      setAppId(appId: string): this;
-      setOrigin(origin: string): this;
-      setCallback(callback: (data: ResponseObject) => void): this;
-      setTitle(title: string): this;
-      enableFeature(feature: Feature): this;
-      build(): Picker;
-    }
-
-    interface Picker {
-      setVisible(visible: boolean): void;
-    }
-  }
-
   namespace accounts {
     namespace oauth2 {
       interface TokenResponse {
@@ -87,8 +35,5 @@ declare namespace google {
 }
 
 interface Window {
-  gapi: {
-    load(api: string, config: { callback: () => void }): void;
-  };
   google: typeof google;
 }

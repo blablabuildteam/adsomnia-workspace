@@ -266,8 +266,7 @@ export function WorkstreamAttachments({
               canRemove={canRemove}
             />
             <p className="text-[11px] text-muted">
-              Drop files, add a URL, or pick from Google Drive. Files can be up
-              to 4 MB.
+              Drop files or add a URL. Files can be up to 4 MB.
             </p>
           </>
         )}
