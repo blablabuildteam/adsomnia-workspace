@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { activityLog, initiatives } from "@/db/schema";
+import { activityLog, approvals, initiatives } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { canAddFastTrack, canApprove } from "@/lib/permissions";
 import { FAST_TRACK_FIELD_LIMITS } from "@/lib/field-limits";
@@ -47,8 +47,15 @@ export async function convertToFastTrack(
   if (initiative.isFastTrack) {
     return { error: "This initiative is already on Fast-Track." };
   }
-  if (initiative.currentStage !== "idea" || initiative.status !== "submitted") {
-    return { error: "Only submitted initiatives can be sent to Fast-Track." };
+  const fromStage = initiative.currentStage;
+  if (
+    (fromStage !== "idea" && fromStage !== "validation") ||
+    initiative.status !== "submitted"
+  ) {
+    return {
+      error:
+        "Only items in Initiative or Validation review can be sent to Fast-Track.",
+    };
   }
 
   let created: { key: string; url: string };
@@ -83,6 +90,15 @@ export async function convertToFastTrack(
     })
     .where(eq(initiatives.id, initiativeId));
 
+  await db.insert(approvals).values({
+    initiativeId,
+    approverId: user.id,
+    fromStage,
+    toStage: "fast-track",
+    decision: "approved",
+    comment,
+  });
+
   await db.insert(activityLog).values({
     initiativeId,
     userId: user.id,
@@ -90,6 +106,7 @@ export async function convertToFastTrack(
     details: {
       comment,
       approver: user.name,
+      fromStage,
       jiraKey: created.key,
       jiraUrl: created.url,
     },
@@ -107,6 +124,7 @@ export async function convertToFastTrack(
 
   revalidatePath(`/workstreams/${initiativeId}`);
   revalidatePath("/pipeline/initiatives");
+  revalidatePath("/pipeline/validation");
   revalidatePath("/fast-track");
   revalidatePath("/dashboard");
   revalidatePath("/overview");

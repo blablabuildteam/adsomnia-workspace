@@ -86,8 +86,9 @@ export function AddProductionProjectModal({ open, onClose, onCreated }: Props) {
     >
       <div className="space-y-4">
         <p className="text-sm leading-relaxed text-muted">
-          Lands directly in Production. Link an existing Jira space for the
-          chosen lead party so epics can load as usual.
+          Lands directly in Production. The Jira URL decides which board to
+          pull from. Lead production party is who is in the lead — it does not
+          pick the Jira site.
         </p>
 
         <label className="block">
@@ -100,6 +101,19 @@ export function AddProductionProjectModal({ open, onClose, onCreated }: Props) {
             onChange={(event) => setTitle(event.target.value)}
             maxLength={160}
             placeholder="Project title"
+            className={inputClass}
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+            Jira space URL
+          </span>
+          <input
+            type="url"
+            value={jiraUrl}
+            onChange={(event) => setJiraUrl(event.target.value)}
+            placeholder="https://….atlassian.net/jira/software/projects/…"
             className={inputClass}
           />
         </label>
@@ -144,19 +158,6 @@ export function AddProductionProjectModal({ open, onClose, onCreated }: Props) {
             </select>
           </label>
         </div>
-
-        <label className="block">
-          <span className="mb-1.5 block font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-            Jira space URL
-          </span>
-          <input
-            type="url"
-            value={jiraUrl}
-            onChange={(event) => setJiraUrl(event.target.value)}
-            placeholder="https://….atlassian.net/jira/software/projects/…"
-            className={inputClass}
-          />
-        </label>
 
         <label className="block">
           <span className="mb-1.5 block font-display text-[10px] font-bold uppercase tracking-wide text-muted">

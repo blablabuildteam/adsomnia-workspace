@@ -24,7 +24,8 @@ export type ProductionEpic = {
   todo: number;
   inProgress: number;
   done: number;
-  tasks: ProductionTask[];
+  /** Present after a project-level ticket fetch; omitted on the board payload. */
+  tasks?: ProductionTask[];
   flagged: boolean;
   flagReason?: EpicFlagReason;
   timeElapsedPct?: number;
@@ -194,8 +195,8 @@ export function scoreEpic(
     todo: input.todo,
     inProgress: input.inProgress,
     done: input.done,
-    tasks: input.tasks ?? [],
     flagged: false,
+    ...(input.tasks ? { tasks: input.tasks } : {}),
   };
 
   if (!input.endDate) {

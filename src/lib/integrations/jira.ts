@@ -4,6 +4,7 @@ import {
   JIRA_ISSUE_SUMMARY_MAX,
   JIRA_PROJECT_KEY_MAX,
   clampJiraProjectName,
+  jiraSoftwareProjectListUrl,
   toIsoDate,
   validateJiraProjectName,
   type JiraEpicSeed,
@@ -186,30 +187,19 @@ export type ResolvedJiraSpace =
     }
   | { ok: false; error: string };
 
+function instanceFromHost(host: string): JiraInstance | null {
+  const needle = hostName(host);
+  for (const site of getAvailableInstances()) {
+    if (hostName(site.host) === needle) return site.id;
+  }
+  return null;
+}
+
 /**
- * Confirm a pasted Jira URL belongs to the lead party's connected site
- * and yield the project key used for epic progress.
+ * Resolve a pasted Jira URL to a connected Cloud site + project key.
+ * Lead production party is not used — the host in the URL picks the board.
  */
-export function resolveJiraSpaceForLeadParty(
-  rawUrl: string,
-  leadParty: string,
-): ResolvedJiraSpace {
-  const instance = leadPartyToJiraInstance(leadParty);
-  if (!instance) {
-    return {
-      ok: false,
-      error: "Choose Adsomnia, BTR, Harlem Next, or blablabuild as the lead party.",
-    };
-  }
-
-  const config = getInstanceConfig(instance);
-  if (!config) {
-    return {
-      ok: false,
-      error: `No Jira site is connected for ${INSTANCE_LABELS[instance]}.`,
-    };
-  }
-
+export function resolveJiraSpaceFromUrl(rawUrl: string): ResolvedJiraSpace {
   const parsed = parseJiraSpaceUrl(rawUrl);
   if (!parsed) {
     return {
@@ -219,10 +209,16 @@ export function resolveJiraSpaceForLeadParty(
     };
   }
 
-  if (parsed.host !== hostName(config.host)) {
+  const instance = instanceFromHost(parsed.host);
+  if (!instance) {
+    const connected = getAvailableInstances();
+    if (connected.length === 0) {
+      return { ok: false, error: "No Jira site is connected." };
+    }
+    const hosts = connected.map((site) => hostName(site.host)).join(", ");
     return {
       ok: false,
-      error: `This URL is not on the ${INSTANCE_LABELS[instance]} Jira site (${hostName(config.host)}).`,
+      error: `This URL is not on a connected Jira site (${hosts}).`,
     };
   }
 
@@ -575,7 +571,7 @@ export function getProjectUrl(
 ): string {
   const config = getInstanceConfig(instance);
   if (!config) return "#";
-  return `${normalizeHost(config.host)}/jira/software/projects/${projectKey}/board`;
+  return jiraSoftwareProjectListUrl(normalizeHost(config.host), projectKey);
 }
 
 export async function searchUsers(
@@ -670,9 +666,41 @@ function pickEpicDates(fields: IssueFields): {
   return { startDate, endDate };
 }
 
-function statusCategoryKey(
-  fields: IssueFields,
-): JiraStatusCategoryKey {
+/**
+ * Harlem Next (and similar) board statuses → Workspace buckets.
+ * Open / in progress / done in the UI correspond to Jira categories
+ * `new` / `indeterminate` / `done`.
+ */
+const STATUS_NAME_TO_CATEGORY: Record<string, JiraStatusCategoryKey> = {
+  // Open
+  backlog: "new",
+  "on hold": "new",
+  "on-hold": "new",
+  "ready for refinement": "new",
+  "selected for development": "new",
+  "to do": "new",
+  todo: "new",
+  open: "new",
+  // In progress
+  "in progress": "indeterminate",
+  "pending release": "indeterminate",
+  "quality assurance": "indeterminate",
+  qa: "indeterminate",
+  review: "indeterminate",
+  // Done
+  done: "done",
+  cancelled: "done",
+  canceled: "done",
+};
+
+function normalizeStatusName(name: string | undefined): string {
+  return (name ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function statusCategoryKey(fields: IssueFields): JiraStatusCategoryKey {
+  const fromName =
+    STATUS_NAME_TO_CATEGORY[normalizeStatusName(fields.status?.name)];
+  if (fromName) return fromName;
   const key = fields.status?.statusCategory?.key;
   if (key === "new" || key === "indeterminate" || key === "done") return key;
   return "undefined";
@@ -775,11 +803,12 @@ async function searchIssues(
   jql: string,
   fields: string[],
   maxResults = 100,
+  maxPages = 5,
 ): Promise<{ key?: string; fields?: IssueFields }[]> {
   const collected: { key?: string; fields?: IssueFields }[] = [];
   let nextPageToken: string | undefined;
 
-  for (let page = 0; page < 5; page += 1) {
+  for (let page = 0; page < maxPages; page += 1) {
     const result = await client.issueSearch.searchAndReconsileIssuesUsingJqlPost({
       jql,
       maxResults,
@@ -846,7 +875,159 @@ function parentEpicKey(fields: IssueFields): string | undefined {
 export async function getProjectEpicProgress(
   instance: JiraInstance,
   projectKey: string,
+  options?: { includeTasks?: boolean },
 ): Promise<(JiraEpicSummary & { progress: JiraEpicTaskProgress })[]> {
+  const byProject = await getProjectsEpicProgress(instance, [projectKey], {
+    includeTasks: options?.includeTasks ?? true,
+  });
+  return byProject.get(projectKey.toUpperCase()) ?? [];
+}
+
+function projectKeyFromIssueKey(issueKey: string): string {
+  const dash = issueKey.lastIndexOf("-");
+  return (dash > 0 ? issueKey.slice(0, dash) : issueKey).toUpperCase();
+}
+
+function jqlProjectInList(projectKeys: string[]): string {
+  return projectKeys
+    .map((key) => `"${key.replace(/"/g, '\\"')}"`)
+    .join(", ");
+}
+
+function mapEpicIssue(
+  issue: { key?: string; fields?: IssueFields },
+): JiraEpicSummary & { progress: JiraEpicTaskProgress } {
+  const fields = issue.fields ?? {};
+  const { startDate, endDate } = pickEpicDates(fields);
+  const key = issue.key ?? "";
+  return {
+    key,
+    name: fields.summary ?? key,
+    startDate,
+    endDate,
+    status: fields.status?.name,
+    statusCategory: statusCategoryKey(fields),
+    progress: emptyProgress(key),
+  };
+}
+
+const PROJECT_PROGRESS_CHUNK = 12;
+
+const CHILD_COUNT_FIELDS = ["status", "parent", "customfield_10014"];
+const CHILD_TASK_FIELDS = [
+  "summary",
+  "status",
+  "assignee",
+  "updated",
+  "parent",
+  "customfield_10014",
+];
+
+function toEpicTask(
+  issue: { key?: string; fields?: IssueFields },
+  category: JiraStatusCategoryKey,
+): JiraEpicTask {
+  const fields = issue.fields ?? {};
+  return {
+    key: issue.key ?? "",
+    name: fields.summary ?? issue.key ?? "Untitled",
+    status: fields.status?.name,
+    statusCategory: category,
+    assignee: assigneeName(fields),
+    updated: typeof fields.updated === "string" ? fields.updated : undefined,
+  };
+}
+
+/**
+ * One epic search + one child-issue search per Jira site, covering many
+ * software projects. Production Overview uses this so adding boards does not
+ * multiply Jira round-trips.
+ */
+export async function getProjectsEpicProgress(
+  instance: JiraInstance,
+  projectKeys: string[],
+  options?: { includeTasks?: boolean },
+): Promise<
+  Map<string, (JiraEpicSummary & { progress: JiraEpicTaskProgress })[]>
+> {
+  const includeTasks = Boolean(options?.includeTasks);
+  const unique = [
+    ...new Set(
+      projectKeys
+        .map((key) => key.trim().toUpperCase())
+        .filter(Boolean),
+    ),
+  ];
+  const out = new Map<
+    string,
+    (JiraEpicSummary & { progress: JiraEpicTaskProgress })[]
+  >();
+  for (const key of unique) out.set(key, []);
+  if (unique.length === 0) return out;
+
+  const config = getInstanceConfig(instance);
+  if (!config) {
+    throw new Error(`Jira instance "${instance}" is not configured.`);
+  }
+  const client = createClient(config);
+
+  for (let i = 0; i < unique.length; i += PROJECT_PROGRESS_CHUNK) {
+    const chunk = unique.slice(i, i + PROJECT_PROGRESS_CHUNK);
+    const inList = jqlProjectInList(chunk);
+    const [epicIssues, childIssues] = await Promise.all([
+      searchIssues(
+        client,
+        `project in (${inList}) AND issuetype = Epic ORDER BY created ASC`,
+        ["summary", "status", "duedate", "customfield_10015"],
+      ),
+      searchIssues(
+        client,
+        `project in (${inList}) AND issuetype != Epic ORDER BY created ASC`,
+        includeTasks ? CHILD_TASK_FIELDS : CHILD_COUNT_FIELDS,
+        200,
+        10,
+      ),
+    ]);
+
+    const byKey = new Map<
+      string,
+      JiraEpicSummary & { progress: JiraEpicTaskProgress }
+    >();
+    for (const issue of epicIssues) {
+      const epic = mapEpicIssue(issue);
+      if (!epic.key) continue;
+      byKey.set(epic.key, epic);
+      const projectKey = projectKeyFromIssueKey(epic.key);
+      const list = out.get(projectKey);
+      if (list) list.push(epic);
+    }
+
+    for (const issue of childIssues) {
+      const fields = issue.fields ?? {};
+      const epicKey = parentEpicKey(fields);
+      if (!epicKey) continue;
+      const epic = byKey.get(epicKey);
+      if (!epic) continue;
+      const category = statusCategoryKey(fields);
+      addStatusCount(epic.progress, category);
+      if (includeTasks) {
+        epic.progress.tasks.push(toEpicTask(issue, category));
+      }
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Ticket names for one Jira project, grouped by parent epic. Used when the
+ * Production drawer or timeline hover needs the list after the board has
+ * already loaded counts.
+ */
+export async function getProjectEpicTasks(
+  instance: JiraInstance,
+  projectKey: string,
+): Promise<Map<string, JiraEpicTask[]>> {
   const config = getInstanceConfig(instance);
   if (!config) {
     throw new Error(`Jira instance "${instance}" is not configured.`);
@@ -854,57 +1035,25 @@ export async function getProjectEpicProgress(
 
   const client = createClient(config);
   const safeKey = projectKey.replace(/"/g, '\\"');
-  const [epicIssues, childIssues] = await Promise.all([
-    searchIssues(
-      client,
-      `project = "${safeKey}" AND issuetype = Epic ORDER BY created ASC`,
-      ["summary", "status", "duedate", "customfield_10015"],
-    ),
-    searchIssues(
-      client,
-      `project = "${safeKey}" AND issuetype != Epic ORDER BY created ASC`,
-      ["summary", "status", "assignee", "updated", "parent", "customfield_10014"],
-      200,
-    ),
-  ]);
+  const childIssues = await searchIssues(
+    client,
+    `project = "${safeKey}" AND issuetype != Epic ORDER BY created ASC`,
+    CHILD_TASK_FIELDS,
+    200,
+    10,
+  );
 
-  const epics: (JiraEpicSummary & { progress: JiraEpicTaskProgress })[] =
-    epicIssues.map((issue) => {
-      const fields = issue.fields ?? {};
-      const { startDate, endDate } = pickEpicDates(fields);
-      const key = issue.key ?? "";
-      return {
-        key,
-        name: fields.summary ?? key,
-        startDate,
-        endDate,
-        status: fields.status?.name,
-        statusCategory: statusCategoryKey(fields),
-        progress: emptyProgress(key),
-      };
-    });
-
-  const byKey = new Map(epics.map((epic) => [epic.key, epic]));
+  const byEpic = new Map<string, JiraEpicTask[]>();
   for (const issue of childIssues) {
     const fields = issue.fields ?? {};
     const epicKey = parentEpicKey(fields);
     if (!epicKey) continue;
-    const epic = byKey.get(epicKey);
-    if (!epic) continue;
     const category = statusCategoryKey(fields);
-    addStatusCount(epic.progress, category);
-    epic.progress.tasks.push({
-      key: issue.key ?? "",
-      name: fields.summary ?? issue.key ?? "Untitled",
-      status: fields.status?.name,
-      statusCategory: category,
-      assignee: assigneeName(fields),
-      updated:
-        typeof fields.updated === "string" ? fields.updated : undefined,
-    });
+    const list = byEpic.get(epicKey) ?? [];
+    list.push(toEpicTask(issue, category));
+    byEpic.set(epicKey, list);
   }
-
-  return epics;
+  return byEpic;
 }
 
 /** Shared Adsomnia Kanban board for Fast-Track tasks. */

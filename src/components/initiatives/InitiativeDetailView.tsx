@@ -454,6 +454,7 @@ export function InitiativeDetailView({
           className={ENTER_CLASS}
           style={enterStyle(70)}
           initiative={initiative}
+          attachments={attachments}
           goDate={
             goNoGoDecision?.decision === "approved"
               ? goNoGoDecision.createdAt
@@ -596,7 +597,8 @@ export function InitiativeDetailView({
 
                 {(validationAwaitingDecision ||
                   displayedValidationDecision) &&
-                  !validationCanResubmit && (
+                  !validationCanResubmit &&
+                  !initiative.isFastTrack && (
                   <ValidationApprovalPanel
                     initiativeId={initiative.id}
                     decision={displayedValidationDecision}
@@ -734,6 +736,7 @@ export function InitiativeDetailView({
                   <OnboardingPhaseSection
                     initiative={initiative}
                     onboardingData={onboardingData}
+                    attachments={attachments}
                     readOnly={onboardingIsReadOnly}
                     isCurrentStage={onboardingIsCurrent}
                   />

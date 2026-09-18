@@ -1,19 +1,32 @@
 "use client";
 
 import {
+  Building2,
   Coins,
+  ExternalLink,
+  FileSpreadsheet,
+  FileText,
+  Flag,
   Gauge,
   GitBranch,
+  HardDrive,
   Lightbulb,
+  Link2,
   ListChecks,
   Milestone,
+  Paperclip,
+  Presentation,
+  Sheet,
   ShieldCheck,
+  Shirt,
+  StickyNote,
   Target,
   TrendingUp,
   UserRound,
   Users,
   UsersRound,
   Zap,
+  type LucideIcon,
 } from "lucide-react";
 import { PARTIES, getPartyInk, getStageColor } from "@/data/workflow";
 import { MilestoneGantt } from "../MilestoneGantt";
@@ -21,11 +34,16 @@ import type { InitiativeWithUsers } from "@/lib/queries";
 import {
   BUSINESS_VALUE_TYPES,
   IMPACT_MAX,
+  PRIORITY_META,
   adsomniaPriority,
   consensusPriority,
   impactScoreLabel,
+  attachmentKindLabel,
+  hostFromUrl,
   isBusinessValueData,
   parseImpactScore,
+  type Attachment,
+  type AttachmentKind,
   type BusinessValueType,
 } from "@/lib/validation-data";
 
@@ -37,6 +55,7 @@ import {
 export type BriefingBodyProps = {
   initiative: InitiativeWithUsers;
   presenting?: boolean;
+  attachments?: Attachment[];
 };
 
 /** Staged reveal for fullscreen slides — see `.briefing-reveal` in globals.css. */
@@ -131,6 +150,46 @@ const VALUE_ICONS: Record<
   growth: TrendingUp,
 };
 
+const VALUE_BLURB: Record<BusinessValueType, string> = {
+  speed: "Shorter cycle time and less waiting",
+  "cost-efficiency": "Lower cost to serve and less waste",
+  growth: "More revenue, reach, or conversion",
+};
+
+const TSHIRT_HINT: Record<string, string> = {
+  S: "Contained change",
+  M: "Focused build",
+  L: "Multi-week investment",
+  XL: "Significant investment",
+};
+
+const PARTY_LOGOS: Record<string, string> = {
+  adsomnia: "/logos/adsomnia.png",
+  btr: "/logos/bendingtherules.jpeg",
+  hn: "/logos/harlemnext.webp",
+  bbb: "/logos/blablabuild.png",
+};
+
+function resolveLeadParty(stored?: string | null): {
+  id?: string;
+  label: string;
+  color?: string;
+  logo?: string;
+} | null {
+  if (!stored?.trim()) return null;
+  const id = stored === "as" ? "adsomnia" : stored;
+  const known = PARTIES.find((p) => p.id === id);
+  if (known) {
+    return {
+      id: known.id,
+      label: known.label,
+      color: known.color,
+      logo: PARTY_LOGOS[known.id],
+    };
+  }
+  return { label: stored };
+}
+
 /** Business value as a 10-segment meter — reads at presentation distance. */
 function ValueMeter({
   type,
@@ -189,6 +248,14 @@ function ValueMeter({
             /{IMPACT_MAX}
           </span>
         )}
+      </p>
+
+      <p
+        className={`mt-2 text-muted ${
+          presenting ? "text-sm leading-relaxed" : "text-[11px]"
+        }`}
+      >
+        {VALUE_BLURB[type]}
       </p>
 
       <span
@@ -272,18 +339,26 @@ export function ValidationBriefBody({
   presenting,
 }: BriefingBodyProps) {
   const vd = initiative.validationData;
-  const leadParty = PARTIES.find((p) => p.id === vd?.leadProductionParty);
+  const lead = resolveLeadParty(vd?.leadProductionParty);
   const businessValue = vd?.businessValue;
   const valueTypes =
     businessValue && isBusinessValueData(businessValue)
       ? businessValue.types
       : [];
+  const priorityMeta = vd?.priority ? PRIORITY_META[vd.priority] : undefined;
 
   return (
     <div className={presenting ? REVEAL_CLASS + " space-y-6" : "space-y-4"}>
       <Field
+        icon={Target}
+        label="The outcome we are buying"
+        value={initiative.expectedImpact}
+        presenting={presenting}
+      />
+
+      <Field
         icon={Zap}
-        label="Solution Direction"
+        label="High-level approach"
         value={vd?.solutionDirection}
         presenting={presenting}
       />
@@ -301,7 +376,7 @@ export function ValidationBriefBody({
             ) : undefined
           }
         >
-          Business Value
+          Where the value is created
         </SubHeading>
         {valueTypes.length > 0 ? (
           <div className="grid gap-2 sm:grid-cols-3">
@@ -319,48 +394,101 @@ export function ValidationBriefBody({
             ))}
           </div>
         ) : typeof businessValue === "string" && businessValue.trim() ? (
-          <p className={presenting ? "text-base" : "text-xs"}>
+          <p className={presenting ? "text-base leading-relaxed" : "text-xs"}>
             {businessValue}
           </p>
         ) : (
-          <p className="text-xs text-muted/40">—</p>
+          <p className="text-xs text-muted/40">No value drivers recorded.</p>
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
-        {leadParty && (
-          <Chip color={leadParty.color} presenting={presenting}>
-            Lead · {leadParty.label}
-          </Chip>
-        )}
-        {vd?.tShirtSize && (
-          <Chip presenting={presenting}>Size {vd.tShirtSize}</Chip>
-        )}
-        {vd?.priority && (
-          <Chip presenting={presenting}>Adsomnia Priority {vd.priority}</Chip>
-        )}
-      </div>
-
-      {(vd?.dependencies || vd?.risks) && (
-        <div className={`grid gap-4 ${presenting ? "sm:grid-cols-2" : ""}`}>
-          {vd?.dependencies && (
-            <Field
-              icon={GitBranch}
-              label="Dependencies"
-              value={vd.dependencies}
-              presenting={presenting}
-            />
+      <div className={`grid gap-2 ${presenting ? "sm:grid-cols-3" : "sm:grid-cols-1"}`}>
+        <div className="border border-border bg-surface p-3">
+          <p className="flex items-center gap-1.5 font-display text-[9px] font-bold uppercase tracking-[0.2em] text-muted/50">
+            <Building2 className={presenting ? "size-3.5" : "size-3"} />
+            Lead production party
+          </p>
+          {lead ? (
+            <div className="mt-2 flex items-center gap-2">
+              {lead.logo && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={lead.logo}
+                  alt=""
+                  className={presenting ? "h-6 w-auto object-contain" : "h-5 w-auto object-contain"}
+                />
+              )}
+              <span
+                className={`font-display font-bold uppercase tracking-wide ${
+                  presenting ? "text-sm" : "text-xs"
+                }`}
+                style={lead.color ? { color: lead.color } : undefined}
+              >
+                {lead.label}
+              </span>
+            </div>
+          ) : (
+            <p className={`mt-2 text-muted/40 ${presenting ? "text-sm" : "text-xs"}`}>
+              —
+            </p>
           )}
-          {vd?.risks && (
-            <Field
-              icon={Lightbulb}
-              label="Notes"
-              value={vd.risks}
-              presenting={presenting}
-            />
-          )}
+          <p className={`mt-1 text-muted ${presenting ? "text-xs" : "text-[11px]"}`}>
+            Owns the build in Production
+          </p>
         </div>
-      )}
+
+        <div className="border border-border bg-surface p-3">
+          <p className="flex items-center gap-1.5 font-display text-[9px] font-bold uppercase tracking-[0.2em] text-muted/50">
+            <Shirt className={presenting ? "size-3.5" : "size-3"} />
+            Investment estimate
+          </p>
+          <p
+            className={`mt-2 font-display font-extrabold uppercase tracking-wide ${
+              presenting ? "text-2xl" : "text-lg"
+            }`}
+          >
+            {vd?.tShirtSize || "—"}
+          </p>
+          <p className={`mt-1 text-muted ${presenting ? "text-xs" : "text-[11px]"}`}>
+            {vd?.tShirtSize
+              ? TSHIRT_HINT[vd.tShirtSize] ?? "Relative effort"
+              : "Relative effort (S–XL)"}
+          </p>
+        </div>
+
+        <div className="border border-border bg-surface p-3">
+          <p className="flex items-center gap-1.5 font-display text-[9px] font-bold uppercase tracking-[0.2em] text-muted/50">
+            <Flag className={presenting ? "size-3.5" : "size-3"} />
+            Adsomnia priority
+          </p>
+          <p
+            className={`mt-2 font-display font-extrabold uppercase tracking-wide ${
+              presenting ? "text-2xl" : "text-lg"
+            }`}
+            style={priorityMeta ? { color: priorityMeta.color } : undefined}
+          >
+            {vd?.priority || "—"}
+          </p>
+          <p className={`mt-1 text-muted ${presenting ? "text-xs" : "text-[11px]"}`}>
+            {priorityMeta?.hint ?? "Adsomnia placement before consensus"}
+          </p>
+        </div>
+      </div>
+
+      <div className={`grid gap-4 ${presenting ? "sm:grid-cols-2" : ""}`}>
+        <Field
+          icon={GitBranch}
+          label="Risks, dependencies & blockers"
+          value={vd?.dependencies}
+          presenting={presenting}
+        />
+        <Field
+          icon={StickyNote}
+          label="Other notes"
+          value={vd?.risks}
+          presenting={presenting}
+        />
+      </div>
     </div>
   );
 }
@@ -558,6 +686,175 @@ export function ScopingBriefBody({
           presenting={presenting}
         />
       )}
+    </div>
+  );
+}
+
+const ATTACHMENT_ICONS: Record<AttachmentKind, LucideIcon> = {
+  "google-doc": FileText,
+  "google-sheet": FileSpreadsheet,
+  "google-slides": Presentation,
+  "google-form": Sheet,
+  "google-drive": HardDrive,
+  link: Link2,
+  file: Paperclip,
+};
+
+const ATTACHMENT_COLORS: Record<AttachmentKind, string> = {
+  "google-doc": "#4285F4",
+  "google-sheet": "#0F9D58",
+  "google-slides": "#F4B400",
+  "google-form": "#7627BB",
+  "google-drive": "#1FA463",
+  link: "#7E90A3",
+  file: "#CEFF00",
+};
+
+function formatAddedAt(iso?: string): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+/** Workstream files plus any leftover Validation/Scoping attachments. */
+export function collectFunnelAttachments(
+  initiative: InitiativeWithUsers,
+  workstream: Attachment[] = [],
+): Attachment[] {
+  const seen = new Set<string>();
+  const merged: Attachment[] = [];
+  for (const item of [
+    ...workstream,
+    ...(initiative.validationData?.attachments ?? []),
+    ...(initiative.scopingData?.attachments ?? []),
+  ]) {
+    const key = (item.url || item.id).toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(item);
+  }
+  return merged;
+}
+
+export function AttachmentsBriefBody({
+  presenting,
+  attachments = [],
+}: BriefingBodyProps) {
+  if (attachments.length === 0) {
+    return (
+      <p className={presenting ? "text-base text-muted" : "text-xs text-muted/40"}>
+        No files or links were added during the funnel.
+      </p>
+    );
+  }
+
+  return (
+    <div className={presenting ? REVEAL_CLASS + " space-y-4" : "space-y-3"}>
+      <p className={presenting ? "text-base text-muted" : "text-xs text-muted"}>
+        Everything dropped on this workstream from Initiative through Go / No-Go.
+      </p>
+      <div
+        className={`grid gap-2 ${
+          presenting ? "sm:grid-cols-2" : "sm:grid-cols-1"
+        }`}
+      >
+        {attachments.map((item) => {
+          const Icon = ATTACHMENT_ICONS[item.kind];
+          const color = ATTACHMENT_COLORS[item.kind];
+          const canOpen = Boolean(item.url);
+          const addedOn = formatAddedAt(item.addedAt);
+          const host =
+            item.kind !== "file" && item.url ? hostFromUrl(item.url) : null;
+          const subtitle =
+            item.pageTitle &&
+            item.pageTitle !== item.title &&
+            item.pageTitle !== host
+              ? item.pageTitle
+              : host && host !== item.title
+                ? host
+                : null;
+
+          return (
+            <div
+              key={item.id}
+              className="flex items-start gap-3 border border-border bg-surface px-3 py-3"
+            >
+              <span
+                className="mt-0.5 flex size-8 shrink-0 items-center justify-center border"
+                style={{ borderColor: `${color}66`, color }}
+              >
+                <Icon className={presenting ? "size-4" : "size-3.5"} />
+              </span>
+              <div className="min-w-0 flex-1">
+                {canOpen ? (
+                  <a
+                    href={item.url}
+                    target={item.kind === "file" ? undefined : "_blank"}
+                    rel={
+                      item.kind === "file" ? undefined : "noopener noreferrer"
+                    }
+                    download={
+                      item.kind === "file" ? item.fileName : undefined
+                    }
+                    className={`block truncate font-medium text-foreground underline-offset-2 hover:underline ${
+                      presenting ? "text-base" : "text-sm"
+                    }`}
+                    title={item.title}
+                  >
+                    {item.title}
+                  </a>
+                ) : (
+                  <p
+                    className={`truncate font-medium ${
+                      presenting ? "text-base" : "text-sm"
+                    }`}
+                  >
+                    {item.title}
+                  </p>
+                )}
+                <p
+                  className={`mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted ${
+                    presenting ? "text-xs" : "text-[10px]"
+                  }`}
+                >
+                  <span
+                    className="border px-1.5 py-px font-display text-[9px] font-bold uppercase tracking-wide"
+                    style={{ borderColor: `${color}66`, color }}
+                  >
+                    {attachmentKindLabel(item.kind)}
+                  </span>
+                  {subtitle && <span className="truncate">{subtitle}</span>}
+                  {item.addedBy && <span>{item.addedBy}</span>}
+                  {addedOn && <span>{addedOn}</span>}
+                </p>
+              </div>
+              {canOpen && (
+                <a
+                  href={item.url}
+                  target={item.kind === "file" ? undefined : "_blank"}
+                  rel={
+                    item.kind === "file" ? undefined : "noopener noreferrer"
+                  }
+                  download={item.kind === "file" ? item.fileName : undefined}
+                  className="flex size-8 shrink-0 items-center justify-center border border-border text-muted transition-colors hover:border-foreground hover:text-foreground"
+                  aria-label={
+                    item.kind === "file"
+                      ? `Download ${item.title}`
+                      : `Open ${item.title}`
+                  }
+                >
+                  <ExternalLink className="size-3.5" />
+                </a>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

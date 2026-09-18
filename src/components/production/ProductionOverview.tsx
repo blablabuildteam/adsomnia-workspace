@@ -16,6 +16,7 @@ import { AddProductionProjectModal } from "@/components/production/AddProduction
 import { ProductionDetailDrawer } from "@/components/production/ProductionDetailDrawer";
 import { ProductionProjectCard } from "@/components/production/ProductionProjectCard";
 import { ProductionTimelineView } from "@/components/production/ProductionTimelineView";
+import { invalidateProductionEpicTaskCache } from "@/components/production/useProductionEpicTasks";
 import { PipelineStageHeader } from "@/components/pipeline/PipelineStageHeader";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PARTIES, STAGES } from "@/data/workflow";
@@ -137,6 +138,7 @@ export function ProductionOverview({
 
   function refresh() {
     startRefresh(async () => {
+      invalidateProductionEpicTaskCache();
       await refreshProductionOverview();
       router.refresh();
     });
@@ -372,12 +374,14 @@ export function ProductionOverview({
         project={selected}
         canArchive={canArchive}
         canAdjustPriority={canAdjustPriority}
+        canEditTools={canAddProject}
         onClose={closeDrawer}
         onArchived={() => {
           closeDrawer();
           router.refresh();
         }}
         onPriorityUpdated={() => router.refresh()}
+        onToolsUpdated={() => router.refresh()}
       />
 
       {canAddProject && (

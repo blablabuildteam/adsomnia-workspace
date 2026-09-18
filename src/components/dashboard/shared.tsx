@@ -14,6 +14,17 @@ export const STAGE_HREF: Record<string, string> = {
   production: "/pipeline/production",
 };
 
+/** Production items open on the production board; earlier phases stay on the workstream. */
+export function dashboardItemHref(item: {
+  id: number;
+  currentStage: string;
+}): string {
+  if (item.currentStage === "production") {
+    return `/pipeline/production?project=${item.id}`;
+  }
+  return `/workstreams/${item.id}`;
+}
+
 const STATUS_LABEL: Record<string, string> = {
   submitted: "Review",
   approved: "Approved",

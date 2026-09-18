@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { ArrowUpRight, FileText, LayoutGrid, Pencil } from "lucide-react";
 import { getStageColor } from "@/data/workflow";
 import type { OnboardingLinks, SetupData } from "@/lib/validation-data";
+import { toJiraSoftwareProjectListUrl } from "@/lib/integrations/jira-plan";
 import { saveOnboardingLinks } from "@/app/(workspace)/workstreams/[id]/actions";
 import { PhaseSectionCard } from "../PhaseSectionCard";
 
@@ -34,7 +35,10 @@ export function WorkspaceLinksCard({
 
   const channelName = setupData?.slack.channelName?.replace(/^#/, "");
   const driveUrl = setupData?.drive.driveUrl;
-  const jiraUrl = setupData?.jira.boardUrl || setupData?.jira.projectUrl;
+  const jiraUrl = toJiraSoftwareProjectListUrl(
+    setupData?.jira.boardUrl || setupData?.jira.projectUrl,
+    setupData?.jira.projectKey,
+  );
   const docs = (setupData?.documentation.linkedDocs ?? []).filter((d) => d.url);
 
   const tools: {

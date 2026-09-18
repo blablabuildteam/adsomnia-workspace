@@ -1,6 +1,7 @@
 "use client";
 
 import { getStageColor } from "@/data/workflow";
+import { toJiraSoftwareProjectListUrl } from "@/lib/integrations/jira-plan";
 import type { InviteTeamData } from "@/lib/validation-data";
 import { CompletedLine, ConfirmRow } from "../onboarding/ConfirmRow";
 
@@ -21,6 +22,7 @@ type Props = {
   slackChannelUrl?: string;
   driveUrl?: string;
   jiraBoardUrl?: string;
+  jiraProjectKey?: string;
   readOnly?: boolean;
   onComplete: () => void;
 };
@@ -31,6 +33,7 @@ export function InviteTeamTask({
   slackChannelUrl,
   driveUrl,
   jiraBoardUrl,
+  jiraProjectKey,
   readOnly,
   onComplete,
 }: Props) {
@@ -44,8 +47,8 @@ export function InviteTeamTask({
     {
       name: "Jira",
       logo: "/logos/jira.png",
-      href: jiraBoardUrl,
-      openLabel: "Open Jira board",
+      href: toJiraSoftwareProjectListUrl(jiraBoardUrl, jiraProjectKey),
+      openLabel: "Open Jira",
     },
     {
       name: "Google Drive",

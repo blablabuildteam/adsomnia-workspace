@@ -22,6 +22,7 @@ import {
   getSetupProgress,
   type SetupData,
 } from "@/lib/validation-data";
+import { toJiraSoftwareProjectListUrl } from "@/lib/integrations/jira-plan";
 import { formatEuro, summarizeTeamCost } from "@/data/role-rates";
 
 type SetupTool = {
@@ -35,7 +36,10 @@ type SetupTool = {
 function setupToolChips(setup: SetupData | null): SetupTool[] {
   const slackName = setup?.slack.channelName;
   const slackUrl = setup?.slack.channelUrl;
-  const jiraUrl = setup?.jira.boardUrl || setup?.jira.projectUrl;
+  const jiraUrl = toJiraSoftwareProjectListUrl(
+    setup?.jira.boardUrl || setup?.jira.projectUrl,
+    setup?.jira.projectKey,
+  );
   const driveUrl = setup?.drive.driveUrl;
 
   return [

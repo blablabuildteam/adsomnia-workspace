@@ -10,6 +10,7 @@ import {
   Circle,
   Loader2,
   Maximize2,
+  Paperclip,
   Presentation,
   X,
 } from "lucide-react";
@@ -18,27 +19,34 @@ import { PhaseSectionCard } from "../PhaseSectionCard";
 import type { InitiativeWithUsers } from "@/lib/queries";
 import {
   getOnboardingProgress,
+  type Attachment,
   type OnboardingData,
   type OnboardingTaskId,
 } from "@/lib/validation-data";
 import {
+  AttachmentsBriefBody,
   InitiativeBriefBody,
   ScopingBriefBody,
   ValidationBriefBody,
+  collectFunnelAttachments,
   type BriefingBodyProps,
 } from "./BriefingContent";
 
 const ACCENT = getStageColor("onboarding");
 
-const BLOCKS: {
-  taskId: OnboardingTaskId;
-  dataKey: keyof OnboardingData;
+type BriefingBlock = {
+  id: string;
+  taskId: OnboardingTaskId | null;
+  dataKey: "briefingInitiative" | "briefingValidation" | "briefingScoping" | null;
   number: number;
   stage: string;
   title: string;
   Body: (props: BriefingBodyProps) => React.ReactNode;
-}[] = [
+};
+
+const PHASE_BLOCKS: BriefingBlock[] = [
   {
+    id: "briefing-initiative",
     taskId: "briefing-initiative",
     dataKey: "briefingInitiative",
     number: 1,
@@ -47,6 +55,7 @@ const BLOCKS: {
     Body: InitiativeBriefBody,
   },
   {
+    id: "briefing-validation",
     taskId: "briefing-validation",
     dataKey: "briefingValidation",
     number: 2,
@@ -55,6 +64,7 @@ const BLOCKS: {
     Body: ValidationBriefBody,
   },
   {
+    id: "briefing-scoping",
     taskId: "briefing-scoping",
     dataKey: "briefingScoping",
     number: 3,
@@ -64,16 +74,31 @@ const BLOCKS: {
   },
 ];
 
+const ATTACHMENTS_BLOCK: BriefingBlock = {
+  id: "briefing-attachments",
+  taskId: null,
+  dataKey: null,
+  number: 4,
+  stage: "Materials",
+  title: "Attachments from the funnel",
+  Body: AttachmentsBriefBody,
+};
+
 type Props = {
   initiative: InitiativeWithUsers;
   data: OnboardingData;
+  attachments?: Attachment[];
   readOnly?: boolean;
   pendingTask?: OnboardingTaskId | null;
   onReview: (taskId: OnboardingTaskId) => void;
   onUndo: (taskId: OnboardingTaskId) => void;
 };
 
-function isReviewed(data: OnboardingData, dataKey: keyof OnboardingData) {
+function isReviewed(
+  data: OnboardingData,
+  dataKey: BriefingBlock["dataKey"],
+) {
+  if (!dataKey) return true;
   const block = data[dataKey] as { status?: string } | undefined;
   return block?.status === "completed";
 }
@@ -81,30 +106,35 @@ function isReviewed(data: OnboardingData, dataKey: keyof OnboardingData) {
 export function BriefingDeck({
   initiative,
   data,
+  attachments = [],
   readOnly,
   pendingTask,
   onReview,
   onUndo,
 }: Props) {
   const progress = getOnboardingProgress(data, "briefing");
+  const funnelAttachments = collectFunnelAttachments(initiative, attachments);
+  const blocks =
+    funnelAttachments.length > 0
+      ? [...PHASE_BLOCKS, ATTACHMENTS_BLOCK]
+      : PHASE_BLOCKS;
   const firstUnreviewed =
-    BLOCKS.find((block) => !isReviewed(data, block.dataKey))?.taskId ?? null;
+    blocks.find((block) => !isReviewed(data, block.dataKey))?.id ?? null;
 
-  const [openBlock, setOpenBlock] = useState<OnboardingTaskId | null>(
-    firstUnreviewed,
-  );
+  const [openBlock, setOpenBlock] = useState<string | null>(firstUnreviewed);
   const [presenting, setPresenting] = useState(false);
   const [slide, setSlide] = useState(0);
 
   const startPresenting = () => {
-    const index = BLOCKS.findIndex((block) => block.taskId === firstUnreviewed);
+    const index = blocks.findIndex((block) => block.id === firstUnreviewed);
     setSlide(index === -1 ? 0 : index);
     setPresenting(true);
   };
 
+  const lastIndex = blocks.length - 1;
   const next = useCallback(
-    () => setSlide((current) => Math.min(current + 1, BLOCKS.length - 1)),
-    [],
+    () => setSlide((current) => Math.min(current + 1, lastIndex)),
+    [lastIndex],
   );
   const previous = useCallback(
     () => setSlide((current) => Math.max(current - 1, 0)),
@@ -130,12 +160,13 @@ export function BriefingDeck({
     };
   }, [presenting, next, previous]);
 
-  const current = BLOCKS[slide];
+  const safeSlide = Math.min(slide, lastIndex);
+  const current = blocks[safeSlide] ?? blocks[0];
   const currentReviewed = isReviewed(data, current.dataKey);
-  const isLast = slide === BLOCKS.length - 1;
+  const isLast = safeSlide === lastIndex;
 
   const reviewAndAdvance = () => {
-    if (!currentReviewed) onReview(current.taskId);
+    if (current.taskId && !currentReviewed) onReview(current.taskId);
     if (!isLast) next();
     else setPresenting(false);
   };
@@ -176,14 +207,15 @@ export function BriefingDeck({
 
         {/* Inline accordion */}
         <div className="space-y-2">
-          {BLOCKS.map((block) => {
+          {blocks.map((block) => {
             const reviewed = isReviewed(data, block.dataKey);
-            const open = openBlock === block.taskId;
-            const busy = pendingTask === block.taskId;
+            const open = openBlock === block.id;
+            const busy = block.taskId != null && pendingTask === block.taskId;
+            const reviewable = block.taskId != null;
 
             return (
               <div
-                key={block.taskId}
+                key={block.id}
                 className="border border-border transition-colors hover:border-border-strong"
               >
                 <div className="relative flex items-center gap-3 bg-surface px-4 py-3">
@@ -191,55 +223,67 @@ export function BriefingDeck({
                     type="button"
                     aria-expanded={open}
                     aria-label={`${open ? "Collapse" : "Expand"} ${block.title}`}
-                    onClick={() => setOpenBlock(open ? null : block.taskId)}
+                    onClick={() => setOpenBlock(open ? null : block.id)}
                     className="absolute inset-0 z-0 cursor-pointer"
                   />
-                  <button
-                    type="button"
-                    disabled={readOnly || busy}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      if (reviewed) onUndo(block.taskId);
-                      else onReview(block.taskId);
-                    }}
-                    aria-label={
-                      reviewed
-                        ? `Mark ${block.title} not reviewed`
-                        : `Mark ${block.title} reviewed`
-                    }
-                    title={
-                      readOnly
-                        ? "Only the Head of Production can run the briefing"
-                        : reviewed
-                          ? "Click to undo"
-                          : "Mark reviewed"
-                    }
-                    className={`relative z-10 flex size-8 shrink-0 items-center justify-center rounded border transition-colors ${
-                      reviewed ? "" : "border-border text-muted/40"
-                    } ${
-                      readOnly || busy
-                        ? "cursor-not-allowed opacity-60"
-                        : "cursor-pointer"
-                    }`}
-                    style={
-                      reviewed
-                        ? {
-                            borderColor: `${ACCENT}66`,
-                            backgroundColor: `${ACCENT}1A`,
-                            color: ACCENT,
-                          }
-                        : undefined
-                    }
-                  >
-                    {busy ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : reviewed ? (
-                      <Check className="size-4" />
-                    ) : (
-                      <Circle className="size-4" />
-                    )}
-                  </button>
+                  {reviewable ? (
+                    <button
+                      type="button"
+                      disabled={readOnly || busy}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (reviewed) onUndo(block.taskId!);
+                        else onReview(block.taskId!);
+                      }}
+                      aria-label={
+                        reviewed
+                          ? `Mark ${block.title} not reviewed`
+                          : `Mark ${block.title} reviewed`
+                      }
+                      title={
+                        readOnly
+                          ? "Only the Head of Production can run the briefing"
+                          : reviewed
+                            ? "Click to undo"
+                            : "Mark reviewed"
+                      }
+                      className={`relative z-10 flex size-8 shrink-0 items-center justify-center rounded border transition-colors ${
+                        reviewed ? "" : "border-border text-muted/40"
+                      } ${
+                        readOnly || busy
+                          ? "cursor-not-allowed opacity-60"
+                          : "cursor-pointer"
+                      }`}
+                      style={
+                        reviewed
+                          ? {
+                              borderColor: `${ACCENT}66`,
+                              backgroundColor: `${ACCENT}1A`,
+                              color: ACCENT,
+                            }
+                          : undefined
+                      }
+                    >
+                      {busy ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : reviewed ? (
+                        <Check className="size-4" />
+                      ) : (
+                        <Circle className="size-4" />
+                      )}
+                    </button>
+                  ) : (
+                    <span
+                      className="relative z-10 flex size-8 shrink-0 items-center justify-center border"
+                      style={{
+                        borderColor: `${ACCENT}66`,
+                        color: ACCENT,
+                      }}
+                    >
+                      <Paperclip className="size-4" />
+                    </span>
+                  )}
                   <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 items-center gap-3">
                     <span className="min-w-0 flex-1">
                       <span
@@ -251,7 +295,7 @@ export function BriefingDeck({
                       </span>
                       <span
                         className={`block font-display text-xs font-bold uppercase tracking-wide ${
-                          reviewed ? "text-muted" : "text-foreground"
+                          reviewable && reviewed ? "text-muted" : "text-foreground"
                         }`}
                       >
                         {block.title}
@@ -271,7 +315,10 @@ export function BriefingDeck({
                 >
                   <div className="overflow-hidden">
                     <div className="border-t border-border px-4 py-4 sm:px-5">
-                      <block.Body initiative={initiative} />
+                      <block.Body
+                        initiative={initiative}
+                        attachments={funnelAttachments}
+                      />
                     </div>
                   </div>
                 </div>
@@ -322,7 +369,7 @@ export function BriefingDeck({
 
             <div className="flex-1 overflow-y-auto px-5 py-8 sm:px-8 sm:py-12">
               {/* Keyed on the slide so the staged reveal replays on every move */}
-              <div key={current.taskId} className="mx-auto w-full max-w-4xl">
+              <div key={current.id} className="mx-auto w-full max-w-4xl">
                 <p
                   className="briefing-slide-eyebrow font-display text-xs font-bold uppercase tracking-[0.35em]"
                   style={{ color: ACCENT }}
@@ -341,7 +388,11 @@ export function BriefingDeck({
                   }}
                 />
                 <div className="mt-8">
-                  <current.Body initiative={initiative} presenting />
+                  <current.Body
+                    initiative={initiative}
+                    presenting
+                    attachments={funnelAttachments}
+                  />
                 </div>
               </div>
             </div>
@@ -350,7 +401,7 @@ export function BriefingDeck({
               <button
                 type="button"
                 onClick={previous}
-                disabled={slide === 0}
+                disabled={safeSlide === 0}
                 className="inline-flex items-center gap-2 border border-border px-3 py-2 font-display text-[10px] font-bold uppercase tracking-wide text-muted transition-colors hover:border-foreground hover:text-foreground disabled:opacity-30"
               >
                 <ArrowLeft className="size-3" />
@@ -358,15 +409,17 @@ export function BriefingDeck({
               </button>
 
               <div className="flex items-center gap-2">
-                {BLOCKS.map((block, index) => (
+                {blocks.map((block, index) => (
                   <span
-                    key={block.taskId}
+                    key={block.id}
                     aria-hidden
                     className="h-1 w-8 bg-fill-muted"
                   >
-                    {(index === slide || isReviewed(data, block.dataKey)) && (
+                    {(index === safeSlide ||
+                      (block.taskId != null &&
+                        isReviewed(data, block.dataKey))) && (
                       <span
-                        key={index === slide ? "active" : "reviewed"}
+                        key={index === safeSlide ? "active" : "reviewed"}
                         className="briefing-progress-fill block h-full w-full"
                         style={{
                           backgroundColor: ACCENT,
@@ -376,7 +429,7 @@ export function BriefingDeck({
                   </span>
                 ))}
                 <span className="ml-2 font-display text-[10px] font-bold uppercase tracking-wide tabular-nums text-muted">
-                  {slide + 1} / {BLOCKS.length}
+                  {safeSlide + 1} / {blocks.length}
                 </span>
               </div>
 

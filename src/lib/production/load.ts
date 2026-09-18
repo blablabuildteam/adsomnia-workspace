@@ -1,16 +1,24 @@
 import {
   getAvailableInstances,
-  getProjectEpicProgress,
+  getProjectEpicTasks,
+  getProjectsEpicProgress,
+  type JiraEpicSummary,
+  type JiraEpicTaskProgress,
   type JiraInstance,
 } from "@/lib/integrations/jira";
-import type { PermissionUser } from "@/lib/permissions";
+import {
+  canViewInitiative,
+  type PermissionUser,
+} from "@/lib/permissions";
 import {
   getActivityForInitiative,
+  getInitiativeById,
   getInitiativesByStage,
   type ActivityEntry,
   type InitiativeWithUsers,
 } from "@/lib/queries";
 import { summarizeTeamCost } from "@/data/role-rates";
+import { toJiraSoftwareProjectListUrl } from "@/lib/integrations/jira-plan";
 import {
   formatBusinessValueSummary,
   isManualProductionProject,
@@ -25,9 +33,57 @@ import {
   todayIso,
   type ProductionLeadParty,
   type ProductionProject,
+  type ProductionTask,
 } from "./health";
 
 const HOST_TO_INSTANCE: Record<string, JiraInstance> = {};
+
+const JIRA_PROGRESS_TTL_MS = 60_000;
+
+type EpicProgressRow = JiraEpicSummary & { progress: JiraEpicTaskProgress };
+
+type CachedEpicProgress = {
+  fetchedAt: number;
+  rows: EpicProgressRow[];
+};
+
+const epicProgressCache = new Map<string, CachedEpicProgress>();
+const epicTasksCache = new Map<string, { fetchedAt: number; byEpic: Record<string, ProductionTask[]> }>();
+
+function epicProgressCacheKey(instance: JiraInstance, projectKey: string) {
+  return `${instance}:${projectKey.trim().toUpperCase()}`;
+}
+
+export function clearProductionJiraCache() {
+  epicProgressCache.clear();
+  epicTasksCache.clear();
+}
+
+function readCachedEpicProgress(
+  instance: JiraInstance,
+  projectKey: string,
+  allowStale: boolean,
+): EpicProgressRow[] | undefined {
+  const entry = epicProgressCache.get(
+    epicProgressCacheKey(instance, projectKey),
+  );
+  if (!entry) return undefined;
+  if (!allowStale && Date.now() - entry.fetchedAt >= JIRA_PROGRESS_TTL_MS) {
+    return undefined;
+  }
+  return entry.rows;
+}
+
+function writeCachedEpicProgress(
+  instance: JiraInstance,
+  projectKey: string,
+  rows: EpicProgressRow[],
+) {
+  epicProgressCache.set(epicProgressCacheKey(instance, projectKey), {
+    fetchedAt: Date.now(),
+    rows,
+  });
+}
 
 function instanceByHost(): Record<string, JiraInstance> {
   if (Object.keys(HOST_TO_INSTANCE).length > 0) return HOST_TO_INSTANCE;
@@ -116,10 +172,16 @@ function toBrief(item: InitiativeWithUsers) {
   };
 }
 
-async function toProductionProject(
+type JiraProgressResult = {
+  rows?: EpicProgressRow[];
+  error?: string;
+};
+
+function toProductionProject(
   item: InitiativeWithUsers,
   today: string,
-): Promise<ProductionProject> {
+  jiraProgress?: JiraProgressResult,
+): ProductionProject {
   const rawParty = item.validationData?.leadProductionParty ?? null;
   const normalized = normalizeLeadParty(rawParty);
   const leadPartyId: ProductionLeadParty | null = isTrackedLeadParty(normalized)
@@ -148,17 +210,19 @@ async function toProductionProject(
     tools: {
       jira: target.boardUrl
         ? {
-            href: target.boardUrl,
+            href: toJiraSoftwareProjectListUrl(
+              target.boardUrl,
+              target.projectKey,
+            ),
             label: target.projectName || "Jira board",
           }
         : undefined,
-      slack:
-        slackHref || slackName
-          ? {
-              href: slackHref,
-              label: slackName ? `#${slackName}` : "Slack",
-            }
-          : undefined,
+      slack: slackHref
+        ? {
+            href: slackHref,
+            label: slackName ? `#${slackName}` : "Slack",
+          }
+        : undefined,
       drive: driveHref
         ? {
             href: driveHref,
@@ -194,37 +258,66 @@ async function toProductionProject(
     };
   }
 
-  try {
-    const rows = await getProjectEpicProgress(target.instance, target.projectKey);
-    const epics = rows.map((row) =>
-      scoreEpic(
-        {
-          key: row.key,
-          name: row.name,
-          startDate: row.startDate,
-          endDate: row.endDate,
-          status: row.status,
-          statusCategory: row.statusCategory,
-          total: row.progress.total,
-          todo: row.progress.todo,
-          inProgress: row.progress.inProgress,
-          done: row.progress.done,
-          tasks: row.progress.tasks,
-        },
-        today,
-      ),
-    );
-    return { ...base, epics, ...buildProjectHealth(epics) };
-  } catch (error) {
+  if (jiraProgress?.error) {
     return {
       ...base,
       jira: {
         ...base.jira,
-        fetchError:
-          error instanceof Error
-            ? error.message
-            : "Could not load Jira progress.",
+        fetchError: jiraProgress.error,
       },
+    };
+  }
+
+  if (!jiraProgress?.rows) {
+    return base;
+  }
+
+  const epics = jiraProgress.rows.map((row) =>
+    scoreEpic(
+      {
+        key: row.key,
+        name: row.name,
+        startDate: row.startDate,
+        endDate: row.endDate,
+        status: row.status,
+        statusCategory: row.statusCategory,
+        total: row.progress.total,
+        todo: row.progress.todo,
+        inProgress: row.progress.inProgress,
+        done: row.progress.done,
+      },
+      today,
+    ),
+  );
+  return { ...base, epics, ...buildProjectHealth(epics) };
+}
+
+async function loadLiveEpicProgress(
+  instance: JiraInstance,
+  projectKeys: string[],
+): Promise<{ byProject: Map<string, EpicProgressRow[]>; error?: string }> {
+  const unique = [
+    ...new Set(
+      projectKeys.map((key) => key.trim().toUpperCase()).filter(Boolean),
+    ),
+  ];
+  const byProject = new Map<string, EpicProgressRow[]>();
+  if (unique.length === 0) return { byProject };
+
+  try {
+    const fetched = await getProjectsEpicProgress(instance, unique);
+    for (const [key, rows] of fetched) {
+      byProject.set(key, rows);
+      writeCachedEpicProgress(instance, key, rows);
+    }
+    return { byProject };
+  } catch (error) {
+    return {
+      byProject,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Could not load Jira progress.",
     };
   }
 }
@@ -239,8 +332,53 @@ export async function getProductionOverview(
 ): Promise<ProductionOverviewData> {
   const initiatives = await getInitiativesByStage("production", user);
   const today = todayIso();
-  const projects = await Promise.all(
-    initiatives.map((item) => toProductionProject(item, today)),
+
+  const neededByInstance = new Map<JiraInstance, string[]>();
+  const progressByItem = new Map<number, JiraProgressResult>();
+
+  for (const item of initiatives) {
+    const target = resolveJiraTarget(item.setupData?.jira);
+    if (!target.instance || !target.projectKey) continue;
+
+    const archived = Boolean(item.archivedAt);
+    const cached = readCachedEpicProgress(
+      target.instance,
+      target.projectKey,
+      archived,
+    );
+    if (cached) {
+      progressByItem.set(item.id, { rows: cached });
+      continue;
+    }
+    if (archived) continue;
+
+    const keys = neededByInstance.get(target.instance) ?? [];
+    keys.push(target.projectKey);
+    neededByInstance.set(target.instance, keys);
+  }
+
+  const live = await Promise.all(
+    [...neededByInstance.entries()].map(async ([instance, keys]) => ({
+      instance,
+      ...(await loadLiveEpicProgress(instance, keys)),
+    })),
+  );
+
+  for (const result of live) {
+    for (const item of initiatives) {
+      if (progressByItem.has(item.id)) continue;
+      const target = resolveJiraTarget(item.setupData?.jira);
+      if (target.instance !== result.instance || !target.projectKey) continue;
+      if (item.archivedAt) continue;
+      progressByItem.set(item.id, {
+        rows: result.byProject.get(target.projectKey.toUpperCase()),
+        error: result.error,
+      });
+    }
+  }
+
+  const projects = initiatives.map((item) =>
+    toProductionProject(item, today, progressByItem.get(item.id)),
   );
   const active = sortProductionProjects(
     projects.filter((project) => !project.archivedAt),
@@ -249,6 +387,45 @@ export async function getProductionOverview(
     .filter((project) => project.archivedAt)
     .sort((a, b) => (b.archivedAt ?? "").localeCompare(a.archivedAt ?? ""));
   return { active, archived };
+}
+
+export async function getProductionEpicTasks(
+  user: PermissionUser,
+  initiativeId: number,
+): Promise<{ byEpic: Record<string, ProductionTask[]>; error?: string }> {
+  const item = await getInitiativeById(initiativeId);
+  if (!item || !canViewInitiative(user, { submitterId: item.submitter.id })) {
+    return { byEpic: {}, error: "Project not found." };
+  }
+
+  const target = resolveJiraTarget(item.setupData?.jira);
+  if (!target.instance || !target.projectKey) {
+    return { byEpic: {} };
+  }
+
+  const cacheKey = epicProgressCacheKey(target.instance, target.projectKey);
+  const cached = epicTasksCache.get(cacheKey);
+  if (cached && Date.now() - cached.fetchedAt < JIRA_PROGRESS_TTL_MS) {
+    return { byEpic: cached.byEpic };
+  }
+
+  try {
+    const fetched = await getProjectEpicTasks(
+      target.instance,
+      target.projectKey,
+    );
+    const byEpic = Object.fromEntries(fetched);
+    epicTasksCache.set(cacheKey, { fetchedAt: Date.now(), byEpic });
+    return { byEpic };
+  } catch (error) {
+    return {
+      byEpic: {},
+      error:
+        error instanceof Error
+          ? error.message
+          : "Could not load Jira tickets.",
+    };
+  }
 }
 
 export type JourneyStageId =

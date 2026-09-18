@@ -13,6 +13,7 @@ import {
   StageChip,
   StageProgress,
   StatusBadge,
+  dashboardItemHref,
   timeAgo,
 } from "./shared";
 
@@ -92,7 +93,7 @@ export function TeamDashboard({
               return (
                 <li key={item.id}>
                   <Link
-                    href={`/workstreams/${item.id}`}
+                    href={dashboardItemHref(item)}
                     className={[
                       "group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-hover",
                       index > 0 ? "border-t border-border" : "",
@@ -180,7 +181,7 @@ function WorkstreamCard({
 
   return (
     <Link
-      href={`/workstreams/${item.id}`}
+      href={dashboardItemHref(item)}
       className="group block border border-border bg-surface p-4 transition-colors hover:border-border-strong hover:bg-hover"
     >
       <div className="flex items-start justify-between gap-3">

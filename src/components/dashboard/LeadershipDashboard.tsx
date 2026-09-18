@@ -25,6 +25,7 @@ import {
   SectionHeading,
   StageChip,
   StatusBadge,
+  dashboardItemHref,
   hoverTicks,
   nextStage,
   timeAgo,
@@ -176,7 +177,7 @@ export function LeadershipDashboard({
                   {stageItems.map((item) => (
                     <Link
                       key={item.id}
-                      href={`/workstreams/${item.id}`}
+                      href={dashboardItemHref(item)}
                       className="group relative block border border-border bg-surface-elevated p-2.5 transition-colors hover:border-border-strong hover:bg-hover-strong"
                     >
                       <CornerTicks className={hoverTicks} />
@@ -277,7 +278,7 @@ function ProductionOverviewCard({ item }: { item: InitiativeWithUsers }) {
 
   return (
     <Link
-      href={`/workstreams/${item.id}`}
+      href={dashboardItemHref(item)}
       className="group relative flex flex-col border border-border bg-surface p-4 transition-colors hover:border-border-strong hover:bg-hover"
     >
       <CornerTicks className={hoverTicks} />

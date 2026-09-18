@@ -11,6 +11,7 @@ import {
   getOnboardingProgress,
   isOnboardingPhaseUnlocked,
   type AbsenceEntry,
+  type Attachment,
   type OnboardingData,
   type OnboardingTaskId,
   type SetupTaskStatus,
@@ -37,6 +38,7 @@ const ACCENT = getStageColor("onboarding");
 type Props = {
   initiative: InitiativeWithUsers;
   onboardingData: OnboardingData;
+  attachments?: Attachment[];
   readOnly?: boolean;
   /** False once the initiative has moved past Onboarding & Kickoff. */
   isCurrentStage?: boolean;
@@ -45,6 +47,7 @@ type Props = {
 export function OnboardingPhaseSection({
   initiative,
   onboardingData,
+  attachments = [],
   readOnly,
   isCurrentStage = true,
 }: Props) {
@@ -161,6 +164,7 @@ export function OnboardingPhaseSection({
         <BriefingDeck
           initiative={initiative}
           data={onboardingData}
+          attachments={attachments}
           readOnly={readOnly}
           pendingTask={pendingTask}
           onReview={(taskId) => void runTask(taskId, {})}

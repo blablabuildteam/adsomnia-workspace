@@ -1,6 +1,7 @@
 "use client";
 
 import type { BacklogData } from "@/lib/validation-data";
+import { toJiraSoftwareProjectListUrl } from "@/lib/integrations/jira-plan";
 import { CompletedLine, ConfirmRow } from "./ConfirmRow";
 
 type Props = {
@@ -36,7 +37,7 @@ export function BacklogTask({ data, boardUrl, readOnly, onComplete }: Props) {
         </p>
         {boardUrl ? (
           <a
-            href={boardUrl}
+            href={toJiraSoftwareProjectListUrl(boardUrl)}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex shrink-0 items-center gap-1.5 border border-info/30 bg-info/10 px-3 py-2 text-xs text-info transition-colors hover:bg-info/20"
@@ -47,7 +48,7 @@ export function BacklogTask({ data, boardUrl, readOnly, onComplete }: Props) {
               alt=""
               className="size-3.5 object-contain"
             />
-            Open Jira board
+            Open Jira
           </a>
         ) : (
           <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted/50">

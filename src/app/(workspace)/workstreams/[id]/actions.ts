@@ -56,11 +56,13 @@ import {
   createChannel,
   sanitizeChannelName,
 } from "@/lib/integrations/slack";
+import { createSharePath } from "@/lib/share";
 import {
   notifyChatMentions,
   notifyOwner,
   notifySubmittedForReview,
 } from "@/lib/integrations/slack-notify";
+import { toJiraSoftwareProjectListUrl } from "@/lib/integrations/jira-plan";
 import {
   clampJiraProjectName,
   createEpics,
@@ -1627,6 +1629,10 @@ export async function createAndCompleteSlackChannel(
 
   const [row] = await db
     .select({
+      ticketId: initiatives.ticketId,
+      title: initiatives.title,
+      problemStatement: initiatives.problemStatement,
+      expectedImpact: initiatives.expectedImpact,
       setupData: initiatives.setupData,
       onboardingData: initiatives.onboardingData,
       currentStage: initiatives.currentStage,
@@ -1647,12 +1653,14 @@ export async function createAndCompleteSlackChannel(
 
   const driveUrl =
     typeof setup.drive?.driveUrl === "string" ? setup.drive.driveUrl.trim() : "";
-  const jiraUrl =
+  const jiraUrl = toJiraSoftwareProjectListUrl(
     typeof setup.jira?.boardUrl === "string"
       ? setup.jira.boardUrl.trim()
       : typeof setup.jira?.projectUrl === "string"
         ? setup.jira.projectUrl.trim()
-        : "";
+        : undefined,
+    setup.jira?.projectKey,
+  );
   const bookmarks = [
     driveUrl
       ? {
@@ -1672,6 +1680,14 @@ export async function createAndCompleteSlackChannel(
     Boolean(bookmark),
   );
 
+  const origin = (
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    ""
+  ).replace(/\/$/, "");
+  const summary =
+    row.problemStatement?.trim() || row.expectedImpact?.trim() || null;
+
   let created;
   try {
     created = await createChannel({
@@ -1680,6 +1696,16 @@ export async function createAndCompleteSlackChannel(
       isPrivate: Boolean(input.isPrivate),
       adsomniaUserId: user.id,
       bookmarks,
+      welcome: {
+        ticketId: row.ticketId,
+        title: row.title,
+        summary,
+        workstreamUrl: origin
+          ? `${origin}${createSharePath(initiativeId)}`
+          : null,
+        driveUrl: driveUrl || null,
+        jiraUrl: jiraUrl || null,
+      },
     });
   } catch (err) {
     return {

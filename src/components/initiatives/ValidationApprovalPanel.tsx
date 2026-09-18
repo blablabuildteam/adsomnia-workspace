@@ -11,6 +11,7 @@ import {
   MessageCircle,
   PauseCircle,
   Hourglass,
+  Rocket,
 } from "lucide-react";
 import {
   approveValidationToScoping,
@@ -19,11 +20,12 @@ import {
   putValidationOnHold,
   type ValidationDecisionResult,
 } from "@/app/(workspace)/workstreams/[id]/actions";
+import { convertToFastTrack } from "@/app/(workspace)/fast-track/actions";
 import { inputClass } from "@/lib/form-styles";
 
 const initial: ValidationDecisionResult = {};
 
-type Action = "approve" | "feedback" | "hold" | "reject";
+type Action = "approve" | "fast-track" | "feedback" | "hold" | "reject";
 
 export type ValidationDecision = {
   decision: "approved" | "rejected" | "on-hold" | "feedback";
@@ -121,17 +123,32 @@ export function ValidationApprovalPanel({
   const [selectedAction, setSelectedAction] = useState<Action | null>(null);
 
   const boundApprove = approveValidationToScoping.bind(null, initiativeId);
+  const boundFastTrack = convertToFastTrack.bind(null, initiativeId);
   const boundFeedback = requestValidationChanges.bind(null, initiativeId);
   const boundHold = putValidationOnHold.bind(null, initiativeId);
   const boundReject = rejectValidation.bind(null, initiativeId);
 
   const [approveState, approveAction, approvePending] = useActionState(boundApprove, initial);
+  const [fastTrackState, fastTrackAction, fastTrackPending] = useActionState(
+    boundFastTrack,
+    initial,
+  );
   const [feedbackState, feedbackAction, feedbackPending] = useActionState(boundFeedback, initial);
   const [holdState, holdAction, holdPending] = useActionState(boundHold, initial);
   const [rejectState, rejectAction, rejectPending] = useActionState(boundReject, initial);
 
-  const pending = approvePending || feedbackPending || holdPending || rejectPending;
-  const error = approveState.error || feedbackState.error || holdState.error || rejectState.error;
+  const pending =
+    approvePending ||
+    fastTrackPending ||
+    feedbackPending ||
+    holdPending ||
+    rejectPending;
+  const error =
+    approveState.error ||
+    fastTrackState.error ||
+    feedbackState.error ||
+    holdState.error ||
+    rejectState.error;
 
   const successState = approveState.success
     ? approveState
@@ -173,7 +190,8 @@ export function ValidationApprovalPanel({
         </h3>
         <p className="mx-auto mt-1 max-w-md text-xs text-muted">
           The business case has been submitted. Leadership will review and
-          approve, reject, or send feedback.
+          approve to Scoping, send it to Fast-Track, send feedback, put it on
+          hold, or reject.
         </p>
       </div>
     );
@@ -188,8 +206,8 @@ export function ValidationApprovalPanel({
         Business Case Review
       </h3>
       <p className="mx-auto mt-1 max-w-md text-xs text-muted">
-        Admin-only: approve to advance to Scoping, reject, or send feedback so
-        the creator can revise and resubmit.
+        Admin-only: approve to advance to Scoping, send to Fast-Track, reject,
+        or send feedback so the creator can revise and resubmit.
       </p>
 
       {error && (
@@ -219,6 +237,14 @@ export function ValidationApprovalPanel({
           </button>
           <button
             type="button"
+            onClick={() => setSelectedAction("fast-track")}
+            className="inline-flex items-center gap-2 border border-bbb bg-bbb/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-bbb transition-colors hover:bg-bbb/20"
+          >
+            <Rocket className="size-3.5" />
+            Fast-Track
+          </button>
+          <button
+            type="button"
             onClick={() => setSelectedAction("hold")}
             className="inline-flex items-center gap-2 border border-hn bg-hn/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-hn transition-colors hover:bg-hn/20"
           >
@@ -241,14 +267,23 @@ export function ValidationApprovalPanel({
           action={
             selectedAction === "approve"
               ? approveAction
-              : selectedAction === "feedback"
-                ? feedbackAction
-                : selectedAction === "hold"
-                  ? holdAction
-                  : rejectAction
+              : selectedAction === "fast-track"
+                ? fastTrackAction
+                : selectedAction === "feedback"
+                  ? feedbackAction
+                  : selectedAction === "hold"
+                    ? holdAction
+                    : rejectAction
           }
           className="mx-auto mt-4 max-w-md space-y-3 text-left"
         >
+          {selectedAction === "fast-track" && (
+            <p className="text-xs leading-relaxed text-muted">
+              Fast-Track skips the rest of the pipeline. A task is created on
+              the Fast Track Jira board for a quick fix that one or two people
+              can finish in about a day.
+            </p>
+          )}
           <label className="block">
             <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
               Remark
@@ -260,7 +295,9 @@ export function ValidationApprovalPanel({
               placeholder={
                 selectedAction === "feedback"
                   ? "Explain what needs to change before resubmission…"
-                  : "Explain the reasoning behind this decision…"
+                  : selectedAction === "fast-track"
+                    ? "Why is this a Fast-Track — quick fix, few people, about a day of work…"
+                    : "Explain the reasoning behind this decision…"
               }
             />
           </label>
@@ -272,11 +309,13 @@ export function ValidationApprovalPanel({
                 "group relative inline-flex items-center gap-2 overflow-hidden border px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-50",
                 selectedAction === "approve"
                   ? "border-success bg-success text-background"
-                  : selectedAction === "feedback"
-                    ? "border-feedback bg-feedback text-background"
-                    : selectedAction === "hold"
-                      ? "border-hn bg-hn text-background"
-                      : "border-danger bg-danger text-background",
+                  : selectedAction === "fast-track"
+                    ? "border-bbb bg-bbb text-background"
+                    : selectedAction === "feedback"
+                      ? "border-feedback bg-feedback text-background"
+                      : selectedAction === "hold"
+                        ? "border-hn bg-hn text-background"
+                        : "border-danger bg-danger text-background",
               ].join(" ")}
             >
               <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />
@@ -285,11 +324,13 @@ export function ValidationApprovalPanel({
                   ? "Processing…"
                   : selectedAction === "approve"
                     ? "Confirm Approval"
-                    : selectedAction === "feedback"
-                      ? "Send Feedback"
-                      : selectedAction === "hold"
-                        ? "Confirm On Hold"
-                        : "Confirm Rejection"}
+                    : selectedAction === "fast-track"
+                      ? "Send to Fast-Track"
+                      : selectedAction === "feedback"
+                        ? "Send Feedback"
+                        : selectedAction === "hold"
+                          ? "Confirm On Hold"
+                          : "Confirm Rejection"}
               </span>
             </button>
             <button

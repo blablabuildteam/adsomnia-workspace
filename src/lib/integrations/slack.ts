@@ -1,4 +1,5 @@
 import { WebClient, LogLevel } from "@slack/web-api";
+import type { KnownBlock } from "@slack/types";
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { slackUserLinks, slackWorkspaces } from "@/db/schema";
@@ -27,6 +28,15 @@ export type SlackChannelBookmark = {
   title: string;
   link: string;
   emoji?: string;
+};
+
+export type SlackChannelWelcome = {
+  ticketId: string;
+  title: string;
+  summary?: string | null;
+  workstreamUrl?: string | null;
+  driveUrl?: string | null;
+  jiraUrl?: string | null;
 };
 
 export type CreateChannelResult = {
@@ -310,6 +320,101 @@ export async function exchangeOAuthCode(
   };
 }
 
+function escapeMrkdwn(value: string): string {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+function truncateWelcome(value: string, max: number): string {
+  const text = value.replace(/\s+/g, " ").trim();
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1).trimEnd()}…`;
+}
+
+function buildWelcomeMessage(welcome: SlackChannelWelcome): {
+  text: string;
+  blocks: KnownBlock[];
+} {
+  const heading = truncateWelcome(
+    `${welcome.ticketId} — ${welcome.title}`,
+    150,
+  );
+  const summary = welcome.summary?.trim()
+    ? truncateWelcome(welcome.summary, 500)
+    : null;
+
+  const blocks: KnownBlock[] = [
+    {
+      type: "header",
+      text: { type: "plain_text", text: heading, emoji: false },
+    },
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `This is the project channel for *${escapeMrkdwn(welcome.ticketId)} — ${escapeMrkdwn(welcome.title)}*.\nPlease read the workstream briefing before kickoff so everyone is aligned.`,
+      },
+    },
+  ];
+
+  if (summary) {
+    blocks.push({
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `*Quick summary*\n>${escapeMrkdwn(summary)}`,
+      },
+    });
+  }
+
+  const buttons: Array<{
+    type: "button";
+    text: { type: "plain_text"; text: string };
+    url: string;
+  }> = [];
+  if (welcome.workstreamUrl) {
+    buttons.push({
+      type: "button",
+      text: { type: "plain_text", text: `Open ${welcome.ticketId}` },
+      url: welcome.workstreamUrl,
+    });
+  }
+  if (welcome.driveUrl) {
+    buttons.push({
+      type: "button",
+      text: { type: "plain_text", text: "Google Drive" },
+      url: welcome.driveUrl,
+    });
+  }
+  if (welcome.jiraUrl) {
+    buttons.push({
+      type: "button",
+      text: { type: "plain_text", text: "Jira" },
+      url: welcome.jiraUrl,
+    });
+  }
+  if (buttons.length > 0) {
+    blocks.push({ type: "actions", elements: buttons });
+  }
+
+  const links = [
+    welcome.workstreamUrl
+      ? `${welcome.ticketId}: ${welcome.workstreamUrl}`
+      : null,
+    welcome.driveUrl ? `Google Drive: ${welcome.driveUrl}` : null,
+    welcome.jiraUrl ? `Jira: ${welcome.jiraUrl}` : null,
+  ].filter(Boolean);
+  const text = [
+    heading,
+    "Please read the workstream briefing before kickoff so everyone is aligned.",
+    summary,
+    ...links,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return { text, blocks };
+}
+
 async function addChannelBookmarks(
   client: WebClient,
   channelId: string,
@@ -355,6 +460,7 @@ export async function createChannel(opts: {
   /** Adsomnia user creating the channel — invited via their linked Slack id. */
   adsomniaUserId: string;
   bookmarks?: SlackChannelBookmark[];
+  welcome?: SlackChannelWelcome;
 }): Promise<CreateChannelResult> {
   const workspace = await getWorkspace(opts.teamId);
   if (!workspace) {
@@ -427,9 +533,18 @@ export async function createChannel(opts: {
     }
 
     try {
+      const welcome = opts.welcome
+        ? buildWelcomeMessage(opts.welcome)
+        : {
+            text: `Channel created from Adsomnia Workspace for project coordination.`,
+            blocks: undefined,
+          };
       await client.chat.postMessage({
         channel: channelId,
-        text: `Channel created from Adsomnia Workspace for project coordination.`,
+        text: welcome.text,
+        ...(welcome.blocks ? { blocks: welcome.blocks } : {}),
+        unfurl_links: false,
+        unfurl_media: false,
       });
     } catch {
       // Welcome post is optional; channel create already succeeded.

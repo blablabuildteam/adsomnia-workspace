@@ -7,11 +7,16 @@ import { activityLog, initiatives } from "@/db/schema";
 import {
   getInstanceLabel,
   getJiraProject,
-  resolveJiraSpaceForLeadParty,
+  resolveJiraSpaceFromUrl,
 } from "@/lib/integrations/jira";
 import { canViewInitiative } from "@/lib/permissions";
-import { isTrackedLeadParty } from "@/lib/production/health";
 import {
+  isTrackedLeadParty,
+  type ProductionTask,
+} from "@/lib/production/health";
+import {
+  clearProductionJiraCache,
+  getProductionEpicTasks,
   getProductionJourney,
   type JourneyStage,
 } from "@/lib/production/load";
@@ -25,13 +30,16 @@ import {
   createManualProductionSetupData,
   normalizeUrl,
   PRIORITY_LEVELS,
+  type OnboardingData,
   type PriorityLevel,
   type ScopingData,
+  type SetupData,
 } from "@/lib/validation-data";
 
 export async function refreshProductionOverview() {
   const user = await getCurrentUser();
   if (!user) return;
+  clearProductionJiraCache();
   revalidatePath("/pipeline/production");
   revalidatePath("/report");
 }
@@ -50,6 +58,15 @@ export async function loadProductionJourney(
 
   if (!existing || !canViewInitiative(user, existing)) return [];
   return getProductionJourney(initiativeId);
+}
+
+export async function loadProductionEpicTasks(initiativeId: number): Promise<{
+  byEpic: Record<string, ProductionTask[]>;
+  error?: string;
+}> {
+  const user = await getCurrentUser();
+  if (!user) return { byEpic: {}, error: "Sign in to load tickets." };
+  return getProductionEpicTasks(user, initiativeId);
 }
 
 export type ArchiveResult = { error?: string; success?: boolean };
@@ -216,7 +233,7 @@ export async function createManualProductionProject(
     return { error: "A valid Jira space URL is required." };
   }
 
-  const resolved = resolveJiraSpaceForLeadParty(jiraUrl, leadParty);
+  const resolved = resolveJiraSpaceFromUrl(jiraUrl);
   if (!resolved.ok) {
     return { error: resolved.error };
   }
@@ -313,4 +330,110 @@ export async function createManualProductionProject(
   revalidatePath("/overview");
   revalidatePath("/dashboard");
   return { id: created.id };
+}
+
+export type ProductionToolKind = "slack" | "drive";
+
+export async function linkProductionTool(
+  initiativeId: number,
+  kind: ProductionToolKind,
+  rawUrl: string,
+): Promise<{ error?: string }> {
+  const user = await getCurrentUser();
+  if (!user || !canAddProductionProject(user)) {
+    return { error: "Only leadership can link Slack or Drive on Production." };
+  }
+
+  const href = normalizeUrl(rawUrl);
+  if (!href) {
+    return { error: "Paste a valid URL." };
+  }
+
+  if (kind === "drive") {
+    const host = new URL(href).hostname.toLowerCase();
+    if (!host.includes("google.com") && !host.includes("googleusercontent.com")) {
+      return { error: "Drive must be a Google Drive or Docs URL." };
+    }
+  }
+
+  if (kind === "slack") {
+    const host = new URL(href).hostname.toLowerCase();
+    if (!host.includes("slack.com")) {
+      return { error: "Slack must be a slack.com URL." };
+    }
+  }
+
+  const [row] = await db
+    .select({
+      currentStage: initiatives.currentStage,
+      setupData: initiatives.setupData,
+      onboardingData: initiatives.onboardingData,
+    })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
+  if (!row) return { error: "Project not found." };
+  if (row.currentStage !== "production") {
+    return { error: "This workstream is not in Production." };
+  }
+
+  const now = new Date().toISOString();
+  const setup = (row.setupData as SetupData | null) ?? ({} as SetupData);
+  const onboarding = (row.onboardingData as OnboardingData | null) ?? null;
+  const patch: {
+    setupData: SetupData;
+    onboardingData?: OnboardingData;
+    updatedAt: Date;
+  } = {
+    setupData: setup,
+    updatedAt: new Date(),
+  };
+
+  if (kind === "drive") {
+    patch.setupData = {
+      ...setup,
+      drive: {
+        ...setup.drive,
+        status: "completed",
+        suggestedName: setup.drive?.suggestedName ?? "",
+        driveUrl: href,
+        completedAt: now,
+      },
+    };
+  } else {
+    const channelName =
+      setup.slack?.channelName?.replace(/^#/, "") || undefined;
+    patch.setupData = {
+      ...setup,
+      slack: {
+        ...setup.slack,
+        status: "completed",
+        suggestedName: setup.slack?.suggestedName ?? "",
+        channelName,
+        channelUrl: href,
+        completedAt: now,
+      },
+    };
+    if (onboarding) {
+      patch.onboardingData = {
+        ...onboarding,
+        links: {
+          ...(onboarding.links ?? {}),
+          slackChannelUrl: href,
+        },
+      };
+    }
+  }
+
+  await db
+    .update(initiatives)
+    .set(patch)
+    .where(eq(initiatives.id, initiativeId));
+
+  revalidatePath("/pipeline/production");
+  revalidatePath("/report");
+  revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/dashboard");
+  return {};
 }

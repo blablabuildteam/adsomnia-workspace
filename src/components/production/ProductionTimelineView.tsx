@@ -21,6 +21,7 @@ import {
   type ProductionEpic,
   type ProductionProject,
 } from "@/lib/production/health";
+import { useProductionEpicTasks } from "@/components/production/useProductionEpicTasks";
 
 const DAY_MS = 86_400_000;
 const PAD_DAYS = 7;
@@ -76,6 +77,7 @@ function leftPct(ms: number, range: { start: number; span: number }) {
 }
 
 type HoverState = {
+  projectId: number;
   epic: ProductionEpic;
   anchor: { top: number; bottom: number; left: number; width: number };
 };
@@ -92,6 +94,11 @@ function EpicHoverCard({
   onKeep: () => void;
   onLeave: () => void;
 }) {
+  const { tasksByEpic, loading: tasksLoading } = useProductionEpicTasks(
+    hover.projectId,
+    true,
+  );
+  const ticketList = tasksByEpic?.[hover.epic.key] ?? hover.epic.tasks ?? [];
   const cardRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({
     top: hover.anchor.top,
@@ -134,7 +141,7 @@ function EpicHoverCard({
     }
 
     setPos({ top, left, maxHeight, ready: true });
-  }, [hover.epic.key, hover.anchor]);
+  }, [hover.epic.key, hover.anchor, ticketList.length, tasksLoading]);
 
   return createPortal(
     <div
@@ -213,12 +220,16 @@ function EpicHoverCard({
             </p>
           </div>
         </div>
-        {hover.epic.tasks.length > 0 && (
+        {tasksLoading && ticketList.length === 0 && hover.epic.total > 0 ? (
+          <p className="mt-3 border-t border-border pt-2.5 text-[12px] text-muted">
+            Loading tickets…
+          </p>
+        ) : ticketList.length > 0 ? (
           <EpicTicketGroups
-            tasks={hover.epic.tasks}
+            tasks={ticketList}
             className="mt-3 space-y-3 border-t border-border pt-2.5"
           />
-        )}
+        ) : null}
       </div>
     </div>,
     document.body,
@@ -242,10 +253,15 @@ export function ProductionTimelineView({ projects, onOpen }: Props) {
     }
   }
 
-  function showHover(epic: ProductionEpic, event: MouseEvent<HTMLElement>) {
+  function showHover(
+    projectId: number,
+    epic: ProductionEpic,
+    event: MouseEvent<HTMLElement>,
+  ) {
     clearHide();
     const rect = event.currentTarget.getBoundingClientRect();
     setHover({
+      projectId,
       epic,
       anchor: {
         top: rect.top,
@@ -411,7 +427,9 @@ export function ProductionTimelineView({ projects, onOpen }: Props) {
                             borderColor: "transparent",
                             backgroundColor: `${STATUS_COLORS.open}40`,
                           }}
-                          onMouseEnter={(event) => showHover(epic, event)}
+                          onMouseEnter={(event) =>
+                            showHover(project.id, epic, event)
+                          }
                           onMouseLeave={scheduleHide}
                         >
                           <span

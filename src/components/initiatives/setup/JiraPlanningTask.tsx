@@ -3,7 +3,7 @@
 import { ExternalLink } from "lucide-react";
 import { getStageColor } from "@/data/workflow";
 import type { JiraPlanningData, ScopingMilestone } from "@/lib/validation-data";
-import { JIRA_EPIC_COLOR_HEX, isJiraEpicColor } from "@/lib/integrations/jira-plan";
+import { JIRA_EPIC_COLOR_HEX, isJiraEpicColor, toJiraSoftwareProjectListUrl } from "@/lib/integrations/jira-plan";
 import { CompletedLine, ConfirmRow } from "../onboarding/ConfirmRow";
 
 const ACCENT = getStageColor("setup");
@@ -64,7 +64,7 @@ export function JiraPlanningTask({
         </p>
         {boardUrl && (
           <a
-            href={boardUrl}
+            href={toJiraSoftwareProjectListUrl(boardUrl)}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex shrink-0 items-center gap-1.5 border border-info/30 bg-info/10 px-3 py-2 text-xs text-info hover:bg-info/20"

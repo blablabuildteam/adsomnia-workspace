@@ -7,6 +7,7 @@ import {
 import { useState, type CSSProperties } from "react";
 import { PARTIES } from "@/data/workflow";
 import { MilestoneGantt } from "./MilestoneGantt";
+import { AttachmentChip } from "./AttachmentZone";
 import { formatEuro, summarizeTeamCost } from "@/data/role-rates";
 import type { InitiativeWithUsers } from "@/lib/queries";
 import {
@@ -19,9 +20,11 @@ import {
   impactScoreLabel,
   isBusinessValueData,
   parseImpactScore,
+  type Attachment,
   type SetupData,
   type ValidationData,
 } from "@/lib/validation-data";
+import { toJiraSoftwareProjectListUrl } from "@/lib/integrations/jira-plan";
 
 /** Gray → white. Higher scores read brighter. */
 function scoreTone(score: number, max = IMPACT_MAX): string {
@@ -223,8 +226,32 @@ function ToolChip({
   return <span className={cls}>{inner}</span>;
 }
 
+function collectFunnelAttachments(
+  initiative: InitiativeWithUsers,
+  workstreamAttachments: Attachment[],
+): Attachment[] {
+  const setup = initiative.setupData as SetupData | null;
+  const pooled = [
+    ...(initiative.validationData?.attachments ?? []),
+    ...(initiative.scopingData?.attachments ?? []),
+    ...(setup?.documentation?.linkedDocs ?? []),
+    ...workstreamAttachments,
+  ];
+
+  const seen = new Set<string>();
+  const unique: Attachment[] = [];
+  for (const item of pooled) {
+    const key = item.url?.trim() || `id:${item.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(item);
+  }
+  return unique;
+}
+
 type Props = {
   initiative: InitiativeWithUsers;
+  attachments?: Attachment[];
   goDate?: Date | null;
   goApprover?: string | null;
   className?: string;
@@ -233,6 +260,7 @@ type Props = {
 
 export function DetailsQuickView({
   initiative,
+  attachments = [],
   goDate,
   goApprover,
   className,
@@ -284,10 +312,14 @@ export function DetailsQuickView({
 
   const slackName = setup?.slack.channelName;
   const jiraName = setup?.jira.projectName;
-  const jiraUrl = setup?.jira.boardUrl || setup?.jira.projectUrl;
+  const jiraUrl = toJiraSoftwareProjectListUrl(
+    setup?.jira.boardUrl || setup?.jira.projectUrl,
+    setup?.jira.projectKey,
+  );
   const driveName = setup?.drive.driveName;
   const driveUrl = setup?.drive.driveUrl;
   const hasTools = hasSetup && !!(slackName || jiraUrl || driveUrl);
+  const funnelAttachments = collectFunnelAttachments(initiative, attachments);
 
   const hasTimeline =
     hasScoping &&
@@ -395,6 +427,23 @@ export function DetailsQuickView({
               href={driveUrl}
             />
           )}
+        </div>
+      )}
+
+      {funnelAttachments.length > 0 && (
+        <div className="border-t border-foreground/10 py-3">
+          <span className="font-display text-[9px] font-bold uppercase tracking-[0.25em] text-foreground/30">
+            Attachments
+          </span>
+          <div className="mt-2.5 grid gap-1.5 sm:grid-cols-2">
+            {funnelAttachments.map((attachment) => (
+              <AttachmentChip
+                key={attachment.id}
+                attachment={attachment}
+                readOnly
+              />
+            ))}
+          </div>
         </div>
       )}
 

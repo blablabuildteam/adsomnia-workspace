@@ -28,6 +28,35 @@ export function clampJiraProjectName(name: string): string {
   return name.trim().slice(0, JIRA_PROJECT_NAME_MAX);
 }
 
+/** Ranked software-project list (Jira Cloud `cf[10019]`). */
+export function jiraSoftwareProjectListUrl(
+  origin: string,
+  projectKey: string,
+): string {
+  const host = origin.replace(/\/$/, "");
+  const key = projectKey.trim().toUpperCase();
+  const jql = `project = ${key} ORDER BY cf[10019] ASC`;
+  return `${host}/jira/software/projects/${key}/list?jql=${encodeURIComponent(jql)}`;
+}
+
+/** Rewrite a stored board/project URL to the ranked list view. */
+export function toJiraSoftwareProjectListUrl(
+  boardUrl: string | undefined,
+  projectKey?: string | null,
+): string | undefined {
+  if (!boardUrl) return undefined;
+  try {
+    const url = new URL(boardUrl);
+    const key =
+      projectKey?.trim() ||
+      url.pathname.match(/\/projects\/([^/]+)/i)?.[1];
+    if (!key) return boardUrl;
+    return jiraSoftwareProjectListUrl(url.origin, key);
+  } catch {
+    return boardUrl;
+  }
+}
+
 export function validateJiraProjectName(name: string): string | null {
   const trimmed = name.trim();
   if (trimmed.length < JIRA_PROJECT_NAME_MIN) {

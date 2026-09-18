@@ -492,6 +492,7 @@ function renderTaskContent(
             setupData.jira.boardUrl ||
             setupData.jira.projectUrl
           }
+          jiraProjectKey={setupData.jira.projectKey}
           readOnly={readOnly}
           onComplete={() => ctx.onComplete("invite-team", {})}
         />

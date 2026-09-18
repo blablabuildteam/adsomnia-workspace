@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import {
   loadProductionJourney,
+  linkProductionTool,
   setProductionArchived,
   updateProductionConsensusPriority,
 } from "@/app/(workspace)/pipeline/production/actions";
@@ -28,6 +29,7 @@ import {
   StatusFillBar,
 } from "@/components/production/epic-tickets";
 import { getPartyInk, getStageColor, PARTIES, STAGES } from "@/data/workflow";
+import { inputClass } from "@/lib/form-styles";
 import {
   formatShortDate,
   HEALTH_META,
@@ -35,6 +37,7 @@ import {
   type ProductionProject,
 } from "@/lib/production/health";
 import type { JourneyStage } from "@/lib/production/load";
+import { useProductionEpicTasks } from "@/components/production/useProductionEpicTasks";
 import {
   PRIORITY_META,
   PRIORITY_OPTIONS,
@@ -78,12 +81,12 @@ function ToolIcon({
   logo,
   label,
   href,
-  present,
+  onAdd,
 }: {
   logo: string;
   label: string;
   href?: string;
-  present?: boolean;
+  onAdd?: () => void;
 }) {
   const icon = (
     // eslint-disable-next-line @next/next/no-img-element
@@ -105,15 +108,17 @@ function ToolIcon({
     );
   }
 
-  if (present) {
+  if (onAdd) {
     return (
-      <span
-        title={label}
-        aria-label={label}
-        className="inline-flex size-8 items-center justify-center border border-border text-foreground"
+      <button
+        type="button"
+        onClick={onAdd}
+        title={`Add ${label}`}
+        aria-label={`Add ${label}`}
+        className="inline-flex size-8 items-center justify-center border border-dashed border-border text-foreground opacity-40 transition-opacity hover:border-foreground hover:opacity-100"
       >
         {icon}
-      </span>
+      </button>
     );
   }
 
@@ -128,9 +133,19 @@ function ToolIcon({
   );
 }
 
-function EpicRow({ epic }: { epic: ProductionEpic }) {
+function EpicRow({
+  epic,
+  tasks,
+  tasksLoading,
+}: {
+  epic: ProductionEpic;
+  tasks?: ProductionEpic["tasks"];
+  tasksLoading?: boolean;
+}) {
   const [ticketsOpen, setTicketsOpen] = useState(true);
   const openCount = Math.max(epic.total - epic.done - epic.inProgress, 0);
+  const ticketList = tasks ?? epic.tasks ?? [];
+  const showTickets = epic.total > 0 || ticketList.length > 0;
 
   return (
     <div className="border border-border bg-hover px-3 py-3">
@@ -219,7 +234,7 @@ function EpicRow({ epic }: { epic: ProductionEpic }) {
           </p>
         )}
 
-      {epic.tasks.length > 0 && (
+      {showTickets && (
         <div className="mt-3 border-t border-border pt-2.5">
           <button
             type="button"
@@ -228,7 +243,9 @@ function EpicRow({ epic }: { epic: ProductionEpic }) {
           >
             <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
               Tickets
-              <span className="ml-1.5 tabular-nums">{epic.tasks.length}</span>
+              <span className="ml-1.5 tabular-nums">
+                {ticketList.length || epic.total}
+              </span>
             </span>
             <ChevronDown
               className={[
@@ -238,10 +255,14 @@ function EpicRow({ epic }: { epic: ProductionEpic }) {
             />
           </button>
           {ticketsOpen && (
-            <EpicTicketGroups
-              tasks={epic.tasks}
-              className="mt-2.5 max-h-72 space-y-3 overflow-y-auto pr-1"
-            />
+            tasksLoading && ticketList.length === 0 ? (
+              <p className="mt-2.5 text-[12px] text-muted">Loading tickets…</p>
+            ) : (
+              <EpicTicketGroups
+                tasks={ticketList}
+                className="mt-2.5 max-h-72 space-y-3 overflow-y-auto pr-1"
+              />
+            )
           )}
         </div>
       )}
@@ -324,18 +345,22 @@ type Props = {
   project: ProductionProject | null;
   canArchive: boolean;
   canAdjustPriority: boolean;
+  canEditTools?: boolean;
   onClose: () => void;
   onArchived: () => void;
   onPriorityUpdated: () => void;
+  onToolsUpdated?: () => void;
 };
 
 export function ProductionDetailDrawer({
   project,
   canArchive,
   canAdjustPriority,
+  canEditTools = false,
   onClose,
   onArchived,
   onPriorityUpdated,
+  onToolsUpdated,
 }: Props) {
   const [journey, setJourney] = useState<JourneyStage[] | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -345,11 +370,24 @@ export function ProductionDetailDrawer({
   const [priority, setPriority] = useState<string | undefined>(undefined);
   const [priorityError, setPriorityError] = useState<string | null>(null);
   const [priorityPending, startPriority] = useTransition();
+  const [addingTool, setAddingTool] = useState<"slack" | "drive" | null>(null);
+  const [toolUrl, setToolUrl] = useState("");
+  const [toolError, setToolError] = useState<string | null>(null);
+  const [toolPending, startTool] = useTransition();
+  const { tasksByEpic, loading: tasksLoading } = useProductionEpicTasks(
+    project?.id ?? null,
+    Boolean(project),
+  );
 
   useEffect(() => {
     if (!project) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      if (addingTool) {
+        setAddingTool(null);
+        setToolError(null);
+        return;
+      }
       if (confirmArchive) {
         setConfirmArchive(false);
         return;
@@ -362,7 +400,7 @@ export function ProductionDetailDrawer({
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
-  }, [project, onClose, confirmArchive]);
+  }, [project, onClose, confirmArchive, addingTool]);
 
   useEffect(() => {
     if (!project) {
@@ -381,6 +419,9 @@ export function ProductionDetailDrawer({
   setArchiveError(null);
   setPriority(project.brief.consensusPriority);
   setPriorityError(null);
+  setAddingTool(null);
+  setToolUrl("");
+  setToolError(null);
     if (!project.addedManually) {
       loadProductionJourney(project.id).then((rows) => {
         if (!cancelled) setJourney(rows);
@@ -509,22 +550,97 @@ export function ProductionDetailDrawer({
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {TOOL_ORDER.map((tool) => {
               const linked = project.tools[tool.key];
+              const canAdd =
+                canEditTools &&
+                !linked?.href &&
+                (tool.key === "slack" || tool.key === "drive");
               return (
                 <ToolIcon
                   key={tool.key}
                   logo={tool.logo}
                   label={linked?.label ?? tool.fallback}
                   href={linked?.href}
-                  present={Boolean(linked)}
+                  onAdd={
+                    canAdd
+                      ? () => {
+                          setAddingTool((current) =>
+                            current === tool.key ? null : tool.key,
+                          );
+                          setToolUrl("");
+                          setToolError(null);
+                        }
+                      : undefined
+                  }
                 />
               );
             })}
-            {project.tools.slack?.label && !project.tools.slack.href && (
-              <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                {project.tools.slack.label}
-              </span>
-            )}
           </div>
+          {addingTool && (
+            <form
+              className="mt-3 space-y-2 border border-border bg-hover px-3 py-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!project) return;
+                setToolError(null);
+                startTool(async () => {
+                  const result = await linkProductionTool(
+                    project.id,
+                    addingTool,
+                    toolUrl,
+                  );
+                  if (result.error) {
+                    setToolError(result.error);
+                    return;
+                  }
+                  setAddingTool(null);
+                  setToolUrl("");
+                  onToolsUpdated?.();
+                });
+              }}
+            >
+              <label className="block">
+                <span className="mb-1.5 block font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+                  {addingTool === "slack" ? "Slack channel URL" : "Google Drive URL"}
+                </span>
+                <input
+                  type="url"
+                  value={toolUrl}
+                  onChange={(event) => setToolUrl(event.target.value)}
+                  placeholder={
+                    addingTool === "slack"
+                      ? "https://….slack.com/archives/…"
+                      : "https://drive.google.com/…"
+                  }
+                  className={inputClass}
+                  autoFocus
+                />
+              </label>
+              {toolError && (
+                <p className="text-[11px] text-danger">{toolError}</p>
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddingTool(null);
+                    setToolUrl("");
+                    setToolError(null);
+                  }}
+                  disabled={toolPending}
+                  className="border border-border px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-wide text-muted hover:text-foreground disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={toolPending}
+                  className="border border-foreground bg-foreground px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-wide text-background disabled:opacity-50"
+                >
+                  {toolPending ? "Saving…" : "Save link"}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-5">
@@ -539,7 +655,12 @@ export function ProductionDetailDrawer({
             ) : (
               <div className="space-y-2">
                 {project.epics.map((epic) => (
-                  <EpicRow key={epic.key} epic={epic} />
+                  <EpicRow
+                    key={epic.key}
+                    epic={epic}
+                    tasks={tasksByEpic?.[epic.key]}
+                    tasksLoading={tasksLoading}
+                  />
                 ))}
               </div>
             )}
@@ -615,13 +736,15 @@ export function ProductionDetailDrawer({
                 </ol>
               </>
             )}
-            <Link
-              href={`/workstreams/${project.id}`}
-              className="mt-5 inline-flex w-full items-center justify-center gap-2 border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90"
-            >
-              Open full workstream
-              <ArrowUpRight className="size-3.5" />
-            </Link>
+            {!project.addedManually && (
+              <Link
+                href={`/workstreams/${project.id}`}
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90"
+              >
+                Open full workstream
+                <ArrowUpRight className="size-3.5" />
+              </Link>
+            )}
             {canArchive && (
               <button
                 type="button"
@@ -629,7 +752,10 @@ export function ProductionDetailDrawer({
                   archived ? runArchive(false) : setConfirmArchive(true)
                 }
                 disabled={archiving}
-                className="mt-2 inline-flex w-full items-center justify-center gap-2 border border-border px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-muted transition-colors hover:border-foreground hover:text-foreground disabled:opacity-50"
+                className={[
+                  "inline-flex w-full items-center justify-center gap-2 border border-border px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-muted transition-colors hover:border-foreground hover:text-foreground disabled:opacity-50",
+                  project.addedManually ? "mt-5" : "mt-2",
+                ].join(" ")}
               >
                 {archived ? (
                   <>

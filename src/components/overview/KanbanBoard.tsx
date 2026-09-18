@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { STAGES, getStageColor } from "@/data/workflow";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import type { InitiativeWithUsers } from "@/lib/queries";
+import { dashboardItemHref } from "@/components/dashboard/shared";
 
 const hoverTicks =
   "opacity-0 transition-opacity duration-300 group-hover:opacity-100";
@@ -41,7 +42,7 @@ function StatusBadge({ status }: { status: string }) {
 function InitiativeCard({ initiative }: { initiative: InitiativeWithUsers }) {
   return (
     <Link
-      href={`/workstreams/${initiative.id}`}
+      href={dashboardItemHref(initiative)}
       className="group relative block border border-border bg-surface-elevated p-3 transition-colors hover:border-border-strong hover:bg-hover-strong"
     >
       <CornerTicks className={hoverTicks} />

@@ -25,6 +25,7 @@ import {
   type JiraEpicColor,
   milestonesToEpicSeeds,
   ticketIdToProjectKeyHint,
+  toJiraSoftwareProjectListUrl,
   validateJiraProjectName,
 } from "@/lib/integrations/jira-plan";
 
@@ -344,7 +345,10 @@ export function JiraSetupTask({
             )}
             {savedUrl && (
               <a
-                href={view.boardUrl || savedUrl}
+                href={toJiraSoftwareProjectListUrl(
+                  view.boardUrl || savedUrl,
+                  view.projectKey,
+                )}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-info hover:underline"
