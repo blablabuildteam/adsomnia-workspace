@@ -135,7 +135,7 @@ export function LeadershipDashboard({
       <section className="mb-10">
         <SectionHeading
           kicker="All phases"
-          trailing={<KanbanFullscreen initiatives={rawItems} />}
+          trailing={<KanbanFullscreen initiatives={items} />}
         >
           Pipeline
         </SectionHeading>

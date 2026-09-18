@@ -28,12 +28,13 @@ const hoverTicks =
 const stage = STAGES.find((s) => s.id === "go-nogo")!;
 const stageColor = getStageColor("go-nogo");
 
-type FilterKey = "all" | "awaiting" | "feedback" | "approved" | "rejected";
+type FilterKey = "all" | "awaiting" | "feedback" | "on-hold" | "approved" | "rejected";
 
 const FILTERS: { key: FilterKey; label: string; color: string }[] = [
   { key: "all", label: "All", color: "var(--foreground)" },
   { key: "awaiting", label: "Awaiting Decision", color: "var(--info)" },
   { key: "feedback", label: "Feedback", color: "var(--feedback)" },
+  { key: "on-hold", label: "On Hold", color: "var(--hn-ink)" },
   { key: "approved", label: "GO", color: "var(--success)" },
   { key: "rejected", label: "NO-GO", color: "var(--danger)" },
 ];
@@ -45,6 +46,7 @@ function getEffectiveStatus(
 ): Exclude<FilterKey, "all"> {
   if (status === "rejected") return "rejected";
   if (status === "approved") return "approved";
+  if (status === "on-hold") return "on-hold";
   if (status === "draft" || feedbackSet.has(id)) return "feedback";
   return "awaiting";
 }
@@ -440,6 +442,9 @@ export function GoNoGoStageView({ initiatives, feedbackIds = [] }: Props) {
     ).length,
     feedback: inStage.filter(
       (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "feedback",
+    ).length,
+    "on-hold": inStage.filter(
+      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "on-hold",
     ).length,
     approved: inStage.filter(
       (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "approved",

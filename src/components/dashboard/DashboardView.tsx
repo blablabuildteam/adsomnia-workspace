@@ -1,5 +1,6 @@
 import { LeadershipDashboard } from "@/components/dashboard/LeadershipDashboard";
 import { TeamDashboard } from "@/components/dashboard/TeamDashboard";
+import { visibleOnDashboard } from "@/lib/dashboard-attention";
 import type { FastTrackItem } from "@/lib/fast-track";
 import { isLeadership } from "@/lib/permissions";
 import type {
@@ -28,10 +29,12 @@ export function DashboardView({
   feedbackIds,
   user,
 }: DashboardProps) {
+  const active = initiatives.filter(visibleOnDashboard);
+
   if (isLeadership(user)) {
     return (
       <LeadershipDashboard
-        initiatives={initiatives}
+        initiatives={active}
         activity={activity}
         fastTrackItems={fastTrackItems}
         fastTrackError={fastTrackError}
@@ -43,7 +46,7 @@ export function DashboardView({
 
   return (
     <TeamDashboard
-      initiatives={initiatives}
+      initiatives={active}
       feedbackIds={feedbackIds}
       userId={user.id}
       firstName={user.firstName}

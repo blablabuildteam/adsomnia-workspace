@@ -282,7 +282,7 @@ Each stage gate (Validation → Scoping, Scoping → Go/No-Go, etc.) will have i
 | `SLACK_CLIENT_ID` | Server | Slack | Distributable Slack app Client ID |
 | `SLACK_CLIENT_SECRET` | Server | Slack | Distributable Slack app Client Secret |
 | `SLACK_SIGNING_SECRET` | Server | Slack | Slack signing secret (future request verification) |
-| `SLACK_NOTIFICATIONS_TEAM_ID` | Server | Slack | Home workspace `team_id` for submitter DMs |
+| `SLACK_NOTIFICATIONS_TEAM_ID` | Server | Slack | Home workspace `team_id` for owner and leadership DMs |
 | `GOOGLE_LOGIN_CLIENT_ID` | Server | Google login | Dedicated login OAuth Client ID |
 | `GOOGLE_LOGIN_CLIENT_SECRET` | Server | Google login | Dedicated login OAuth Client secret |
 | `GOOGLE_ALLOWED_DOMAINS` | Server | Google login | Comma-separated allowed email domains (`adsomnia.com`, `blablabuild.com`, `godai.nl`) |

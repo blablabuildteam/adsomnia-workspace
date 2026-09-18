@@ -2,10 +2,12 @@ import type { CSSProperties } from "react";
 import { ArrowUpRight, Check, Rocket } from "lucide-react";
 import { STAGES, getStageColor, stageInk, type WorkflowStage } from "@/data/workflow";
 import type {
+  ActivityEntry,
   InitiativeWithUsers,
   CommentEntry,
   MentionPerson,
 } from "@/lib/queries";
+import type { Attachment } from "@/lib/validation-data";
 import { ApprovalPanel, type ApprovalDecision } from "./ApprovalPanel";
 import {
   ValidationApprovalPanel,
@@ -16,6 +18,7 @@ import {
   type GoNoGoDecision,
 } from "./GoNoGoApprovalPanel";
 import { WorkstreamChat } from "./WorkstreamChat";
+import { WorkstreamAttachments } from "./WorkstreamAttachments";
 import { ValidationPhaseSection } from "./ValidationPhaseSection";
 import { ScopingPhaseSection } from "./ScopingPhaseSection";
 import { SetupPhaseSection } from "./SetupPhaseSection";
@@ -44,6 +47,26 @@ const ENTER_CLASS = "animate-card-enter";
 
 function enterStyle(delayMs: number): CSSProperties {
   return { "--enter-delay": `${delayMs}ms` } as CSSProperties;
+}
+
+type PhaseCompletion = { name: string; at: Date };
+
+function completionFromDecision(
+  decision:
+    | { decision: string; approverName: string; createdAt: Date }
+    | null
+    | undefined,
+): PhaseCompletion | null {
+  if (!decision || decision.decision !== "approved") return null;
+  return { name: decision.approverName, at: decision.createdAt };
+}
+
+function completionFromActivity(
+  activity: ActivityEntry[],
+  actions: string[],
+): PhaseCompletion | null {
+  const match = activity.find((entry) => actions.includes(entry.action));
+  return match ? { name: match.userName, at: match.createdAt } : null;
 }
 
 /** Dark fill → light label; light fill (white / volt / teal) → black label. */
@@ -129,7 +152,9 @@ function StageStepper({ currentStageId }: { currentStageId: string }) {
 type Props = {
   initiative: InitiativeWithUsers;
   comments: CommentEntry[];
+  activity?: ActivityEntry[];
   mentionablePeople?: MentionPerson[];
+  attachments?: Attachment[];
   canUserApprove: boolean;
   canComment: boolean;
   currentUserName: string;
@@ -155,7 +180,9 @@ type Props = {
 export function InitiativeDetailView({
   initiative,
   comments,
+  activity = [],
   mentionablePeople = [],
+  attachments = [],
   canUserApprove,
   canComment,
   currentUserName,
@@ -270,6 +297,10 @@ export function InitiativeDetailView({
     goNoGoIsCurrent &&
     initiative.status === "draft" &&
     goNoGoDecision?.decision === "feedback";
+  const goNoGoOnHold =
+    goNoGoIsCurrent &&
+    initiative.status === "on-hold" &&
+    goNoGoDecision?.decision === "on-hold";
 
   // ── Phase 3: Scoping
   const scopingStage = STAGES.find((s) => s.id === "scoping")!;
@@ -279,7 +310,7 @@ export function InitiativeDetailView({
     scopingIsCurrent && initiative.status === "submitted";
 
   const scopingCanResubmit =
-    goNoGoHasFeedback && (isCreator || canUserApprove);
+    (goNoGoHasFeedback || goNoGoOnHold) && (isCreator || canUserApprove);
 
   const scopingIsEditable =
     (isCreator || canUserApprove) &&
@@ -311,6 +342,9 @@ export function InitiativeDetailView({
         (goNoGoIsCurrent &&
           initiative.status === "draft" &&
           goNoGoDecision.decision === "feedback") ||
+        (goNoGoIsCurrent &&
+          initiative.status === "on-hold" &&
+          goNoGoDecision.decision === "on-hold") ||
         (currentNum > 4 && goNoGoDecision.decision === "approved")
         ? goNoGoDecision
         : null
@@ -433,6 +467,16 @@ export function InitiativeDetailView({
         />
         )}
 
+        <div className={`mb-8 ${ENTER_CLASS}`} style={enterStyle(90)}>
+          <WorkstreamAttachments
+            initiativeId={initiative.id}
+            attachments={attachments}
+            shareToken={shareToken}
+            currentUserId={currentUserId}
+            canRemove={!shareToken && Boolean(currentUserId)}
+          />
+        </div>
+
         <div id="detail-header-sentinel" aria-hidden="true" />
 
         {SHOW_PIPELINE_STEPPER && (
@@ -456,6 +500,13 @@ export function InitiativeDetailView({
                     ? "review"
                     : "current"
               }
+              completedBy={
+                completionFromDecision(displayedIdeaDecision) ??
+                completionFromActivity(activity, [
+                  "approved_to_validation",
+                  "converted_to_fast_track",
+                ])
+              }
             >
               <IdeaDetailsSection
                 initiativeId={initiative.id}
@@ -468,6 +519,7 @@ export function InitiativeDetailView({
                 }}
                 canEdit={canEditIdea}
                 canResubmit={ideaCanResubmit}
+                feedback={displayedIdeaDecision}
               />
 
               {initiative.isFastTrack && (
@@ -515,6 +567,10 @@ export function InitiativeDetailView({
                 className={ENTER_CLASS}
                 style={enterStyle(210)}
                 status={validationStatus}
+                completedBy={
+                  completionFromDecision(displayedValidationDecision) ??
+                  completionFromActivity(activity, ["validation_approved"])
+                }
               >
                 <div className="bg-surface">
                   {validationIsEditable ? (
@@ -533,6 +589,7 @@ export function InitiativeDetailView({
                       initiativeId={initiative.id}
                       data={initiative.validationData}
                       readOnly
+                      feedback={displayedValidationDecision}
                     />
                   )}
                 </div>
@@ -558,6 +615,10 @@ export function InitiativeDetailView({
                 className={ENTER_CLASS}
                 style={enterStyle(280)}
                 status={scopingStatus}
+                completedBy={completionFromActivity(activity, [
+                  "scoping_submitted",
+                  "scoping_resubmitted",
+                ])}
               >
                 <div className="bg-surface">
                   {scopingIsEditable ? (
@@ -580,6 +641,7 @@ export function InitiativeDetailView({
                       data={initiative.scopingData}
                       validationData={initiative.validationData}
                       readOnly
+                      feedback={displayedGoNoGoDecision}
                     />
                   )}
                 </div>
@@ -594,6 +656,10 @@ export function InitiativeDetailView({
                 className={ENTER_CLASS}
                 style={enterStyle(350)}
                 status={goNoGoStatus}
+                completedBy={
+                  completionFromDecision(displayedGoNoGoDecision) ??
+                  completionFromActivity(activity, ["gonogo_approved"])
+                }
               >
                 <div className="bg-surface px-4 py-5 sm:px-5">
                   <p className="text-xs text-muted">
@@ -628,6 +694,7 @@ export function InitiativeDetailView({
                       ? "ready"
                       : "current"
                 }
+                completedBy={completionFromActivity(activity, ["setup_completed"])}
               >
                 <div className="bg-surface p-4 sm:p-5">
                   <SetupPhaseSection
@@ -659,6 +726,9 @@ export function InitiativeDetailView({
                       : "current"
                 }
                 readyLabel="Ready for Production"
+                completedBy={completionFromActivity(activity, [
+                  "onboarding_completed",
+                ])}
               >
                 <div className="bg-surface p-4 sm:p-5">
                   <OnboardingPhaseSection
@@ -678,12 +748,15 @@ export function InitiativeDetailView({
         <WorkstreamChat
           initiativeId={initiative.id}
           comments={comments}
+          activity={activity}
           mentionablePeople={mentionablePeople}
           currentUserName={currentUserName}
           currentUserId={currentUserId}
           canComment={canComment}
           shareToken={shareToken}
           dockAbovePhaseBar={currentNum >= 4}
+          currentStage={initiative.currentStage}
+          isFastTrack={initiative.isFastTrack}
         />
       )}
       {!addedManually && currentNum >= 4 && currentPhaseBarStatus && (

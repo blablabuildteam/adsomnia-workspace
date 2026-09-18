@@ -3,12 +3,15 @@ import { notFound } from "next/navigation";
 import { InitiativeDetailView } from "@/components/initiatives/InitiativeDetailView";
 import type { ApprovalDecision } from "@/components/initiatives/ApprovalPanel";
 import type { ValidationDecision } from "@/components/initiatives/ValidationApprovalPanel";
+import type { GoNoGoDecision } from "@/components/initiatives/GoNoGoApprovalPanel";
 import {
   getInitiativeById,
   getApprovalHistory,
   getCommentsForInitiative,
+  getActivityForInitiative,
 } from "@/lib/queries";
 import { verifyShareToken } from "@/lib/share";
+import { listWorkstreamAttachments } from "@/lib/workstream-attachments";
 import { displayName, getCurrentUser } from "@/lib/session";
 
 type Props = {
@@ -46,48 +49,61 @@ export default async function SharedInitiativePage({ params }: Props) {
     notFound();
   }
 
-  const [user, comments] = await Promise.all([
+  const [user, comments, activity, attachments] = await Promise.all([
     getCurrentUser(),
     getCommentsForInitiative(initiative.id),
+    getActivityForInitiative(initiative.id),
+    listWorkstreamAttachments(initiative.id, token),
   ]);
 
   const approvals = await getApprovalHistory(initiative.id);
 
   const latestIdea = approvals.find((a) => a.fromStage === "idea");
-  const latestDecision: ApprovalDecision | null =
-    latestIdea && latestIdea.decision !== "feedback"
-      ? {
-          decision: latestIdea.decision,
-          comment: latestIdea.comment,
-          approverName: latestIdea.approverName,
-          createdAt: latestIdea.createdAt,
-          toStage: latestIdea.toStage,
-        }
-      : null;
+  const latestDecision: ApprovalDecision | null = latestIdea
+    ? {
+        decision: latestIdea.decision,
+        comment: latestIdea.comment,
+        approverName: latestIdea.approverName,
+        createdAt: latestIdea.createdAt,
+        toStage: latestIdea.toStage,
+      }
+    : null;
 
   const latestValidation = approvals.find((a) => a.fromStage === "validation");
-  const validationDecision: ValidationDecision | null =
-    latestValidation && latestValidation.decision !== "on-hold"
-      ? {
-          decision: latestValidation.decision,
-          comment: latestValidation.comment,
-          approverName: latestValidation.approverName,
-          createdAt: latestValidation.createdAt,
-        }
-      : null;
+  const validationDecision: ValidationDecision | null = latestValidation
+    ? {
+        decision: latestValidation.decision as ValidationDecision["decision"],
+        comment: latestValidation.comment,
+        approverName: latestValidation.approverName,
+        createdAt: latestValidation.createdAt,
+      }
+    : null;
+
+  const latestGoNoGo = approvals.find((a) => a.fromStage === "go-nogo");
+  const goNoGoDecision: GoNoGoDecision | null = latestGoNoGo
+    ? {
+        decision: latestGoNoGo.decision as GoNoGoDecision["decision"],
+        comment: latestGoNoGo.comment,
+        approverName: latestGoNoGo.approverName,
+        createdAt: latestGoNoGo.createdAt,
+      }
+    : null;
 
   return (
     <InitiativeDetailView
       initiative={initiative}
       comments={comments}
+      activity={activity}
+      attachments={attachments}
       canUserApprove={false}
       canComment
       currentUserName={user ? displayName(user) : ""}
       currentUserId={user?.id}
       showChat
-      shareToken={user ? undefined : token}
+      shareToken={token}
       latestDecision={latestDecision}
       validationDecision={validationDecision}
+      goNoGoDecision={goNoGoDecision}
       isCreator={false}
     />
   );

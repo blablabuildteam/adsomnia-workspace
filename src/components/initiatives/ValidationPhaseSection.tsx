@@ -36,7 +36,6 @@ import { CharCount } from "@/components/ui/CharCount";
 import {
   VALIDATION_FIELD_LIMITS,
   meetsFieldMin,
-  meetsOptionalFieldMin,
 } from "@/lib/field-limits";
 import {
   BUSINESS_VALUE_TYPES,
@@ -62,10 +61,10 @@ import type { Attachment } from "@/lib/validation-data";
 const initial: ValidationResult = {};
 
 const TSHIRT_OPTIONS = [
-  { value: "S", label: "S", hint: "<40h" },
-  { value: "M", label: "M", hint: "40–80h" },
-  { value: "L", label: "L", hint: "80–160h" },
-  { value: "XL", label: "XL", hint: "160h+" },
+  { value: "S", label: "S" },
+  { value: "M", label: "M" },
+  { value: "L", label: "L" },
+  { value: "XL", label: "XL" },
 ];
 
 const OTHER_PARTY_VALUE = "other";
@@ -130,7 +129,7 @@ const FIELD_HELP: Record<string, string> = {
   solutionDirection:
     "Outline the preferred high-level approach. Who owns the build? What systems are involved? No detailed design yet.",
   tShirtSize:
-    "Estimate effort: S (<40h), M (40–80h), L (80–160h), XL (160h+). Consider complexity, unknowns, and team capacity.",
+    "Estimate relative effort: S, M, L, or XL. Consider complexity, unknowns, and team capacity.",
   priority:
     "Adsomnia's own placement — not yet agreed with the lead production party. NOW = urgent/blocking. NEAR = next up. LATER = lower priority. BACKLOG = on the radar for now. Consensus is reached later in Scoping.",
   leadProductionParty:
@@ -231,6 +230,69 @@ function BusinessCaseHeader({
   );
 }
 
+function ValidationFeedbackBanner({
+  feedback,
+  resubmitCopy,
+}: {
+  feedback: ValidationDecision | null;
+  resubmitCopy: boolean;
+}) {
+  if (!feedback) return null;
+
+  if (feedback.decision === "feedback") {
+    return (
+      <div className="border border-feedback/50 bg-feedback/10 px-3 py-2.5">
+        <p className="font-display text-[10px] font-bold uppercase tracking-wide text-feedback">
+          {resubmitCopy
+            ? "Feedback from leadership — revise & resubmit"
+            : "Feedback from leadership"}
+        </p>
+        {feedback.comment && (
+          <p className="mt-1 text-xs leading-relaxed text-foreground/90">
+            “{feedback.comment}” — {feedback.approverName}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (feedback.decision === "on-hold") {
+    return (
+      <div className="border border-hn/50 bg-hn/10 px-3 py-2.5">
+        <p className="font-display text-[10px] font-bold uppercase tracking-wide text-hn">
+          {resubmitCopy
+            ? "On hold — edit & resubmit when ready"
+            : "On hold"}
+        </p>
+        {feedback.comment && (
+          <p className="mt-1 text-xs leading-relaxed text-foreground/90">
+            “{feedback.comment}” — {feedback.approverName}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (feedback.decision === "rejected") {
+    return (
+      <div className="border border-btr/50 bg-btr/10 px-3 py-2.5">
+        <p className="font-display text-[10px] font-bold uppercase tracking-wide text-btr">
+          {resubmitCopy
+            ? "Rejected — edit & resubmit to appeal"
+            : "Rejected"}
+        </p>
+        {feedback.comment && (
+          <p className="mt-1 text-xs leading-relaxed text-foreground/90">
+            “{feedback.comment}” — {feedback.approverName}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+}
+
 type Props = {
   initiativeId: number;
   data: ValidationData | null;
@@ -312,9 +374,7 @@ export function ValidationPhaseSection({
     leadPartyComplete &&
     solutionComplete &&
     tShirtSize.length > 0 &&
-    priority.length > 0 &&
-    meetsOptionalFieldMin(dependencies, VALIDATION_FIELD_LIMITS.dependencies) &&
-    meetsOptionalFieldMin(risks, VALIDATION_FIELD_LIMITS.risks);
+    priority.length > 0;
 
   function toggleBusinessValueType(type: BusinessValueType) {
     markFormDirty();
@@ -348,7 +408,7 @@ export function ValidationPhaseSection({
     return (
       <>
         <BusinessCaseHeader />
-        <ValidationReadOnly data={data} />
+        <ValidationReadOnly data={data} feedback={feedback} />
       </>
     );
   }
@@ -360,42 +420,7 @@ export function ValidationPhaseSection({
         showFormPrefill={showFormPrefill}
       />
       <div className="space-y-4 p-4">
-        {feedback?.decision === "feedback" && (
-          <div className="border border-feedback/50 bg-feedback/10 px-3 py-2.5">
-            <p className="font-display text-[10px] font-bold uppercase tracking-wide text-feedback">
-              Feedback from leadership — revise & resubmit
-            </p>
-            {feedback.comment && (
-              <p className="mt-1 text-xs leading-relaxed text-foreground/90">
-                “{feedback.comment}” — {feedback.approverName}
-              </p>
-            )}
-          </div>
-        )}
-        {feedback?.decision === "on-hold" && (
-          <div className="border border-hn/50 bg-hn/10 px-3 py-2.5">
-            <p className="font-display text-[10px] font-bold uppercase tracking-wide text-hn">
-              On hold &mdash; edit &amp; resubmit when ready
-            </p>
-            {feedback.comment && (
-              <p className="mt-1 text-xs leading-relaxed text-foreground/90">
-                &ldquo;{feedback.comment}&rdquo; &mdash; {feedback.approverName}
-              </p>
-            )}
-          </div>
-        )}
-        {feedback?.decision === "rejected" && (
-          <div className="border border-btr/50 bg-btr/10 px-3 py-2.5">
-            <p className="font-display text-[10px] font-bold uppercase tracking-wide text-btr">
-              Rejected &mdash; edit &amp; resubmit to appeal
-            </p>
-            {feedback.comment && (
-              <p className="mt-1 text-xs leading-relaxed text-foreground/90">
-                &ldquo;{feedback.comment}&rdquo; &mdash; {feedback.approverName}
-              </p>
-            )}
-          </div>
-        )}
+        <ValidationFeedbackBanner feedback={feedback} resubmitCopy />
         {error && (
           <div className="flex items-center gap-2 border border-btr/40 bg-btr/10 px-3 py-2 text-xs text-btr">
             <AlertCircle className="size-3.5 shrink-0" />
@@ -632,10 +657,7 @@ export function ValidationPhaseSection({
             header={
               <FieldLabel
                 field="dependencies"
-                complete={meetsFieldMin(
-                  dependencies,
-                  VALIDATION_FIELD_LIMITS.dependencies,
-                )}
+                complete={dependencies.trim().length > 0}
               >
                 Risks, Dependencies & Blockers
               </FieldLabel>
@@ -644,8 +666,6 @@ export function ValidationPhaseSection({
             <textarea
               name="dependencies"
               rows={2}
-              minLength={VALIDATION_FIELD_LIMITS.dependencies.min}
-              maxLength={VALIDATION_FIELD_LIMITS.dependencies.max}
               value={dependencies}
               onChange={(e) => {
                 markFormDirty();
@@ -653,12 +673,6 @@ export function ValidationPhaseSection({
               }}
               className={inputClass}
               placeholder="Optional — risks, blockers, or required access (include ticket refs if known)."
-            />
-            <CharCount
-              value={dependencies}
-              min={VALIDATION_FIELD_LIMITS.dependencies.min}
-              max={VALIDATION_FIELD_LIMITS.dependencies.max}
-              optional
             />
           </PhaseSectionCard>
 
@@ -684,15 +698,13 @@ export function ValidationPhaseSection({
             <label className="block">
               <FieldLabel
                 field="risks"
-                complete={meetsFieldMin(risks, VALIDATION_FIELD_LIMITS.risks)}
+                complete={risks.trim().length > 0}
               >
                 Other Notes
               </FieldLabel>
               <textarea
                 name="risks"
                 rows={2}
-                minLength={VALIDATION_FIELD_LIMITS.risks.min}
-                maxLength={VALIDATION_FIELD_LIMITS.risks.max}
                 value={risks}
                 onChange={(e) => {
                   markFormDirty();
@@ -700,12 +712,6 @@ export function ValidationPhaseSection({
                 }}
                 className={`${inputClass} mt-1`}
                 placeholder="Optional — leftover context, open questions, or anything leadership should see."
-              />
-              <CharCount
-                value={risks}
-                min={VALIDATION_FIELD_LIMITS.risks.min}
-                max={VALIDATION_FIELD_LIMITS.risks.max}
-                optional
               />
             </label>
             <div>
@@ -806,7 +812,13 @@ function ReadOnlyChip({
   );
 }
 
-function ValidationReadOnly({ data }: { data: ValidationData | null }) {
+function ValidationReadOnly({
+  data,
+  feedback = null,
+}: {
+  data: ValidationData | null;
+  feedback?: ValidationDecision | null;
+}) {
   const storedParty = data?.leadProductionParty;
   const partyId = storedParty === "as" ? "adsomnia" : storedParty;
   const knownParty = KNOWN_LEAD_PARTIES.find((p) => p.id === partyId);
@@ -814,9 +826,6 @@ function ValidationReadOnly({ data }: { data: ValidationData | null }) {
     storedParty === "as" ? "Adsomnia" : knownParty?.label;
   const partyLogo = partyId ? PARTY_LOGOS[partyId] : undefined;
 
-  const tShirtHint = TSHIRT_OPTIONS.find(
-    (o) => o.value === data?.tShirtSize,
-  )?.hint;
   const priorityHint = PRIORITY_OPTIONS.find(
     (o) => o.value === data?.priority,
   )?.hint;
@@ -829,7 +838,8 @@ function ValidationReadOnly({ data }: { data: ValidationData | null }) {
     typeof businessValue === "string" ? businessValue : null;
 
   return (
-    <div className="p-4">
+    <div className="space-y-4 p-4">
+      <ValidationFeedbackBanner feedback={feedback} resubmitCopy={false} />
       <PhaseSectionStack>
         <PhaseSectionCard
           header={
@@ -954,7 +964,7 @@ function ValidationReadOnly({ data }: { data: ValidationData | null }) {
           bodyClassName="p-4"
         >
           {data?.tShirtSize ? (
-            <ReadOnlyChip value={data.tShirtSize} hint={tShirtHint} />
+            <ReadOnlyChip value={data.tShirtSize} />
           ) : (
             <p className="text-sm text-foreground/90">—</p>
           )}

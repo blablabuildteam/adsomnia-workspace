@@ -21,6 +21,7 @@ const ACTION_LABELS: Record<string, string> = {
   gonogo_approved: "gave a Go",
   gonogo_rejected: "gave a No-Go",
   gonogo_feedback: "sent Go/No-Go feedback",
+  gonogo_on_hold: "put Go/No-Go on hold",
   setup_task_completed: "completed a Setup task",
   setup_completed: "finished Project Setup",
   onboarding_task_completed: "completed an Onboarding task",

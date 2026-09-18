@@ -892,6 +892,50 @@ function ScopingHeader({
   );
 }
 
+function GoNoGoFeedbackBanner({
+  feedback,
+  resubmitCopy,
+}: {
+  feedback: GoNoGoDecision | null;
+  resubmitCopy: boolean;
+}) {
+  if (feedback?.decision === "feedback") {
+    return (
+      <div className="border border-feedback/50 bg-feedback/10 px-3 py-2.5">
+        <p className="font-display text-[10px] font-bold uppercase tracking-wide text-feedback">
+          {resubmitCopy
+            ? "Feedback from Go / No-Go — revise Phase 3 and resubmit"
+            : "Feedback from Go / No-Go"}
+        </p>
+        {feedback.comment && (
+          <p className="mt-1 text-xs leading-relaxed text-foreground/90">
+            “{feedback.comment}” — {feedback.approverName}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (feedback?.decision === "on-hold") {
+    return (
+      <div className="border border-hn/50 bg-hn/10 px-3 py-2.5">
+        <p className="font-display text-[10px] font-bold uppercase tracking-wide text-hn">
+          {resubmitCopy
+            ? "On hold — edit Phase 3 and resubmit when ready"
+            : "On hold"}
+        </p>
+        {feedback.comment && (
+          <p className="mt-1 text-xs leading-relaxed text-foreground/90">
+            “{feedback.comment}” — {feedback.approverName}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+}
+
 /* ─── Main Component ───────────────────────────────────── */
 
 type Props = {
@@ -1156,6 +1200,7 @@ export function ScopingPhaseSection({
           data={data}
           maxHours={maxHours}
           validationData={validationData}
+          feedback={feedback}
         />
       </>
     );
@@ -1177,18 +1222,7 @@ export function ScopingPhaseSection({
       <input type="hidden" name="attachments" value={JSON.stringify(attachments)} />
 
       <div className="space-y-4 p-4">
-        {feedback?.decision === "feedback" && (
-          <div className="border border-feedback/50 bg-feedback/10 px-3 py-2.5">
-            <p className="font-display text-[10px] font-bold uppercase tracking-wide text-feedback">
-              Feedback from Go / No-Go — revise Phase 3 and resubmit
-            </p>
-            {feedback.comment && (
-              <p className="mt-1 text-xs leading-relaxed text-foreground/90">
-                “{feedback.comment}” — {feedback.approverName}
-              </p>
-            )}
-          </div>
-        )}
+        <GoNoGoFeedbackBanner feedback={feedback} resubmitCopy />
         {error && (
           <div className="flex items-center gap-2 border border-btr/40 bg-btr/10 px-3 py-2 text-xs text-btr">
             <AlertCircle className="size-3.5 shrink-0" />
@@ -1626,10 +1660,12 @@ function ScopingReadOnly({
   data,
   maxHours,
   validationData,
+  feedback = null,
 }: {
   data: ScopingData | null;
   maxHours: number;
   validationData?: ValidationData | null;
+  feedback?: GoNoGoDecision | null;
 }) {
   const milestones = data?.milestones ?? [];
   const team = data?.team ?? [];
@@ -1643,7 +1679,8 @@ function ScopingReadOnly({
         : null;
 
   return (
-    <div className="p-4">
+    <div className="space-y-4 p-4">
+      <GoNoGoFeedbackBanner feedback={feedback} resubmitCopy={false} />
       <PhaseSectionStack>
       {/* Milestones */}
       <PhaseSectionCard

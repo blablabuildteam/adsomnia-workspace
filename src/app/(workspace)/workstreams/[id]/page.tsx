@@ -3,6 +3,7 @@ import { InitiativeDetailView } from "@/components/initiatives/InitiativeDetailV
 import {
   getInitiativeById,
   getCommentsForInitiative,
+  getActivityForInitiative,
   getApprovalHistory,
   getMentionablePeople,
 } from "@/lib/queries";
@@ -16,6 +17,7 @@ import {
   canViewInitiative,
 } from "@/lib/session";
 import { createSharePath } from "@/lib/share";
+import { listWorkstreamAttachments } from "@/lib/workstream-attachments";
 import type { ApprovalDecision } from "@/components/initiatives/ApprovalPanel";
 import type { ValidationDecision } from "@/components/initiatives/ValidationApprovalPanel";
 import type { GoNoGoDecision } from "@/components/initiatives/GoNoGoApprovalPanel";
@@ -54,10 +56,12 @@ export default async function InitiativePage({ params }: Props) {
     );
   }
 
-  const [comments, approvals, mentionablePeople] = await Promise.all([
+  const [comments, activity, approvals, mentionablePeople, attachments] = await Promise.all([
     getCommentsForInitiative(initiative.id),
+    getActivityForInitiative(initiative.id),
     getApprovalHistory(initiative.id),
     getMentionablePeople(),
+    listWorkstreamAttachments(initiative.id),
   ]);
   const canUserApprove = user ? canApprove(user) : false;
   const canUserManageSetup = user ? canManageSetup(user) : false;
@@ -87,21 +91,22 @@ export default async function InitiativePage({ params }: Props) {
       : null;
 
   const latestGoNoGo = approvals.find((a) => a.fromStage === "go-nogo");
-  const goNoGoDecision: GoNoGoDecision | null =
-    latestGoNoGo && latestGoNoGo.decision !== "on-hold"
-      ? {
-          decision: latestGoNoGo.decision,
-          comment: latestGoNoGo.comment,
-          approverName: latestGoNoGo.approverName,
-          createdAt: latestGoNoGo.createdAt,
-        }
-      : null;
+  const goNoGoDecision: GoNoGoDecision | null = latestGoNoGo
+    ? {
+        decision: latestGoNoGo.decision as GoNoGoDecision["decision"],
+        comment: latestGoNoGo.comment,
+        approverName: latestGoNoGo.approverName,
+        createdAt: latestGoNoGo.createdAt,
+      }
+    : null;
 
   return (
     <InitiativeDetailView
       initiative={initiative}
       comments={comments}
+      activity={activity}
       mentionablePeople={mentionablePeople}
+      attachments={attachments}
       canUserApprove={canUserApprove}
       canComment={!!user}
       currentUserName={user ? displayName(user) : "Unknown"}

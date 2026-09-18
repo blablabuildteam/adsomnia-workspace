@@ -22,7 +22,6 @@ import { SlackSetupTask } from "./setup/SlackSetupTask";
 import { DriveSetupTask } from "./setup/DriveSetupTask";
 import { JiraSetupTask } from "./setup/JiraSetupTask";
 import { JiraPlanningTask } from "./setup/JiraPlanningTask";
-import { DocsSetupTask } from "./setup/DocsSetupTask";
 import { KickoffMeetingTask } from "./setup/KickoffMeetingTask";
 import { InviteTeamTask } from "./setup/InviteTeamTask";
 
@@ -385,8 +384,6 @@ function buildQuickCompletePayload(
     }
     case "jira-planning":
       return { data: {} };
-    case "documentation":
-      return { data: { linkedDocs: setupData.documentation.linkedDocs } };
     case "kickoff-meeting":
       return { data: { meetingDate: setupData.kickoffMeeting.meetingDate } };
     case "invite-team":
@@ -471,20 +468,6 @@ function renderTaskContent(
           boardUrl={setupData.jira.boardUrl || setupData.jira.projectUrl}
           readOnly={readOnly}
           onComplete={() => ctx.onComplete("jira-planning", {})}
-        />
-      );
-    case "documentation":
-      return (
-        <DocsSetupTask
-          data={setupData.documentation ?? { status: "pending", linkedDocs: [] }}
-          driveUrl={ctx.driveUrl || setupData.drive.driveUrl}
-          readOnly={readOnly}
-          onComplete={() =>
-            ctx.onComplete("documentation", {
-              linkedDocs: setupData.documentation?.linkedDocs ?? [],
-              folders: setupData.documentation?.folders,
-            })
-          }
         />
       );
     case "kickoff-meeting":

@@ -400,7 +400,7 @@ async function ensureRecommendedFolders(
 /**
  * Creates a Shared Drive when the signed-in Workspace account allows it;
  * otherwise creates a project folder in that account's My Drive.
- * Recommended project folders are created in the same step (same Google token).
+ * The Drive is left empty for now — recommended folders can be added later.
  */
 export async function createProjectDrive(
   name: string,
@@ -413,30 +413,16 @@ export async function createProjectDrive(
 
   const token = accessTokenOverride ?? (await getDriveAccessToken());
 
-  let drive: CreatedProjectDrive;
   try {
-    drive = await createSharedDrive(token, trimmed);
+    return await createSharedDrive(token, trimmed);
   } catch {
     try {
-      drive = await createRootFolder(token, trimmed);
+      return await createRootFolder(token, trimmed);
     } catch (folderError) {
       throw folderError instanceof Error
         ? folderError
         : new Error("Could not create a Google Drive for this project.");
     }
-  }
-
-  try {
-    const result = await ensureRecommendedFolders(token, drive.url);
-    return { ...drive, folders: result.folders };
-  } catch (error) {
-    return {
-      ...drive,
-      folderError:
-        error instanceof Error
-          ? error.message
-          : "Drive created, but the folder structure could not be created.",
-    };
   }
 }
 

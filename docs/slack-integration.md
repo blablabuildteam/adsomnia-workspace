@@ -23,7 +23,7 @@ Later, Google login only changes how Adsomnia knows who you are; the Slack link 
    - `groups:read`
    - `chat:write`
    - `bookmarks:write` (channel bookmarks for Drive / Jira links)
-   - `im:write` (submitter DMs)
+   - `im:write` (owner, reviewer, and mention DMs)
    - `users:read`
    - `users:read.email` (resolve submitter by Workspace email)
 4. **Redirect URL** (HTTPS required — Slack rejects `http://localhost`):
@@ -80,32 +80,41 @@ The tool creates the channel, invites you, bookmarks the project **Google Drive*
 
 ### Finding channels in Slack
 
-- Channels are created in the **workspace shown in the picker** (e.g. blablabuild), not necessarily another Slack org you also use.
+- Channels are created in the **workspace shown in the picker**, not necessarily another Slack org you also use. The blablabuild workspace is hidden from this picker (it stays connected for bot DMs only).
 - The sidebar often shows only channels you have **joined**. Use **Browse channels** (or the channel deep link from Project Setup) to find a new public channel if you were not invited yet.
 - Private channels are invisible until you are invited — that is why per-user Connect + invite matters.
 
-## Submitter notifications
+## Owner notifications
 
-The bot DMs the initiative **submitter** on the home workspace (`SLACK_NOTIFICATIONS_TEAM_ID`) after leadership leaves a remark or the workstream advances. Resolution: `users.email` via `users.lookupByEmail`, with `slack_user_links` as fallback. The actor is skipped when they are the submitter. Slack errors never fail the approval.
+The bot DMs the workstream **owner** (submitter) on the home workspace (`SLACK_NOTIFICATIONS_TEAM_ID`). Resolution: `users.email` via `users.lookupByEmail`, with `slack_user_links` as fallback. The actor is skipped when they are the owner. Slack errors never fail the action.
 
-**Feedback / decision remark**
+**Feedback**
 
-- Initiative: feedback, reject, on hold
-- Validation: feedback, reject, on hold
-- Go/No-Go: feedback, reject
-- Fast-Track conversion
+Leadership sent the workstream back with a remark (Initiative, Validation, Go/No-Go). The owner gets the remark plus a link to the ticket.
 
-**Phase advanced**
+**Status changed**
 
-- Initiative → Validation
-- Validation → Scoping
-- Go/No-Go → Project Setup
-- Project Setup → Onboarding & Kickoff
-- Onboarding → Production & Reporting
+- Rejected or On Hold (Initiative, Validation, Go/No-Go)
+- Fast-Track conversion (status becomes Approved)
+- Submitted for review, when someone other than the owner submits/resubmits
+- Phase advanced (status becomes Approved): Initiative → Validation, Validation → Scoping, Go/No-Go → Project Setup, Project Setup → Onboarding, Onboarding → Production
 
-Submitter-driven submits and informal comments are not notified.
+Informal chat comments are not treated as status changes.
 
-Each DM includes ticket id, title, remark (when present), actor name, and a button to `/workstreams/{id}`.
+Each owner DM includes ticket id, title, remark (when present), actor name, and a button to `/workstreams/{id}`.
+
+## Leadership review notifications
+
+When a workstream is **submitted for review** (`status = submitted`), the bot DMs the reviewers for that stage on the same home workspace. The person who submitted is skipped. Recipients are resolved from `LOGIN_COEN_EMAIL` / `LOGIN_SIETSE_EMAIL` / `LOGIN_OLEG_EMAIL` (falling back to seeded Adsomnia emails and first name).
+
+| Stage waiting for review | Slack DM to |
+| --- | --- |
+| Initiative | Coen |
+| Validation | Coen, Sietse, Oleg |
+| Scoping | Coen, Sietse, Oleg |
+| Go/No-Go | Sietse |
+
+Submitting scoping advances the ticket into Go/No-Go, so that review ping goes to **Sietse**. Validation submit/resubmit pings Coen, Sietse, and Oleg. New initiatives and Initiative resubmits ping Coen.
 
 ## Workstream chat @mentions
 

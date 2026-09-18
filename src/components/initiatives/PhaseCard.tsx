@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { Check, ChevronDown, Eye } from "lucide-react";
+import { Check, ChevronDown, Eye, User, Calendar } from "lucide-react";
 import { getStageColor } from "@/data/workflow";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 
@@ -33,6 +33,7 @@ export function PhaseCard({
   name,
   status,
   readyLabel = "Ready for Onboarding",
+  completedBy,
   className,
   style,
   children,
@@ -43,6 +44,8 @@ export function PhaseCard({
   status: "complete" | "current" | "review" | "ready";
   /** Badge text for the "ready" state — the next stage this hands off to. */
   readyLabel?: string;
+  /** Who closed the phase and when — shown on the collapsed row. */
+  completedBy?: { name: string; at: Date | string } | null;
   className?: string;
   style?: CSSProperties;
   children: ReactNode;
@@ -129,7 +132,31 @@ export function PhaseCard({
             {name}
           </h2>
           <div className="flex shrink-0 items-center gap-3">
-            {status === "review" ? (
+            {!open && status === "complete" && completedBy ? (
+              <span className="flex min-w-0 items-center gap-2 text-[11px] text-muted sm:gap-3">
+                <span className="inline-flex min-w-0 items-center gap-1.5">
+                  <User className="size-3.5 shrink-0" />
+                  <span className="max-w-[7rem] truncate sm:max-w-[12rem]">
+                    {completedBy.name}
+                  </span>
+                </span>
+                <span className="inline-flex shrink-0 items-center gap-1.5">
+                  <Calendar className="size-3.5" />
+                  <span className="sm:hidden">
+                    {new Date(completedBy.at).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </span>
+                  <span className="hidden sm:inline">
+                    {new Date(completedBy.at).toLocaleString("en-US", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                  </span>
+                </span>
+              </span>
+            ) : status === "review" ? (
               <span
                 className="font-display flex items-center gap-1.5 border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
                 style={{

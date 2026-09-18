@@ -23,6 +23,7 @@ import {
   IDEA_FIELD_LIMITS,
   type IdeaFieldName,
 } from "@/lib/field-limits";
+import type { ApprovalDecision } from "./ApprovalPanel";
 
 const initial: IdeaUpdateResult = {};
 
@@ -73,6 +74,8 @@ type Props = {
   canEdit: boolean;
   /** True when the initiative can be resubmitted (after feedback or on hold). */
   canResubmit?: boolean;
+  /** Leadership remark shown above the details when the idea was bounced back. */
+  feedback?: ApprovalDecision | null;
 };
 
 type DraftFields = Record<IdeaFieldName, string>;
@@ -87,7 +90,13 @@ function draftFromValues(values: IdeaFields): DraftFields {
   };
 }
 
-export function IdeaDetailsSection({ initiativeId, values, canEdit, canResubmit = false }: Props) {
+export function IdeaDetailsSection({
+  initiativeId,
+  values,
+  canEdit,
+  canResubmit = false,
+  feedback = null,
+}: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<DraftFields>(() => draftFromValues(values));
 
@@ -123,6 +132,42 @@ export function IdeaDetailsSection({ initiativeId, values, canEdit, canResubmit 
           </button>
         )}
       </div>
+
+      {feedback &&
+        (feedback.decision === "feedback" ||
+          feedback.decision === "on-hold" ||
+          feedback.decision === "rejected") && (
+          <div
+            className={`mx-4 mt-4 px-3 py-2.5 ${
+              feedback.decision === "feedback"
+                ? "border border-feedback/50 bg-feedback/10"
+                : feedback.decision === "on-hold"
+                  ? "border border-hn/50 bg-hn/10"
+                  : "border border-btr/50 bg-btr/10"
+            }`}
+          >
+            <p
+              className={`font-display text-[10px] font-bold uppercase tracking-wide ${
+                feedback.decision === "feedback"
+                  ? "text-feedback"
+                  : feedback.decision === "on-hold"
+                    ? "text-hn"
+                    : "text-btr"
+              }`}
+            >
+              {feedback.decision === "feedback"
+                ? "Feedback from leadership"
+                : feedback.decision === "on-hold"
+                  ? "On hold"
+                  : "Rejected"}
+            </p>
+            {feedback.comment && (
+              <p className="mt-1 text-xs leading-relaxed text-foreground/90">
+                “{feedback.comment}” — {feedback.approverName}
+              </p>
+            )}
+          </div>
+        )}
 
       {!editing ? (
         <div className="grid gap-px bg-border sm:grid-cols-2">

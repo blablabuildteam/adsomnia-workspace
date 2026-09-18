@@ -21,7 +21,6 @@ import {
   detectAttachmentKind,
   hostFromUrl,
   normalizeUrl,
-  titleFromUrl,
 } from "@/lib/validation-data";
 
 /* ─── ID helper ────────────────────────────────────────── */
@@ -171,7 +170,21 @@ function AttachmentChip({
   const Icon = KIND_ICON[attachment.kind];
   const color = KIND_COLOR[attachment.kind];
   const label = attachmentKindLabel(attachment.kind);
-  const isLink = attachment.url && attachment.kind !== "file";
+  const canOpen = Boolean(attachment.url);
+  const openTarget = attachment.kind === "file" ? undefined : "_blank";
+  const openRel = attachment.kind === "file" ? undefined : "noopener noreferrer";
+  const host =
+    attachment.kind !== "file" && attachment.url
+      ? hostFromUrl(attachment.url)
+      : null;
+  const subtitle =
+    attachment.pageTitle &&
+    attachment.pageTitle !== attachment.title &&
+    attachment.pageTitle !== host
+      ? attachment.pageTitle
+      : host && host !== attachment.title
+        ? host
+        : null;
 
   return (
     <div
@@ -185,9 +198,24 @@ function AttachmentChip({
         <Icon className="size-3.5" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-xs font-medium text-foreground">
-          {attachment.title}
-        </p>
+        {canOpen ? (
+          <a
+            href={attachment.url}
+            target={openTarget}
+            rel={openRel}
+            download={
+              attachment.kind === "file" ? attachment.fileName : undefined
+            }
+            className="block min-w-0 truncate text-xs font-medium text-foreground underline-offset-2 hover:underline"
+            title={attachment.title}
+          >
+            {attachment.title}
+          </a>
+        ) : (
+          <p className="truncate text-xs font-medium text-foreground">
+            {attachment.title}
+          </p>
+        )}
         <p className="flex items-center gap-1.5 text-[10px] text-muted/70">
           <span
             className="inline-block shrink-0 border px-1 py-px font-display text-[8px] font-bold uppercase tracking-wider"
@@ -195,25 +223,34 @@ function AttachmentChip({
           >
             {label}
           </span>
-          {attachment.pageTitle && (
-            <span className="truncate">{attachment.pageTitle}</span>
-          )}
+          {subtitle && <span className="truncate">{subtitle}</span>}
           {attachment.fileSize != null && (
             <span className="shrink-0 tabular-nums">
               {formatFileSize(attachment.fileSize)}
             </span>
           )}
+          {attachment.addedBy && (
+            <span className="truncate">{attachment.addedBy}</span>
+          )}
         </p>
       </div>
-      {isLink && (
+      {canOpen && (
         <a
           href={attachment.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="shrink-0 text-muted/40 transition-colors hover:text-foreground"
-          title="Open link"
+          target={openTarget}
+          rel={openRel}
+          download={
+            attachment.kind === "file" ? attachment.fileName : undefined
+          }
+          className="flex size-7 shrink-0 items-center justify-center border border-border text-foreground transition-colors hover:border-foreground hover:bg-foreground hover:text-background"
+          title={attachment.kind === "file" ? "Download" : "Open link"}
+          aria-label={
+            attachment.kind === "file"
+              ? `Download ${attachment.title}`
+              : `Open ${attachment.title}`
+          }
         >
-          <ExternalLink className="size-3" />
+          <ExternalLink className="size-3.5" />
         </a>
       )}
       {!readOnly && onRemove && (
@@ -235,10 +272,19 @@ function AttachmentChip({
 type Props = {
   attachments: Attachment[];
   onChange: (attachments: Attachment[]) => void;
+  /** When set, dropped/chosen files are uploaded instead of stored as metadata-only. */
+  onFilesAdded?: (files: File[]) => Promise<void> | void;
   readOnly?: boolean;
+  canRemove?: boolean;
 };
 
-export function AttachmentZone({ attachments, onChange, readOnly }: Props) {
+export function AttachmentZone({
+  attachments,
+  onChange,
+  onFilesAdded,
+  readOnly,
+  canRemove = true,
+}: Props) {
   const [dragging, setDragging] = useState(false);
   const [linkInput, setLinkInput] = useState("");
   const [showLinkInput, setShowLinkInput] = useState(false);
@@ -257,7 +303,13 @@ export function AttachmentZone({ attachments, onChange, readOnly }: Props) {
   /* ── Helpers ─────────────────────────────────────────── */
 
   function addFiles(files: FileList | File[]) {
-    const newAttachments: Attachment[] = Array.from(files).map((file) => ({
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    if (onFilesAdded) {
+      void onFilesAdded(list);
+      return;
+    }
+    const newAttachments: Attachment[] = list.map((file) => ({
       id: attachUid(),
       kind: "file" as const,
       title: file.name,
@@ -276,25 +328,24 @@ export function AttachmentZone({ attachments, onChange, readOnly }: Props) {
     }
 
     const kind = detectAttachmentKind(url);
-    const title = kind === "link" ? hostFromUrl(url) : titleFromUrl(url);
+    const fallbackTitle =
+      kind === "link" ? hostFromUrl(url) : attachmentKindLabel(kind);
     const id = attachUid();
-    const next: Attachment = { id, kind, title, url };
+    const next: Attachment = { id, kind, title: fallbackTitle, url };
 
     onChange([...attachments, next]);
     setLinkInput("");
     setShowLinkInput(false);
     setLinkError(null);
 
-    if (kind === "link") {
-      void fetchPageTitle(url).then((pageTitle) => {
-        if (!pageTitle) return;
-        onChange(
-          attachmentsRef.current.map((item) =>
-            item.id === id ? { ...item, pageTitle } : item,
-          ),
-        );
-      });
-    }
+    void fetchPageTitle(url).then((pageTitle) => {
+      if (!pageTitle) return;
+      onChange(
+        attachmentsRef.current.map((item) =>
+          item.id === id ? { ...item, title: pageTitle, pageTitle } : item,
+        ),
+      );
+    });
   }
 
   function addDriveFiles(files: DrivePickedFile[]) {
@@ -596,7 +647,7 @@ export function AttachmentZone({ attachments, onChange, readOnly }: Props) {
             <AttachmentChip
               key={a.id}
               attachment={a}
-              onRemove={() => removeAttachment(a.id)}
+              onRemove={canRemove ? () => removeAttachment(a.id) : undefined}
             />
           ))}
         </div>

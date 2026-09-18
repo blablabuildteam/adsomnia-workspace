@@ -168,6 +168,9 @@ export type Attachment = {
   fileName?: string;
   fileSize?: number;
   mimeType?: string;
+  /** Display name of the person who added a workstream-level attachment. */
+  addedBy?: string;
+  addedAt?: string;
 };
 
 const GOOGLE_URL_PATTERNS: { pattern: RegExp; kind: AttachmentKind }[] = [
@@ -355,7 +358,6 @@ export type SetupTaskId =
   | "drive"
   | "jira"
   | "jira-planning"
-  | "documentation"
   | "team"
   | "scope"
   | "planning"
@@ -521,7 +523,6 @@ export const SETUP_TASKS: {
   optional?: boolean;
 }[] = [
   { id: "drive", dataKey: "drive", label: "Create Google Drive", phase: "A", logo: "/logos/google-drive.png" },
-  { id: "documentation", dataKey: "documentation", label: "Confirm Documentation Is Stored", phase: "A", logo: "/logos/google-drive.png" },
   { id: "jira", dataKey: "jira", label: "Create Jira", phase: "A", logo: "/logos/jira.png" },
   { id: "jira-planning", dataKey: "jiraPlanning", label: "Set Up Tickets per Epic", phase: "A", logo: "/logos/jira.png" },
   { id: "slack", dataKey: "slack", label: "Create Slack Channel", phase: "C", logo: "/logos/slack.png" },

@@ -9,7 +9,7 @@ import { getCurrentUser } from "@/lib/session";
 import { canAddFastTrack, canApprove } from "@/lib/permissions";
 import { FAST_TRACK_FIELD_LIMITS } from "@/lib/field-limits";
 import { createFastTrackIssue } from "@/lib/integrations/jira";
-import { notifySubmitter } from "@/lib/integrations/slack-notify";
+import { notifyOwner } from "@/lib/integrations/slack-notify";
 import type { ApprovalResult } from "@/app/(workspace)/workstreams/[id]/actions";
 
 export async function convertToFastTrack(
@@ -23,9 +23,6 @@ export async function convertToFastTrack(
   }
 
   const comment = (formData.get("comment") as string)?.trim() || null;
-  if (!comment) {
-    return { error: "A remark is required when sending an initiative to Fast-Track." };
-  }
 
   const [initiative] = await db
     .select({
@@ -98,11 +95,12 @@ export async function convertToFastTrack(
     },
   });
 
-  await notifySubmitter({
+  await notifyOwner({
     initiativeId,
     actorUserId: user.id,
     actorName: user.name,
-    kind: "feedback",
+    kind: "status",
+    status: "approved",
     remark: comment,
     headline: "moved this initiative to Fast-Track",
   });

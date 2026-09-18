@@ -25,8 +25,6 @@ export const FAST_TRACK_FIELD_LIMITS = {
 export const VALIDATION_FIELD_LIMITS = {
   solutionDirection: { min: 50, max: 500 },
   leadPartyOther: { min: 8, max: 80 },
-  dependencies: { min: 20, max: 500 },
-  risks: { min: 20, max: 500 },
 } as const;
 
 export type FieldLimits = { min: number; max: number };
@@ -40,15 +38,6 @@ export function fieldLength(value: string): number {
 export function meetsFieldMin(value: string, limits: FieldLimits): boolean {
   const n = fieldLength(value);
   return n >= limits.min && n <= limits.max;
-}
-
-/** Empty is allowed; if filled, min and max both apply. */
-export function meetsOptionalFieldMin(
-  value: string,
-  limits: FieldLimits,
-): boolean {
-  if (fieldLength(value) === 0) return true;
-  return meetsFieldMin(value, limits);
 }
 
 export function isKnownLeadParty(value: string): boolean {
@@ -113,10 +102,7 @@ export function validateIdeaFields(
 }
 
 export function validateValidationNarratives(
-  data: Pick<
-    ValidationData,
-    "solutionDirection" | "leadProductionParty" | "dependencies" | "risks"
-  >,
+  data: Pick<ValidationData, "solutionDirection" | "leadProductionParty">,
   mode: "save" | "submit",
 ): string | null {
   const enforceMin = mode === "submit";
@@ -139,23 +125,6 @@ export function validateValidationNarratives(
       { required, enforceMin },
     );
     if (leadError) return leadError;
-  }
-
-  const optionalChecks: [string, string, FieldLimits][] = [
-    [
-      "Risks, dependencies & blockers",
-      data.dependencies ?? "",
-      VALIDATION_FIELD_LIMITS.dependencies,
-    ],
-    ["Other notes", data.risks ?? "", VALIDATION_FIELD_LIMITS.risks],
-  ];
-
-  for (const [label, value, limits] of optionalChecks) {
-    const error = fieldLimitError(label, value, limits, {
-      required: false,
-      enforceMin,
-    });
-    if (error) return error;
   }
 
   return null;

@@ -58,7 +58,8 @@ import {
 } from "@/lib/integrations/slack";
 import {
   notifyChatMentions,
-  notifySubmitter,
+  notifyOwner,
+  notifySubmittedForReview,
 } from "@/lib/integrations/slack-notify";
 import {
   clampJiraProjectName,
@@ -290,6 +291,13 @@ export async function resubmitIdea(
     details: { resubmittedBy: user.name },
   });
 
+  await notifySubmittedForReview({
+    initiativeId,
+    actorUserId: user.id,
+    actorName: user.name,
+    stage: "idea",
+  });
+
   revalidatePath(`/workstreams/${initiativeId}`);
   revalidatePath("/dashboard");
   revalidatePath("/pipeline/initiatives");
@@ -300,7 +308,7 @@ export type ApprovalResult = {
   error?: string;
   success?: boolean;
   decision?: "approved" | "rejected" | "on-hold" | "feedback";
-  comment?: string;
+  comment?: string | null;
   approverName?: string;
 };
 
@@ -372,9 +380,6 @@ export async function approveToValidation(
   }
 
   const comment = (formData.get("comment") as string)?.trim() || null;
-  if (!comment) {
-    return { error: "A remark is required when making an approval decision." };
-  }
 
   await db
     .update(initiatives)
@@ -406,12 +411,13 @@ export async function approveToValidation(
     },
   });
 
-  await notifySubmitter({
+  await notifyOwner({
     initiativeId,
     actorUserId: user.id,
     actorName: user.name,
     kind: "advanced",
     remark: comment,
+    status: "approved",
     fromStage: "Initiative",
     toStage: "Validation",
   });
@@ -439,9 +445,6 @@ export async function rejectInitiative(
   }
 
   const comment = (formData.get("comment") as string)?.trim() || null;
-  if (!comment) {
-    return { error: "A remark is required when making an approval decision." };
-  }
 
   await db
     .update(initiatives)
@@ -467,13 +470,14 @@ export async function rejectInitiative(
     details: { comment, approver: user.name },
   });
 
-  await notifySubmitter({
+  await notifyOwner({
     initiativeId,
     actorUserId: user.id,
     actorName: user.name,
-    kind: "feedback",
+    kind: "status",
+    status: "rejected",
     remark: comment,
-    headline: "rejected this initiative",
+    headline: "changed the status of this workstream to Rejected",
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
@@ -498,9 +502,6 @@ export async function putOnHold(
   }
 
   const comment = (formData.get("comment") as string)?.trim() || null;
-  if (!comment) {
-    return { error: "A remark is required when making an approval decision." };
-  }
 
   await db
     .update(initiatives)
@@ -526,13 +527,14 @@ export async function putOnHold(
     details: { comment, approver: user.name },
   });
 
-  await notifySubmitter({
+  await notifyOwner({
     initiativeId,
     actorUserId: user.id,
     actorName: user.name,
-    kind: "feedback",
+    kind: "status",
+    status: "on-hold",
     remark: comment,
-    headline: "put this initiative on hold",
+    headline: "changed the status of this workstream to On Hold",
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
@@ -558,9 +560,6 @@ export async function requestIdeaFeedback(
   }
 
   const comment = (formData.get("comment") as string)?.trim() || null;
-  if (!comment) {
-    return { error: "A remark is required when sending feedback." };
-  }
 
   await db
     .update(initiatives)
@@ -586,7 +585,7 @@ export async function requestIdeaFeedback(
     details: { comment, approver: user.name },
   });
 
-  await notifySubmitter({
+  await notifyOwner({
     initiativeId,
     actorUserId: user.id,
     actorName: user.name,
@@ -610,7 +609,7 @@ export type ValidationDecisionResult = {
   error?: string;
   success?: boolean;
   decision?: "approved" | "rejected" | "on-hold" | "feedback";
-  comment?: string;
+  comment?: string | null;
   approverName?: string;
 };
 
@@ -632,9 +631,6 @@ async function recordValidationDecision(
   }
 
   const comment = (formData.get("comment") as string)?.trim() || null;
-  if (!comment) {
-    return { error: "A remark is required when making a review decision." };
-  }
 
   await db
     .update(initiatives)
@@ -662,29 +658,34 @@ async function recordValidationDecision(
   });
 
   if (opts.decision === "approved") {
-    await notifySubmitter({
+    await notifyOwner({
       initiativeId,
       actorUserId: user.id,
       actorName: user.name,
       kind: "advanced",
       remark: comment,
+      status: "approved",
       fromStage: "Validation",
       toStage: "Scoping",
     });
-  } else {
-    const headline =
-      opts.decision === "feedback"
-        ? "sent this back with feedback"
-        : opts.decision === "rejected"
-          ? "rejected this initiative"
-          : "put this initiative on hold";
-    await notifySubmitter({
+  } else if (opts.decision === "feedback") {
+    await notifyOwner({
       initiativeId,
       actorUserId: user.id,
       actorName: user.name,
       kind: "feedback",
       remark: comment,
-      headline,
+      headline: "sent this back with feedback",
+    });
+  } else {
+    await notifyOwner({
+      initiativeId,
+      actorUserId: user.id,
+      actorName: user.name,
+      kind: "status",
+      status: opts.newStatus,
+      remark: comment,
+      headline: `changed the status of this workstream to ${opts.newStatus === "rejected" ? "Rejected" : "On Hold"}`,
     });
   }
 
@@ -818,6 +819,13 @@ export async function resubmitValidation(
     details: { resubmittedBy: user.name },
   });
 
+  await notifySubmittedForReview({
+    initiativeId,
+    actorUserId: user.id,
+    actorName: user.name,
+    stage: "validation",
+  });
+
   revalidatePath(`/workstreams/${initiativeId}`);
   revalidatePath("/pipeline/validation");
   revalidatePath("/dashboard");
@@ -949,6 +957,13 @@ export async function submitValidationForApproval(
     },
   });
 
+  await notifySubmittedForReview({
+    initiativeId,
+    actorUserId: user.id,
+    actorName: user.name,
+    stage: "validation",
+  });
+
   revalidatePath(`/workstreams/${initiativeId}`);
   revalidatePath("/pipeline/validation");
   revalidatePath("/dashboard");
@@ -1012,22 +1027,25 @@ export async function saveScopingData(
     .limit(1);
 
   if (!existing) return { error: "Initiative not found." };
-  if (!canEditScoping(user, existing) || existing.currentStage !== "scoping") {
+  if (!canEditScoping(user, existing)) {
     return {
       error:
-        existing.currentStage !== "scoping"
-          ? "Scoping can only be edited during the Scoping stage."
+        existing.currentStage !== "scoping" &&
+        existing.currentStage !== "go-nogo"
+          ? "Scoping can only be edited during Scoping or after a Go / No-Go return."
           : "Only the creator or leadership can edit scoping.",
     };
   }
 
   const data = parseScopingFormData(formData);
+  const preserveStatus =
+    existing.status === "on-hold" || existing.status === "rejected";
 
   await db
     .update(initiatives)
     .set({
       scopingData: data,
-      status: "draft",
+      ...(preserveStatus ? {} : { status: "draft" as const }),
       updatedAt: new Date(),
     })
     .where(eq(initiatives.id, initiativeId));
@@ -1098,6 +1116,13 @@ export async function submitScopingForApproval(
     details: { submittedBy: user.name, fromStage: "Scoping" },
   });
 
+  await notifySubmittedForReview({
+    initiativeId,
+    actorUserId: user.id,
+    actorName: user.name,
+    stage: "go-nogo",
+  });
+
   revalidatePath(`/workstreams/${initiativeId}`);
   revalidatePath("/pipeline/scoping");
   revalidatePath("/pipeline/go-nogo");
@@ -1163,6 +1188,13 @@ export async function resubmitScoping(
     details: { resubmittedBy: user.name },
   });
 
+  await notifySubmittedForReview({
+    initiativeId,
+    actorUserId: user.id,
+    actorName: user.name,
+    stage: "go-nogo",
+  });
+
   revalidatePath(`/workstreams/${initiativeId}`);
   revalidatePath("/pipeline/scoping");
   revalidatePath("/pipeline/go-nogo");
@@ -1175,8 +1207,8 @@ export async function resubmitScoping(
 export type GoNoGoDecisionResult = {
   error?: string;
   success?: boolean;
-  decision?: "approved" | "rejected" | "feedback";
-  comment?: string;
+  decision?: "approved" | "rejected" | "on-hold" | "feedback";
+  comment?: string | null;
   approverName?: string;
 };
 
@@ -1184,8 +1216,8 @@ async function recordGoNoGoDecision(
   initiativeId: number,
   formData: FormData,
   opts: {
-    decision: "approved" | "rejected" | "feedback";
-    newStatus: "draft" | "approved" | "rejected";
+    decision: "approved" | "rejected" | "on-hold" | "feedback";
+    newStatus: "draft" | "approved" | "rejected" | "on-hold";
     newStage?: "setup";
     toStage: string | null;
     action: string;
@@ -1198,9 +1230,6 @@ async function recordGoNoGoDecision(
   }
 
   const comment = (formData.get("comment") as string)?.trim() || null;
-  if (!comment) {
-    return { error: "A remark is required when making a Go/No-Go decision." };
-  }
 
   await db
     .update(initiatives)
@@ -1228,26 +1257,34 @@ async function recordGoNoGoDecision(
   });
 
   if (opts.decision === "approved") {
-    await notifySubmitter({
+    await notifyOwner({
       initiativeId,
       actorUserId: user.id,
       actorName: user.name,
       kind: "advanced",
       remark: comment,
+      status: "approved",
       fromStage: "Go/No-Go",
       toStage: "Project Setup",
     });
-  } else {
-    await notifySubmitter({
+  } else if (opts.decision === "feedback") {
+    await notifyOwner({
       initiativeId,
       actorUserId: user.id,
       actorName: user.name,
       kind: "feedback",
       remark: comment,
-      headline:
-        opts.decision === "feedback"
-          ? "sent this back with feedback"
-          : "rejected this initiative",
+      headline: "sent this back with feedback",
+    });
+  } else {
+    await notifyOwner({
+      initiativeId,
+      actorUserId: user.id,
+      actorName: user.name,
+      kind: "status",
+      status: opts.newStatus,
+      remark: comment,
+      headline: `changed the status of this workstream to ${opts.newStatus === "rejected" ? "Rejected" : "On Hold"}`,
     });
   }
 
@@ -1337,6 +1374,21 @@ export async function requestGoNoGoChanges(
   });
 }
 
+/** ON HOLD — pause the Go/No-Go decision; scoping can be edited and resubmitted. */
+export async function putGoNoGoOnHold(
+  initiativeId: number,
+  _prev: GoNoGoDecisionResult,
+  formData: FormData,
+): Promise<GoNoGoDecisionResult> {
+  return recordGoNoGoDecision(initiativeId, formData, {
+    decision: "on-hold",
+    newStatus: "on-hold",
+    toStage: null,
+    action: "gonogo_on_hold",
+    permissionError: "Only leadership can put items on hold.",
+  });
+}
+
 /* ─── Project Setup (Phase 5) ──────────────────────────── */
 
 export type SetupResult = {
@@ -1349,7 +1401,6 @@ const VALID_TASK_IDS: SetupTaskId[] = [
   "drive",
   "jira",
   "jira-planning",
-  "documentation",
   "kickoff-meeting",
   "invite-team",
 ];
@@ -2040,11 +2091,12 @@ export async function advanceToOnboarding(
     details: { advancedBy: user.name, toStage: "Onboarding & Kickoff" },
   });
 
-  await notifySubmitter({
+  await notifyOwner({
     initiativeId,
     actorUserId: user.id,
     actorName: user.name,
     kind: "advanced",
+    status: "approved",
     fromStage: "Project Setup",
     toStage: "Onboarding & Kickoff",
   });
@@ -2315,11 +2367,12 @@ export async function advanceToProduction(
     details: { advancedBy: user.name, toStage: "Production & Reporting" },
   });
 
-  await notifySubmitter({
+  await notifyOwner({
     initiativeId,
     actorUserId: user.id,
     actorName: user.name,
     kind: "advanced",
+    status: "approved",
     fromStage: "Onboarding & Kickoff",
     toStage: "Production & Reporting",
   });

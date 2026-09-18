@@ -5,6 +5,7 @@ import {
   text,
   timestamp,
   serial,
+  integer,
   jsonb,
   boolean,
   pgEnum,
@@ -99,6 +100,27 @@ export const initiatives = pgTable("initiatives", {
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
+});
+
+/** Files, Drive docs, and links dropped on a workstream (including share-link guests). */
+export const workstreamAttachments = pgTable("workstream_attachments", {
+  id: serial("id").primaryKey(),
+  initiativeId: integer("initiative_id")
+    .notNull()
+    .references(() => initiatives.id),
+  kind: varchar("kind", { length: 32 }).notNull(),
+  title: varchar("title", { length: 500 }).notNull(),
+  url: text("url"),
+  pageTitle: varchar("page_title", { length: 500 }),
+  fileName: varchar("file_name", { length: 255 }),
+  fileSize: integer("file_size"),
+  mimeType: varchar("mime_type", { length: 120 }),
+  fileData: text("file_data"),
+  addedByUserId: uuid("added_by_user_id").references(() => users.id),
+  guestAuthorName: varchar("guest_author_name", { length: 120 }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export const approvals = pgTable("approvals", {

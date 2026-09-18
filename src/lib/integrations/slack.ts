@@ -161,8 +161,10 @@ export async function getInstalledWorkspaces(
     .from(slackWorkspaces)
     .orderBy(asc(slackWorkspaces.teamName));
 
+  const visible = rows.filter((row) => isProjectSlackWorkspace(row.teamName));
+
   if (!adsomniaUserId) {
-    return rows.map((row) => ({ ...row, userLinked: false }));
+    return visible.map((row) => ({ ...row, userLinked: false }));
   }
 
   const links = await db
@@ -173,10 +175,16 @@ export async function getInstalledWorkspaces(
     .where(eq(slackUserLinks.userId, adsomniaUserId));
 
   const linkedTeams = new Set(links.map((l) => l.teamId));
-  return rows.map((row) => ({
+  return visible.map((row) => ({
     ...row,
     userLinked: linkedTeams.has(row.teamId),
   }));
+}
+
+/** blablabuild stays connected for bot DMs; it is not a project-channel workspace. */
+export function isProjectSlackWorkspace(teamName: string): boolean {
+  const normalized = teamName.trim().toLowerCase().replace(/[\s_-]+/g, "");
+  return normalized !== "blablabuild";
 }
 
 export async function getWorkspace(teamId: string) {
@@ -352,6 +360,11 @@ export async function createChannel(opts: {
   if (!workspace) {
     throw new Error(
       `Slack workspace "${opts.teamId}" is not connected. Connect Slack first.`,
+    );
+  }
+  if (!isProjectSlackWorkspace(workspace.teamName)) {
+    throw new Error(
+      "Choose the Adsomnia or client Slack workspace — not blablabuild.",
     );
   }
 

@@ -14,6 +14,13 @@ function stageName(stageId: string): string {
 
 const EARLY_STAGES = new Set(["idea", "validation", "scoping", "go-nogo"]);
 
+const HIDDEN_DASHBOARD_STATUSES = new Set(["draft", "on-hold", "rejected"]);
+
+/** Dashboard surfaces active pipeline work only — not drafts, holds, or rejects. */
+export function visibleOnDashboard(item: InitiativeWithUsers): boolean {
+  return !item.archivedAt && !HIDDEN_DASHBOARD_STATUSES.has(item.status);
+}
+
 /**
  * What a submitter should do next. "action" means they need to open the
  * workstream; "waiting" means the ball is elsewhere.

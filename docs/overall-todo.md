@@ -8,7 +8,7 @@
 - [ ] Manually add a **Jira board** in the Production view
 - [ ] Go through the **full pipeline** with an Adsomnia account
 - [ ] Review the experience for a **non-leadership** (team) account
-- [ ] Test **Slack notifications** on chat mentions
+- [ ] Test **Slack notifications**: chat mentions, owner feedback/status DMs, leadership review DMs (Coen / Coen+Sietse+Oleg / Sietse)
 
 # Overall to-do (post-go-live)
 

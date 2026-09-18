@@ -22,14 +22,21 @@ import {
   splitMentions,
   type MentionQuery,
 } from "@/lib/mentions";
-import type { CommentEntry, MentionPerson } from "@/lib/queries";
+import {
+  buildChatTimeline,
+  commentBelongsToPhase,
+  currentChatPhaseId,
+} from "@/lib/chat-timeline";
+import type { ActivityEntry, CommentEntry, MentionPerson } from "@/lib/queries";
+import {
+  SHARE_GUEST_NAME_MAX,
+  SHARE_GUEST_NAME_MIN,
+  SHARE_GUEST_NAME_STORAGE_KEY,
+} from "@/lib/share-guest";
 
 const initial: CommentResult = {};
 const MAX_BODY = 2000;
 const LATEST_PREVIEW_MS = 5000;
-const GUEST_NAME_STORAGE_KEY = "adsomnia-share-display-name";
-const GUEST_NAME_MIN = 2;
-const GUEST_NAME_MAX = 80;
 
 function asDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);
@@ -101,6 +108,7 @@ function MentionedText({
 type Props = {
   initiativeId: number;
   comments: CommentEntry[];
+  activity?: ActivityEntry[];
   mentionablePeople?: MentionPerson[];
   currentUserName: string;
   currentUserId?: string;
@@ -109,17 +117,22 @@ type Props = {
   shareToken?: string;
   /** Lift the dock so it clears the current-phase jump bar. */
   dockAbovePhaseBar?: boolean;
+  currentStage: string;
+  isFastTrack?: boolean;
 };
 
 export function WorkstreamChat({
   initiativeId,
   comments,
+  activity = [],
   mentionablePeople = [],
   currentUserName,
   currentUserId,
   canComment,
   shareToken,
   dockAbovePhaseBar = false,
+  currentStage,
+  isFastTrack = false,
 }: Props) {
   const isGuestMode = Boolean(shareToken) && !currentUserId;
   const [open, setOpen] = useState(false);
@@ -137,8 +150,11 @@ export function WorkstreamChat({
   const formRef = useRef<HTMLFormElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const phaseId = currentChatPhaseId(currentStage, isFastTrack);
   const [showLatestPreview, setShowLatestPreview] = useState(
-    () => comments.length > 0,
+    () =>
+      comments.length > 0 &&
+      commentBelongsToPhase(comments[0], activity, phaseId),
   );
   const [draft, setDraft] = useState("");
   const [mention, setMention] = useState<MentionQuery | null>(null);
@@ -168,8 +184,8 @@ export function WorkstreamChat({
   useEffect(() => {
     if (!isGuestMode) return;
     try {
-      const stored = localStorage.getItem(GUEST_NAME_STORAGE_KEY)?.trim() ?? "";
-      if (stored.length >= GUEST_NAME_MIN) {
+      const stored = localStorage.getItem(SHARE_GUEST_NAME_STORAGE_KEY)?.trim() ?? "";
+      if (stored.length >= SHARE_GUEST_NAME_MIN) {
         setGuestName(stored);
         setGuestNameDraft(stored);
         setGuestNameReady(true);
@@ -183,11 +199,11 @@ export function WorkstreamChat({
 
   function saveGuestName() {
     const trimmed = guestNameDraft.trim();
-    if (trimmed.length < GUEST_NAME_MIN || trimmed.length > GUEST_NAME_MAX) {
+    if (trimmed.length < SHARE_GUEST_NAME_MIN || trimmed.length > SHARE_GUEST_NAME_MAX) {
       return;
     }
     try {
-      localStorage.setItem(GUEST_NAME_STORAGE_KEY, trimmed);
+      localStorage.setItem(SHARE_GUEST_NAME_STORAGE_KEY, trimmed);
     } catch {
       /* ignore */
     }
@@ -198,11 +214,17 @@ export function WorkstreamChat({
 
   const latest = optimisticComments[0] ?? null;
   const latestId = latest?.id ?? null;
+  const latestInCurrentPhase = Boolean(
+    latest && commentBelongsToPhase(latest, activity, phaseId),
+  );
   const count = optimisticComments.length;
-  const thread = [...optimisticComments].reverse();
+  const thread = useMemo(
+    () => buildChatTimeline(optimisticComments, activity),
+    [optimisticComments, activity],
+  );
 
   useEffect(() => {
-    if (latestId == null) {
+    if (latestId == null || !latestInCurrentPhase) {
       setShowLatestPreview(false);
       return;
     }
@@ -211,7 +233,7 @@ export function WorkstreamChat({
       setShowLatestPreview(false);
     }, LATEST_PREVIEW_MS);
     return () => window.clearTimeout(timer);
-  }, [latestId]);
+  }, [latestId, latestInCurrentPhase]);
 
   useEffect(() => {
     if (state.success) {
@@ -230,7 +252,7 @@ export function WorkstreamChat({
     const list = listRef.current;
     if (list) list.scrollTop = list.scrollHeight;
     textareaRef.current?.focus();
-  }, [open, optimisticComments.length]);
+  }, [open, thread.length]);
 
   useEffect(() => {
     if (!open) return;
@@ -322,6 +344,34 @@ export function WorkstreamChat({
             ) : (
               <div className="divide-y divide-border">
                 {thread.map((item) => {
+                  if (item.kind === "system") {
+                    return (
+                      <div key={item.id} className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="h-px flex-1 bg-border" />
+                          <p
+                            className={[
+                              "max-w-[75%] text-center font-display text-[9px] font-bold uppercase leading-tight tracking-[0.14em]",
+                              item.systemKind === "phase"
+                                ? "text-foreground"
+                                : "text-muted",
+                            ].join(" ")}
+                          >
+                            {item.label}
+                          </p>
+                          <span className="h-px flex-1 bg-border" />
+                        </div>
+                        <p className="mt-1.5 text-center text-[9px] text-muted/70">
+                          {item.stage}
+                          {" · "}
+                          {item.actorName}
+                          {" · "}
+                          {timeAgo(item.createdAt)}
+                        </p>
+                      </div>
+                    );
+                  }
+
                   const mine = currentUserId
                     ? item.userId === currentUserId
                     : isGuestMode &&
@@ -368,7 +418,7 @@ export function WorkstreamChat({
                 <input
                   type="text"
                   value={guestNameDraft}
-                  maxLength={GUEST_NAME_MAX}
+                  maxLength={SHARE_GUEST_NAME_MAX}
                   autoComplete="name"
                   className={`${inputClass} text-xs`}
                   placeholder="First and last name"
@@ -384,8 +434,8 @@ export function WorkstreamChat({
                   type="button"
                   onClick={saveGuestName}
                   disabled={
-                    guestNameDraft.trim().length < GUEST_NAME_MIN ||
-                    guestNameDraft.trim().length > GUEST_NAME_MAX
+                    guestNameDraft.trim().length < SHARE_GUEST_NAME_MIN ||
+                    guestNameDraft.trim().length > SHARE_GUEST_NAME_MAX
                   }
                   className="mt-3 w-full border border-foreground bg-foreground px-3 py-2 font-display text-[10px] font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90 disabled:opacity-40"
                 >

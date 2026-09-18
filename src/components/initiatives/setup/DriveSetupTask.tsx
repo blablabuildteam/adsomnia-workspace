@@ -223,7 +223,7 @@ export function DriveSetupTask({
       {!editing && (
         <p className="text-xs text-muted">
           Create a Shared Drive for this project with your Google account. The
-          recommended folder structure is created in the same step.
+          Drive is created empty — add folders later if you need them.
         </p>
       )}
 
@@ -271,7 +271,7 @@ export function DriveSetupTask({
         create={
           configured
             ? {
-                label: "Create Google Drive with folders",
+                label: "Create Google Drive",
                 busyLabel: "Opening Google…",
                 busy: creating,
                 disabled: !(driveName.trim() || suggestion),

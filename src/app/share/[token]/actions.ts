@@ -3,12 +3,20 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { comments } from "@/db/schema";
-import { getCurrentUser } from "@/lib/session";
+import { displayName, getCurrentUser } from "@/lib/session";
 import { verifyShareToken } from "@/lib/share";
+import {
+  SHARE_GUEST_NAME_MAX,
+  SHARE_GUEST_NAME_MIN,
+} from "@/lib/share-guest";
+import {
+  addWorkstreamFileAttachment,
+  addWorkstreamLinkAttachment,
+  sanitizeGuestName,
+  type WorkstreamAttachmentResult,
+} from "@/lib/workstream-attachments";
 import type { CommentResult } from "@/app/(workspace)/workstreams/[id]/actions";
 
-const GUEST_NAME_MIN = 2;
-const GUEST_NAME_MAX = 80;
 const BODY_MAX = 2000;
 
 export async function addShareComment(
@@ -33,11 +41,11 @@ export async function addShareComment(
   }
 
   const guestName = (formData.get("guestName") as string)?.trim() ?? "";
-  if (guestName.length < GUEST_NAME_MIN) {
+  if (guestName.length < SHARE_GUEST_NAME_MIN) {
     return { error: "Enter your name before posting (at least 2 characters)." };
   }
-  if (guestName.length > GUEST_NAME_MAX) {
-    return { error: `Name must be ${GUEST_NAME_MAX} characters or fewer.` };
+  if (guestName.length > SHARE_GUEST_NAME_MAX) {
+    return { error: `Name must be ${SHARE_GUEST_NAME_MAX} characters or fewer.` };
   }
 
   const body = (formData.get("body") as string)?.trim();
@@ -58,4 +66,90 @@ export async function addShareComment(
   revalidatePath(`/share/${token}`);
   revalidatePath(`/workstreams/${initiativeId}`);
   return { success: true };
+}
+
+function revalidateShare(token: string, initiativeId: number) {
+  revalidatePath(`/share/${token}`);
+  revalidatePath(`/workstreams/${initiativeId}`);
+}
+
+async function requireShareAccess(token: string, guestNameRaw: string) {
+  const initiativeId = verifyShareToken(token);
+  if (initiativeId == null) {
+    return { error: "This share link is invalid or has expired." } as const;
+  }
+
+  const user = await getCurrentUser();
+  if (user) {
+    return {
+      initiativeId,
+      userId: user.id,
+      userName: displayName(user),
+      guestName: null as string | null,
+    };
+  }
+
+  const guestName = sanitizeGuestName(guestNameRaw);
+  if (!guestName) {
+    return { error: "Enter your name before adding an attachment." } as const;
+  }
+
+  return { initiativeId, userId: null, userName: null, guestName };
+}
+
+export async function addShareAttachment(
+  token: string,
+  input: {
+    guestName: string;
+    title?: string;
+    url?: string;
+    kind?: string;
+    pageTitle?: string | null;
+    fileName?: string | null;
+    fileSize?: number | null;
+    mimeType?: string | null;
+  },
+): Promise<WorkstreamAttachmentResult> {
+  const access = await requireShareAccess(token, input.guestName);
+  if ("error" in access) return access;
+  if (!input.url) return { error: "A link is required." };
+
+  const result = await addWorkstreamLinkAttachment(
+    access.initiativeId,
+    { ...input, url: input.url },
+    {
+      userId: access.userId,
+      userName: access.userName,
+      guestName: access.guestName,
+    },
+  );
+  if (result.attachment) revalidateShare(token, access.initiativeId);
+  return result;
+}
+
+export async function addShareFile(
+  token: string,
+  formData: FormData,
+): Promise<WorkstreamAttachmentResult> {
+  const guestName = String(formData.get("guestName") ?? "");
+  const access = await requireShareAccess(token, guestName);
+  if ("error" in access) return access;
+
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
+    return { error: "Choose a file to attach." };
+  }
+
+  const result = await addWorkstreamFileAttachment(
+    access.initiativeId,
+    file,
+    {
+      userId: access.userId,
+      userName: access.userName,
+      guestName: access.guestName,
+    },
+    token,
+  );
+  if (result.attachment) revalidateShare(token, access.initiativeId);
+  return result;
 }

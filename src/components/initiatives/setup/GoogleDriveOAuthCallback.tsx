@@ -51,7 +51,7 @@ export function GoogleDriveOAuthCallback() {
       }
 
       try {
-        if (!cancelled) setStatus("Creating Google Drive and folders…");
+        if (!cancelled) setStatus("Creating Google Drive…");
         const created = await createProjectDrive(
           pending.driveName,
           parsed.accessToken,

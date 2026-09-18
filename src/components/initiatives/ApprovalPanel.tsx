@@ -76,41 +76,40 @@ function DecisionSummary({ decision, embedded = false }: { decision: ApprovalDec
 
   return (
     <div
-      className={`flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-5 ${
+      className={`px-4 py-3 sm:px-5 ${
         embedded ? "border-t border-border bg-foreground/5" : "border border-border bg-foreground/5"
       }`}
     >
-      <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-        Approval Decision
-      </span>
-      <span
-        className={`inline-flex items-center gap-1.5 border px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-wide ${meta.badge}`}
-      >
-        <Icon className="size-3.5" />
-        {meta.label}
-      </span>
-      {decision.comment && (
-        <span className="group relative inline-flex cursor-help items-center gap-1.5 text-xs text-muted transition-colors hover:text-foreground">
-          <MessageSquare className="size-3.5" />
-          <span className="max-w-[240px] truncate">{decision.comment}</span>
-          <span className="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 border border-border bg-surface-elevated px-3 py-2 text-[11px] leading-relaxed text-foreground opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-            {decision.comment}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+          Approval Decision
+        </span>
+        <span
+          className={`inline-flex items-center gap-1.5 border px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-wide ${meta.badge}`}
+        >
+          <Icon className="size-3.5" />
+          {meta.label}
+        </span>
+        <span className="ml-auto flex items-center gap-4 text-xs text-muted">
+          <span className="inline-flex items-center gap-1.5">
+            <User className="size-3.5" />
+            {decision.approverName}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Calendar className="size-3.5" />
+            {decision.createdAt.toLocaleString("en-US", {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })}
           </span>
         </span>
+      </div>
+      {decision.comment && (
+        <p className="mt-2 flex items-start gap-2 text-xs leading-relaxed text-foreground/90">
+          <MessageSquare className="mt-0.5 size-3.5 shrink-0 text-muted" />
+          <span>{decision.comment}</span>
+        </p>
       )}
-      <span className="ml-auto flex items-center gap-4 text-xs text-muted">
-        <span className="inline-flex items-center gap-1.5">
-          <User className="size-3.5" />
-          {decision.approverName}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <Calendar className="size-3.5" />
-          {decision.createdAt.toLocaleString("en-US", {
-            dateStyle: "medium",
-            timeStyle: "short",
-          })}
-        </span>
-      </span>
     </div>
   );
 }
@@ -318,11 +317,10 @@ export function ApprovalPanel({
           )}
           <label className="block">
             <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-              Remark<span className="ml-1 text-danger">*</span>
+              Remark
             </span>
             <textarea
               name="comment"
-              required
               rows={2}
               className={`${inputClass} mt-1`}
               placeholder={

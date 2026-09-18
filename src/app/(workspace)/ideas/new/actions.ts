@@ -6,6 +6,7 @@ import { initiatives, activityLog, users } from "@/db/schema";
 import { eq, or, sql } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/session";
 import { canSubmitInitiative } from "@/lib/permissions";
+import { notifySubmittedForReview } from "@/lib/integrations/slack-notify";
 import { readIdeaFields, validateIdeaFields } from "@/lib/field-limits";
 
 export type SubmitIdeaResult = {
@@ -83,6 +84,13 @@ export async function submitIdea(
     userId: user.id,
     action: "idea_submitted",
     details: { title, sponsor: sponsorName },
+  });
+
+  await notifySubmittedForReview({
+    initiativeId: created.id,
+    actorUserId: user.id,
+    actorName: user.name,
+    stage: "idea",
   });
 
   redirect(`/workstreams/${created.id}`);
