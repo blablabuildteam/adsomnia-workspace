@@ -40,8 +40,10 @@ export type WorkstreamAttachmentAuth = {
   guestName?: string | null;
 };
 
-function isAttachmentKind(value: string): value is AttachmentKind {
-  return ATTACHMENT_KINDS.has(value as AttachmentKind);
+function isAttachmentKind(
+  value: string | undefined | null,
+): value is AttachmentKind {
+  return Boolean(value) && ATTACHMENT_KINDS.has(value as AttachmentKind);
 }
 
 export function attachmentDownloadPath(
@@ -162,8 +164,8 @@ export async function addWorkstreamLinkAttachment(
     return { error: "Enter a valid link." };
   }
 
-  const kind = isAttachmentKind(input.kind ?? "")
-    ? input.kind!
+  const kind = isAttachmentKind(input.kind)
+    ? input.kind
     : detectAttachmentKind(url);
   const fetchedTitle = await fetchPageTitle(url);
   const fallbackTitle =
