@@ -299,8 +299,8 @@ export function ProductionTimelineView({ projects, onOpen }: Props) {
 
   return (
     <div className="space-y-4">
-    <div className="border border-border bg-surface">
-      <div className="grid grid-cols-[minmax(14rem,20rem)_1fr] border-b border-border">
+    <div>
+      <div className="grid grid-cols-[minmax(14rem,20rem)_1fr] border border-border bg-surface">
         <div className="flex items-end justify-between gap-3 border-r border-border px-4 py-3">
           <p className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
             Project title
@@ -332,19 +332,25 @@ export function ProductionTimelineView({ projects, onOpen }: Props) {
         </div>
       </div>
 
-      <ul>
+      <ul className="mt-2 flex flex-col gap-3">
         {withDates.map((project) => {
           const party = partyMeta(project.leadPartyId);
           const epics = datedEpics(project);
+          const healthColor = HEALTH_META[project.health].color;
           return (
             <li
               key={project.id}
-              className="grid grid-cols-[minmax(14rem,20rem)_1fr] border-b border-border last:border-b-0"
+              className="relative grid grid-cols-[minmax(14rem,20rem)_1fr] border border-border bg-surface"
             >
+              <span
+                aria-hidden
+                className="absolute inset-y-0 left-0 z-[1] w-0.5"
+                style={{ backgroundColor: healthColor }}
+              />
               <button
                 type="button"
                 onClick={() => onOpen(project.id)}
-                className="border-r border-border px-4 py-3 text-left transition-colors hover:bg-hover"
+                className="border-r border-border px-4 py-4 pl-5 text-left transition-colors hover:bg-hover"
               >
                 <div className="flex items-start justify-between gap-3">
                   <p className="min-w-0 truncate text-sm font-semibold">
@@ -386,7 +392,7 @@ export function ProductionTimelineView({ projects, onOpen }: Props) {
               <button
                 type="button"
                 onClick={() => onOpen(project.id)}
-                className="relative overflow-visible px-0 py-3 text-left hover:bg-hover"
+                className="relative overflow-visible bg-fill-subtle px-0 py-4 text-left hover:bg-hover"
               >
                 {ticks.map((tick) => (
                   <span
@@ -399,7 +405,7 @@ export function ProductionTimelineView({ projects, onOpen }: Props) {
                   className="absolute inset-y-0 w-px bg-foreground/35"
                   style={{ left: `${todayLeft}%` }}
                 />
-                <span className="relative flex flex-col gap-1.5 py-1">
+                <span className="relative flex flex-col gap-1 py-0.5">
                   {epics.map((epic) => {
                     const start = dateToMs(epic.startDate!);
                     const end = dateToMs(epic.endDate!);
