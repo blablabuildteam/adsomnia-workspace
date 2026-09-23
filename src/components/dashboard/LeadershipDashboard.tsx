@@ -149,7 +149,7 @@ export function LeadershipDashboard({
             return (
               <div
                 key={stage.id}
-                className="flex min-w-[200px] flex-1 flex-col border border-border bg-surface"
+                className="flex min-w-0 flex-1 basis-0 flex-col border border-border bg-surface"
               >
                 <Link
                   href={STAGE_HREF[stage.id] ?? "/overview"}
@@ -158,7 +158,7 @@ export function LeadershipDashboard({
                 >
                   <div className="min-w-0">
                     <p
-                      className="font-display text-[10px] font-bold uppercase tracking-wide"
+                      className="truncate font-display text-[10px] font-bold uppercase tracking-wide"
                       style={{ color }}
                     >
                       {String(stage.number).padStart(2, "0")} {stage.name}
@@ -168,9 +168,9 @@ export function LeadershipDashboard({
                     {stageItems.length}
                   </span>
                 </Link>
-                <div className="flex max-h-[360px] flex-col gap-1.5 overflow-y-auto p-2">
+                <div className="flex max-h-[520px] flex-col gap-1 overflow-y-auto p-1.5">
                   {stageItems.length === 0 && (
-                    <p className="px-1 py-6 text-center text-xs text-muted">
+                    <p className="px-1 py-6 text-center text-[11px] text-muted">
                       Empty
                     </p>
                   )}
@@ -178,19 +178,19 @@ export function LeadershipDashboard({
                     <Link
                       key={item.id}
                       href={dashboardItemHref(item)}
-                      className="group relative block border border-border bg-surface-elevated p-2.5 transition-colors hover:border-border-strong hover:bg-hover-strong"
+                      className="group relative block border border-border bg-surface-elevated px-2 py-1.5 transition-colors hover:border-border-strong hover:bg-hover-strong"
                     >
                       <CornerTicks className={hoverTicks} />
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-display text-[10px] font-bold uppercase tracking-wider text-muted">
+                      <div className="flex items-center justify-between gap-1.5">
+                        <span className="font-display text-[9px] font-bold uppercase tracking-wider text-muted">
                           {item.ticketId}
                         </span>
-                        <StatusBadge status={item.status} />
+                        <StatusBadge status={item.status} compact />
                       </div>
-                      <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-snug">
+                      <p className="mt-0.5 line-clamp-2 text-[11px] font-medium leading-snug">
                         {item.title}
                       </p>
-                      <p className="mt-1 truncate text-[11px] text-muted">
+                      <p className="mt-0.5 truncate text-[10px] text-muted">
                         {item.submitter.name}
                       </p>
                     </Link>

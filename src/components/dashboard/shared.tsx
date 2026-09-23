@@ -86,11 +86,20 @@ export function SectionHeading({
   );
 }
 
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({
+  status,
+  compact = false,
+}: {
+  status: string;
+  compact?: boolean;
+}) {
   const color = statusColor(status);
   return (
     <span
-      className="border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+      className={[
+        "border font-bold uppercase tracking-wide",
+        compact ? "px-1 py-px text-[9px]" : "px-1.5 py-0.5 text-[10px]",
+      ].join(" ")}
       style={{ borderColor: color, color }}
     >
       {statusLabel(status)}

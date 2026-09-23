@@ -59,7 +59,7 @@ function NavLink({
       title={collapsed ? label : undefined}
       className={[
         "flex items-center border transition-colors",
-        collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5",
+        collapsed ? "justify-center px-0 py-2.5" : "gap-2 px-2 py-2.5",
         active
           ? "border-foreground bg-foreground text-background"
           : "border-transparent text-muted hover:border-border hover:bg-surface-elevated hover:text-foreground",
@@ -67,7 +67,7 @@ function NavLink({
     >
       <Icon className="size-[18px] shrink-0" />
       {!collapsed && (
-        <span className="truncate text-sm font-medium uppercase tracking-wide">
+        <span className="truncate text-sm font-medium uppercase">
           {label}
         </span>
       )}
@@ -109,14 +109,14 @@ function PipelineNav({
         type="button"
         onClick={() => setOpen(!open)}
         className={[
-          "flex w-full items-center gap-3 border px-3 py-2.5 transition-colors",
+          "flex w-full items-center gap-2 border px-2 py-2.5 transition-colors",
           isPipelineActive
             ? "border-border bg-surface-elevated text-foreground"
             : "border-transparent text-muted hover:border-border hover:bg-surface-elevated hover:text-foreground",
         ].join(" ")}
       >
         <Columns3 className="size-[18px] shrink-0" />
-        <span className="flex-1 truncate text-left text-sm font-medium uppercase tracking-wide">
+        <span className="flex-1 truncate text-left text-sm font-medium uppercase">
           Pipeline
         </span>
         <ChevronDown
@@ -127,7 +127,7 @@ function PipelineNav({
         />
       </button>
       {open && (
-        <ul className="mt-1 space-y-0.5 pl-5">
+        <ul className="mt-1 space-y-0.5 pl-4">
           {PIPELINE_SUB_ITEMS.map((item) => {
             const active = pathname === item.href;
             const phaseColor = item.stageId
@@ -139,7 +139,7 @@ function PipelineNav({
                 <Link
                   href={item.href}
                   className={[
-                    "group relative flex items-center border-l-2 px-3 py-2 text-sm font-medium tracking-wide transition-colors",
+                    "group relative flex min-w-0 items-center border-l-2 px-2 py-2 text-sm font-medium tracking-wide transition-colors",
                     active
                       ? "text-foreground"
                       : "text-muted hover:text-foreground",
@@ -154,7 +154,7 @@ function PipelineNav({
                     phaseColor ? { borderColor: phaseColor } : undefined
                   }
                 >
-                  {item.label}
+                  <span className="truncate">{item.label}</span>
                   <span
                     aria-hidden
                     className="pointer-events-none absolute bottom-0 left-[-2px] h-0.5 w-[calc(100%+2px)] origin-left scale-x-0 transition-transform duration-300 ease-out group-hover:scale-x-100"
@@ -195,21 +195,21 @@ export function WorkspaceSidebar({ user, collapsed, onToggle }: Props) {
     <aside
       className={[
         "sidebar-shell flex h-full shrink-0 flex-col border-r border-border bg-surface/90 backdrop-blur-sm transition-[width] duration-200 ease-out",
-        collapsed ? "w-[68px]" : "w-[240px]",
+        collapsed ? "w-[68px]" : "w-[216px]",
       ].join(" ")}
     >
       {/* Brand + toggle */}
       <div
         className={[
           "flex items-center border-b border-border",
-          collapsed ? "justify-center px-2 py-4" : "justify-between gap-2 px-4 py-4",
+          collapsed ? "justify-center px-2 py-4" : "justify-between gap-2 px-3 py-4",
         ].join(" ")}
       >
         <Link
           href="/dashboard"
           className={[
             "group flex min-w-0 items-center",
-            collapsed ? "justify-center" : "gap-3",
+            collapsed ? "justify-center" : "gap-2",
           ].join(" ")}
           title="Adsomnia Workspace"
         >
@@ -261,7 +261,7 @@ export function WorkspaceSidebar({ user, collapsed, onToggle }: Props) {
       )}
 
       {/* Primary navigation */}
-      <nav className="flex-1 overflow-y-auto px-2 py-4">
+      <nav className="flex-1 overflow-y-auto px-1.5 py-4">
         <ul className="space-y-1">
           <li>
             <NavLink
@@ -297,7 +297,7 @@ export function WorkspaceSidebar({ user, collapsed, onToggle }: Props) {
       </nav>
 
       {user.role === "leadership" && (
-        <div className="space-y-1 border-t border-border px-2 py-3">
+        <div className="space-y-1 border-t border-border px-1.5 py-3">
           <NavLink
             href="/feedback"
             label="Feedback"
