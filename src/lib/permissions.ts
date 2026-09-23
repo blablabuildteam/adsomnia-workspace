@@ -68,6 +68,21 @@ function hasAnyGrant(
   return initiative.memberAccess === "view" || initiative.memberAccess === "edit";
 }
 
+/**
+ * Change workstream content, remarks, or files.
+ * A view grant can open the workstream and read it.
+ */
+export function canModifyWorkstream(
+  user: PermissionUser,
+  initiative: Pick<InitiativeAccess, "submitterId" | "memberAccess">,
+): boolean {
+  return (
+    isCreator(user, initiative) ||
+    seesAllWorkstreams(user) ||
+    initiative.memberAccess === "edit"
+  );
+}
+
 /** Leadership and assistants can invite people onto a single workstream. */
 export function canManageWorkstreamAccess(user: PermissionUser): boolean {
   return isLeadership(user) || user.role === "assistant";

@@ -180,6 +180,8 @@ type Props = {
   showFormPrefill?: boolean;
   /** Explicit edit grant on this workstream. */
   hasEditGrant?: boolean;
+  /** Signed-in user can change remarks and files. Share links omit this. */
+  canContribute?: boolean;
   /** Leadership and assistants can open the access panel. */
   accessPanel?: WorkstreamAccessPanel | null;
 };
@@ -205,6 +207,7 @@ export function InitiativeDetailView({
   canUserManageOnboarding = false,
   showFormPrefill = false,
   hasEditGrant = false,
+  canContribute = true,
   accessPanel = null,
 }: Props) {
   const stage = STAGES.find(
@@ -513,7 +516,10 @@ export function InitiativeDetailView({
           attachments={attachments}
           shareToken={shareToken}
           currentUserId={currentUserId}
-          canRemoveWorkstreamAttachments={!shareToken && Boolean(currentUserId)}
+          canAddWorkstreamAttachments={Boolean(shareToken) || canContribute}
+          canRemoveWorkstreamAttachments={
+            !shareToken && canContribute && Boolean(currentUserId)
+          }
           goDate={
             goNoGoDecision?.decision === "approved"
               ? goNoGoDecision.createdAt

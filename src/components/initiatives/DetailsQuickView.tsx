@@ -254,6 +254,7 @@ type Props = {
   attachments?: Attachment[];
   shareToken?: string;
   currentUserId?: string;
+  canAddWorkstreamAttachments?: boolean;
   canRemoveWorkstreamAttachments?: boolean;
   goDate?: Date | null;
   goApprover?: string | null;
@@ -266,6 +267,7 @@ export function DetailsQuickView({
   attachments = [],
   shareToken,
   currentUserId,
+  canAddWorkstreamAttachments = true,
   canRemoveWorkstreamAttachments = false,
   goDate,
   goApprover,
@@ -517,6 +519,7 @@ export function DetailsQuickView({
         extraAttachments={phaseAttachments}
         shareToken={shareToken}
         currentUserId={currentUserId}
+        canAdd={canAddWorkstreamAttachments}
         canRemove={canRemoveWorkstreamAttachments}
       />
 

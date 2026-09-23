@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { Users, X } from "lucide-react";
 
 import {
@@ -8,7 +9,6 @@ import {
   removeWorkstreamAccess,
 } from "@/app/(workspace)/workstreams/[id]/access-actions";
 import { inputClass } from "@/lib/form-styles";
-import { filterMentionablePeople } from "@/lib/mentions";
 import type {
   WorkstreamAccessCandidate,
   WorkstreamAccessEntry,
@@ -41,15 +41,18 @@ function filterCandidates(
   people: WorkstreamAccessCandidate[],
   query: string,
 ): WorkstreamAccessCandidate[] {
-  const named = filterMentionablePeople(people, query);
   const needle = query.trim().toLowerCase();
-  if (!needle) return named;
-  const seen = new Set(named.map((person) => person.id));
-  const byEmail = people.filter(
-    (person) =>
-      !seen.has(person.id) && person.email.toLowerCase().includes(needle),
-  );
-  return [...named, ...byEmail];
+  if (!needle) return people;
+  return people.filter((person) => {
+    const haystacks = [
+      person.handle,
+      person.firstName ?? "",
+      person.lastName ?? "",
+      `${person.firstName ?? ""} ${person.lastName ?? ""}`.trim(),
+      person.email,
+    ];
+    return haystacks.some((part) => part.toLowerCase().includes(needle));
+  });
 }
 
 export function WorkstreamAccessButton({
@@ -66,7 +69,15 @@ export function WorkstreamAccessButton({
   const [picked, setPicked] = useState<WorkstreamAccessCandidate | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const rootRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [anchor, setAnchor] = useState<{ top: number; right: number } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setEntries(initialEntries);
@@ -78,16 +89,30 @@ export function WorkstreamAccessButton({
 
   useEffect(() => {
     if (!open) return;
-    function onPointerDown(event: MouseEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+
+    function placePanel() {
+      const rect = buttonRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setAnchor({
+        top: Math.min(rect.bottom + 8, window.innerHeight - 24),
+        right: Math.max(8, window.innerWidth - rect.right),
+      });
     }
+
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") setOpen(false);
     }
-    document.addEventListener("mousedown", onPointerDown);
+
+    placePanel();
+    const scroller = document.querySelector("main.workspace-content");
+    window.addEventListener("resize", placePanel);
+    window.addEventListener("scroll", placePanel, true);
+    scroller?.addEventListener("scroll", placePanel, { passive: true });
     document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("mousedown", onPointerDown);
+      window.removeEventListener("resize", placePanel);
+      window.removeEventListener("scroll", placePanel, true);
+      scroller?.removeEventListener("scroll", placePanel);
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);
@@ -170,8 +195,9 @@ export function WorkstreamAccessButton({
   }
 
   return (
-    <div ref={rootRef} className="relative print:hidden">
+    <div className="print:hidden">
       <button
+        ref={buttonRef}
         type="button"
         aria-expanded={open}
         aria-haspopup="dialog"
@@ -193,11 +219,25 @@ export function WorkstreamAccessButton({
         </span>
       </button>
 
-      {open && (
-        <div
+      {mounted &&
+        open &&
+        createPortal(
+        <div className="fixed inset-0 z-[80]">
+          <button
+            type="button"
+            aria-label="Close access"
+            className="absolute inset-0 bg-scrim"
+            onClick={() => setOpen(false)}
+          />
+          <div
           role="dialog"
+          aria-modal="true"
           aria-label="Workstream access"
-          className="absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] border border-border bg-surface shadow-[0_16px_40px_rgba(0,0,0,0.45)]"
+          className="absolute w-[min(22rem,calc(100vw-2rem))] border border-border bg-surface shadow-[0_16px_40px_rgba(0,0,0,0.45)]"
+          style={{
+            top: anchor?.top ?? 72,
+            right: anchor?.right ?? 16,
+          }}
         >
           <div className="border-b border-border px-3 py-3">
             <p className="font-display text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
@@ -269,7 +309,16 @@ export function WorkstreamAccessButton({
                 <p className="truncate font-display text-[10px] font-bold uppercase tracking-wide">
                   {picked.handle}
                 </p>
-                <p className="mt-2 text-[10px] text-muted">Set access</p>
+                <div className="mt-1 flex items-center justify-between gap-2">
+                  <p className="text-[10px] text-muted">Set access</p>
+                  <button
+                    type="button"
+                    onClick={() => setPicked(null)}
+                    className="font-display text-[10px] font-bold uppercase tracking-wide text-muted hover:text-foreground"
+                  >
+                    Back
+                  </button>
+                </div>
                 <div className="mt-2 flex gap-1">
                   <button
                     type="button"
@@ -391,7 +440,9 @@ export function WorkstreamAccessButton({
             )}
             {error && <p className="mt-2 text-xs text-btr">{error}</p>}
           </div>
-        </div>
+          </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

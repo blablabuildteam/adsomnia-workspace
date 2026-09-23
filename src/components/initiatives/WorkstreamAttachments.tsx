@@ -25,6 +25,7 @@ type Props = {
   attachments: Attachment[];
   shareToken?: string;
   currentUserId?: string;
+  canAdd?: boolean;
   canRemove?: boolean;
   /** Phase-funnel files shown read-only above workstream chips. */
   extraAttachments?: Attachment[];
@@ -54,6 +55,7 @@ export function WorkstreamAttachments({
   attachments,
   shareToken,
   currentUserId,
+  canAdd = true,
   canRemove = false,
   extraAttachments = [],
   variant = "card",
@@ -319,17 +321,21 @@ export function WorkstreamAttachments({
               ))}
             </div>
           )}
-          <AttachmentZone
-            attachments={items}
-            onChange={handleChange}
-            onFilesAdded={handleFilesAdded}
-            resolveLinkTitle={false}
-            showList={false}
-            canRemove={canRemove}
-          />
-          <p className="text-[11px] text-muted">
-            Drop files or add a URL. Files can be up to 4 MB.
-          </p>
+          {canAdd && (
+            <>
+              <AttachmentZone
+                attachments={items}
+                onChange={handleChange}
+                onFilesAdded={handleFilesAdded}
+                resolveLinkTitle={false}
+                showList={false}
+                canRemove={canRemove}
+              />
+              <p className="text-[11px] text-muted">
+                Drop files or add a URL. Files can be up to 4 MB.
+              </p>
+            </>
+          )}
         </>
       )}
       {error && <p className="text-sm text-danger">{error}</p>}

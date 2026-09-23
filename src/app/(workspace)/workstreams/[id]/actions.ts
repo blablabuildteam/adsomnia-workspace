@@ -16,6 +16,7 @@ import {
   canResubmitIdea,
   canResubmitScoping,
   canResubmitValidation,
+  canModifyWorkstream,
   canViewInitiative,
 } from "@/lib/permissions";
 import { loadInitiativeAccess } from "@/lib/workstream-access";
@@ -298,7 +299,7 @@ export async function addComment(
 
   if (
     !existing ||
-    !canViewInitiative(
+    !canModifyWorkstream(
       user,
       await loadInitiativeAccess(user, initiativeId, existing),
     )

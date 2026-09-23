@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { activityLog, initiatives } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { canViewInitiative } from "@/lib/permissions";
+import { canModifyWorkstream } from "@/lib/permissions";
 import { loadInitiativeAccess } from "@/lib/workstream-access";
 import { displayName, getCurrentUser } from "@/lib/session";
 import {
@@ -34,7 +34,7 @@ async function loadVisibleInitiative(initiativeId: number) {
 
   if (
     !initiative ||
-    !canViewInitiative(
+    !canModifyWorkstream(
       user,
       await loadInitiativeAccess(user, initiativeId, {
         submitterId: initiative.submitterId,

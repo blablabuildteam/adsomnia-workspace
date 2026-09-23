@@ -7,7 +7,10 @@ import {
   getApprovalHistory,
   getMentionablePeople,
 } from "@/lib/queries";
-import { canManageWorkstreamAccess } from "@/lib/permissions";
+import {
+  canManageWorkstreamAccess,
+  canModifyWorkstream,
+} from "@/lib/permissions";
 import {
   getCurrentUser,
   displayName,
@@ -126,7 +129,7 @@ export default async function InitiativePage({ params }: Props) {
       mentionablePeople={mentionablePeople}
       attachments={attachments}
       canUserApprove={canUserApprove}
-      canComment={!!user}
+      canComment={canModifyWorkstream(user, access)}
       currentUserName={user ? displayName(user) : "Unknown"}
       currentUserId={user?.id}
       showChat={!!user}
@@ -139,6 +142,7 @@ export default async function InitiativePage({ params }: Props) {
       canUserManageOnboarding={canUserManageOnboarding}
       showFormPrefill={user ? canUseFormPrefill(user) : false}
       hasEditGrant={access.memberAccess === "edit"}
+      canContribute={canModifyWorkstream(user, access)}
       accessPanel={accessPanel}
     />
   );

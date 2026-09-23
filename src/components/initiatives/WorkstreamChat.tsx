@@ -604,7 +604,9 @@ export function WorkstreamChat({
             )
           ) : (
             <p className="border-t border-border px-4 py-3 text-xs text-muted">
-              Sign in to add a remark.
+              {currentUserId
+                ? "You can view remarks on this workstream."
+                : "Sign in to add a remark."}
             </p>
           )}
         </section>
