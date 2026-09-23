@@ -113,27 +113,23 @@ export function FeedbackButton() {
         }}
         className={[
           "fixed right-0 top-1/2 z-40 -translate-y-1/2 print:hidden",
-          "flex items-center gap-2 border border-r-0 px-2 py-3",
+          "flex flex-row flex-nowrap items-center gap-2 whitespace-nowrap border border-r-0 px-2.5 py-3",
+          "[writing-mode:vertical-rl] [text-orientation:mixed]",
           "font-display text-[10px] font-bold uppercase tracking-[0.18em]",
           "transition-colors",
           sent
             ? "border-bbb bg-bbb text-background"
-            : "border-border bg-surface text-muted hover:border-foreground hover:bg-foreground hover:text-background",
+            : "border-border-strong bg-surface-input text-muted hover:border-foreground hover:bg-foreground hover:text-background",
         ].join(" ")}
         aria-label={sent ? "Feedback sent" : "Send feedback"}
         title={sent ? "Feedback sent" : "Send feedback"}
       >
         {sent ? (
-          <Check className="size-3.5" />
+          <Check className="size-3.5 shrink-0 rotate-90" />
         ) : (
-          <MessageSquare className="size-3.5" />
+          <MessageSquare className="size-3.5 shrink-0 rotate-90" />
         )}
-        <span
-          className="hidden sm:inline"
-          style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
-        >
-          {sent ? "Sent" : "Feedback"}
-        </span>
+        <span className="hidden sm:inline">{sent ? "Sent" : "Feedback"}</span>
       </button>
 
       <Modal
