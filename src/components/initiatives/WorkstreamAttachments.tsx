@@ -26,6 +26,8 @@ type Props = {
   shareToken?: string;
   currentUserId?: string;
   canRemove?: boolean;
+  /** When false, the parent (details header) already lists attachments. */
+  showList?: boolean;
 };
 
 function subscribeGuestName(onStoreChange: () => void) {
@@ -51,6 +53,7 @@ export function WorkstreamAttachments({
   shareToken,
   currentUserId,
   canRemove = false,
+  showList = true,
 }: Props) {
   const isGuestMode = Boolean(shareToken) && !currentUserId;
   const [items, setItems] = useState(attachments);
@@ -232,11 +235,13 @@ export function WorkstreamAttachments({
         <div className="flex items-center gap-2">
           <Paperclip className="size-3.5 text-muted" />
           <h3 className="font-display text-xs font-bold uppercase tracking-wide">
-            Attachments
+            {showList ? "Attachments" : "Add attachment"}
           </h3>
-          <span className="font-display text-[10px] font-bold tabular-nums text-muted">
-            {items.length}
-          </span>
+          {showList && (
+            <span className="font-display text-[10px] font-bold tabular-nums text-muted">
+              {items.length}
+            </span>
+          )}
         </div>
         {pending && (
           <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
@@ -301,6 +306,7 @@ export function WorkstreamAttachments({
               onChange={handleChange}
               onFilesAdded={handleFilesAdded}
               resolveLinkTitle={false}
+              showList={showList}
               canRemove={canRemove}
             />
             <p className="text-[11px] text-muted">

@@ -178,6 +178,8 @@ type Props = {
   onFilesAdded?: (files: File[]) => Promise<void> | void;
   /** When false, skip the extra title fetch (parent already persists + resolves titles). */
   resolveLinkTitle?: boolean;
+  /** When false, hide chips so a parent surface can own the list. */
+  showList?: boolean;
   readOnly?: boolean;
   canRemove?: boolean;
 };
@@ -187,6 +189,7 @@ export function AttachmentZone({
   onChange,
   onFilesAdded,
   resolveLinkTitle = true,
+  showList = true,
   readOnly,
   canRemove = true,
 }: Props) {
@@ -417,7 +420,7 @@ export function AttachmentZone({
       )}
 
       {/* Attachment chips */}
-      {attachments.length > 0 && (
+      {showList && attachments.length > 0 && (
         <div className="space-y-1.5">
           {attachments.map((a) => (
             <AttachmentChip

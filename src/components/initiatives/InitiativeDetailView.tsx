@@ -455,6 +455,7 @@ export function InitiativeDetailView({
           style={enterStyle(70)}
           initiative={initiative}
           attachments={attachments}
+          canRemoveWorkstreamAttachments={!shareToken && Boolean(currentUserId)}
           goDate={
             goNoGoDecision?.decision === "approved"
               ? goNoGoDecision.createdAt
@@ -475,6 +476,7 @@ export function InitiativeDetailView({
             shareToken={shareToken}
             currentUserId={currentUserId}
             canRemove={!shareToken && Boolean(currentUserId)}
+            showList={addedManually}
           />
         </div>
 

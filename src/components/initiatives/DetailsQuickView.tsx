@@ -4,7 +4,8 @@ import {
   ChevronDown,
   ExternalLink,
 } from "lucide-react";
-import { useState, type CSSProperties } from "react";
+import { useState, useTransition, type CSSProperties } from "react";
+import { removeWorkstreamAttachment } from "@/app/(workspace)/workstreams/[id]/attachment-actions";
 import { PARTIES } from "@/data/workflow";
 import { MilestoneGantt } from "./MilestoneGantt";
 import { AttachmentChip } from "./AttachmentZone";
@@ -252,6 +253,7 @@ function collectFunnelAttachments(
 type Props = {
   initiative: InitiativeWithUsers;
   attachments?: Attachment[];
+  canRemoveWorkstreamAttachments?: boolean;
   goDate?: Date | null;
   goApprover?: string | null;
   className?: string;
@@ -261,13 +263,16 @@ type Props = {
 export function DetailsQuickView({
   initiative,
   attachments = [],
+  canRemoveWorkstreamAttachments = false,
   goDate,
   goApprover,
   className,
   style,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [, startRemove] = useTransition();
   const currentNum = STAGE_NUM[initiative.currentStage] ?? 1;
+  const workstreamIds = new Set(attachments.map((item) => item.id));
 
   const vd = initiative.validationData;
   const sd = initiative.scopingData;
@@ -302,6 +307,23 @@ export function DetailsQuickView({
       : null;
 
   const businessValueSummary = formatBusinessValueSummary(vd?.businessValue);
+  const solutionText =
+    vd?.solutionDirection?.trim() || initiative.opportunitySolution;
+  const solutionLabel = vd?.solutionDirection?.trim()
+    ? "Solution"
+    : "Opportunity / Solution";
+  const hasBusinessValueVisual = Boolean(
+    vd?.businessValue &&
+      (typeof vd.businessValue === "string"
+        ? vd.businessValue.trim()
+        : isBusinessValueData(vd.businessValue) &&
+          vd.businessValue.types.length > 0),
+  );
+  const impactText =
+    !hasBusinessValueVisual
+      ? businessValueSummary || initiative.expectedImpact
+      : null;
+  const audience = initiative.targetAudience?.trim() || null;
 
   // Progressive visibility gates
   const hasValidation = currentNum >= 2;
@@ -320,6 +342,17 @@ export function DetailsQuickView({
   const driveUrl = setup?.drive.driveUrl;
   const hasTools = hasSetup && !!(slackName || jiraUrl || driveUrl);
   const funnelAttachments = collectFunnelAttachments(initiative, attachments);
+  const validationSnapshotCount = [adsomnia, tShirtSize, leadParty].filter(
+    Boolean,
+  ).length;
+  const hasValidationSnapshot =
+    hasValidation && !hasScoping && validationSnapshotCount > 0;
+  const narrativeCount = [
+    initiative.problemStatement,
+    solutionText,
+    hasBusinessValueVisual || impactText,
+    audience,
+  ].filter(Boolean).length;
 
   const hasTimeline =
     hasScoping &&
@@ -337,6 +370,44 @@ export function DetailsQuickView({
       className={["mb-10 bg-background", className].filter(Boolean).join(" ")}
       style={style}
     >
+      {/* Snapshot — Validation, before scoping numbers exist. */}
+      {hasValidationSnapshot && (
+        <div
+          className={[
+            "grid divide-y divide-foreground/10 border-t border-foreground/10 sm:divide-y-0 sm:divide-x",
+            validationSnapshotCount === 3
+              ? "sm:grid-cols-3"
+              : validationSnapshotCount === 2
+                ? "sm:grid-cols-2"
+                : "",
+          ].join(" ")}
+        >
+          {adsomnia && (
+            <Hero
+              label="Adsomnia Priority"
+              value={adsomnia}
+              accent={PRIORITY_META[adsomnia]?.color}
+              sub={PRIORITY_META[adsomnia]?.hint}
+            />
+          )}
+          {tShirtSize && (
+            <Hero
+              label="Sizing"
+              value={tShirtSize}
+              sub="T-shirt estimate"
+            />
+          )}
+          {leadParty && (
+            <Hero
+              label="Production"
+              value={leadParty.label}
+              accent={leadParty.color}
+              sub="Lead party"
+            />
+          )}
+        </div>
+      )}
+
       {/* Hero stats — from Scoping onward. Consensus priority leads; t-shirt sizing drops out. */}
       {hasScoping && (
         <div className="grid divide-y divide-foreground/10 border-t border-foreground/10 sm:grid-cols-2 sm:divide-y-0 sm:divide-x lg:grid-cols-4">
@@ -392,18 +463,26 @@ export function DetailsQuickView({
         </div>
       )}
 
-      {/* Narrative — from Validation onward */}
-      {hasValidation && (initiative.problemStatement ||
-        vd?.solutionDirection ||
-        businessValueSummary) && (
-        <div className="grid divide-y divide-foreground/10 border-t border-foreground/10 md:grid-cols-3 md:divide-y-0 md:divide-x">
+      {/* Narrative — from Validation onward. Initiative fields fill gaps until later stages land. */}
+      {hasValidation && narrativeCount > 0 && (
+        <div
+          className={[
+            "grid divide-y divide-foreground/10 border-t border-foreground/10 md:divide-y-0 md:divide-x",
+            narrativeCount >= 4
+              ? "sm:grid-cols-2 lg:grid-cols-4"
+              : narrativeCount === 3
+                ? "md:grid-cols-3"
+                : "md:grid-cols-2",
+          ].join(" ")}
+        >
           <Narrative label="Problem" text={initiative.problemStatement} />
-          <Narrative label="Solution" text={vd?.solutionDirection} />
-          {vd?.businessValue ? (
-            <BusinessValueVisual value={vd.businessValue} />
-          ) : businessValueSummary ? (
-            <Narrative label="Business Value" text={businessValueSummary} />
-          ) : null}
+          <Narrative label={solutionLabel} text={solutionText} />
+          {hasBusinessValueVisual ? (
+            <BusinessValueVisual value={vd?.businessValue} />
+          ) : (
+            <Narrative label="Expected Impact" text={impactText} />
+          )}
+          <Narrative label="Audience" text={audience} />
         </div>
       )}
 
@@ -436,13 +515,30 @@ export function DetailsQuickView({
             Attachments
           </span>
           <div className="mt-2.5 grid gap-1.5 sm:grid-cols-2">
-            {funnelAttachments.map((attachment) => (
-              <AttachmentChip
-                key={attachment.id}
-                attachment={attachment}
-                readOnly
-              />
-            ))}
+            {funnelAttachments.map((attachment) => {
+              const canRemove =
+                canRemoveWorkstreamAttachments &&
+                workstreamIds.has(attachment.id);
+              return (
+                <AttachmentChip
+                  key={attachment.id}
+                  attachment={attachment}
+                  readOnly={!canRemove}
+                  onRemove={
+                    canRemove
+                      ? () => {
+                          startRemove(async () => {
+                            await removeWorkstreamAttachment(
+                              initiative.id,
+                              attachment.id,
+                            );
+                          });
+                        }
+                      : undefined
+                  }
+                />
+              );
+            })}
           </div>
         </div>
       )}
@@ -462,7 +558,7 @@ export function DetailsQuickView({
           <span className="text-foreground/30">Sponsor</span>{" "}
           <span className="text-foreground/70">{initiative.sponsor.name}</span>
         </span>
-        {leadParty && (
+        {leadParty && !hasValidationSnapshot && (
           <span>
             <span className="text-foreground/30">Production</span>{" "}
             <span
@@ -482,7 +578,7 @@ export function DetailsQuickView({
             </span>
           </span>
         )}
-        {!pastScoping && tShirtSize && (
+        {!pastScoping && tShirtSize && !hasValidationSnapshot && (
           <span className="inline-flex items-center gap-1.5">
             <span className="text-foreground/30">Sizing</span>
             <span className="border border-foreground/15 px-1 font-display text-[9px] font-bold text-foreground/70">
@@ -490,7 +586,7 @@ export function DetailsQuickView({
             </span>
           </span>
         )}
-        {!hasScoping && adsomnia && (
+        {!hasScoping && adsomnia && !hasValidationSnapshot && (
           <span className="inline-flex items-center gap-1.5">
             <span className="text-foreground/30">Adsomnia Priority</span>
             <span
