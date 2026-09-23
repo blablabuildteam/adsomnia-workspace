@@ -707,41 +707,41 @@ export function IdeaFormView({
             />
           )}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="flex items-center gap-2 text-xs text-muted">
-            <Sparkles className="size-3.5 shrink-0 opacity-70" aria-hidden />
-            Each submission is checked for Fast-Track fit and overlap with
-            work already in the funnel or in production.
-          </p>
-          <button
-            type={canSubmit ? "submit" : "button"}
-            disabled={isSubmitting}
-            onClick={() => {
-              if (!canSubmit) revealMissing();
-            }}
-            title={
-              !canSubmit
-                ? "Click to see what still needs to be filled"
-                : undefined
-            }
-            className={[
-              "group inline-flex items-center justify-center gap-2 border border-foreground bg-foreground px-6 py-3 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50",
-              !canSubmit ? "opacity-50 hover:opacity-70" : "",
-            ].join(" ")}
-          >
-            {analyzing ? (
-              <>
-                <Loader2 className="size-3.5 animate-spin" />
-                Analyzing…
-              </>
-            ) : pending ? (
-              "Submitting…"
-            ) : (
-              <>
-                Register Initiative
-                <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
-              </>
-            )}
-          </button>
+            <p className="flex items-center gap-2 text-xs text-muted">
+              <Sparkles className="size-3.5 shrink-0 opacity-70" aria-hidden />
+              Each submission is checked for Fast-Track fit and overlap with
+              work already in the funnel or in production.
+            </p>
+            <button
+              type={canSubmit ? "submit" : "button"}
+              disabled={isSubmitting}
+              onClick={() => {
+                if (!canSubmit) revealMissing();
+              }}
+              title={
+                !canSubmit
+                  ? "Click to see what still needs to be filled"
+                  : undefined
+              }
+              className={[
+                "group inline-flex items-center justify-center gap-2 border border-foreground bg-foreground px-6 py-3 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50",
+                !canSubmit ? "opacity-50 hover:opacity-70" : "",
+              ].join(" ")}
+            >
+              {analyzing ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Analyzing…
+                </>
+              ) : pending ? (
+                "Submitting…"
+              ) : (
+                <>
+                  Register Initiative
+                  <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
+                </>
+              )}
+            </button>
           </div>
         </div>
       </form>
