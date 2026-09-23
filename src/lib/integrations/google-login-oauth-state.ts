@@ -13,8 +13,13 @@ function getSecret(): Uint8Array {
 
 export async function createGoogleLoginOAuthState(
   redirectOrigin: string,
+  returnPath?: string | null,
 ): Promise<string> {
-  return new SignJWT({ purpose: STATE_PURPOSE, redirectOrigin })
+  return new SignJWT({
+    purpose: STATE_PURPOSE,
+    redirectOrigin,
+    ...(returnPath ? { returnPath } : {}),
+  })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${STATE_TTL_SECONDS}s`)
@@ -23,7 +28,7 @@ export async function createGoogleLoginOAuthState(
 
 export async function verifyGoogleLoginOAuthState(
   state: string,
-): Promise<{ redirectOrigin: string }> {
+): Promise<{ redirectOrigin: string; returnPath: string | null }> {
   const { payload } = await jwtVerify(state, getSecret());
   if (payload.purpose !== STATE_PURPOSE) {
     throw new Error("Invalid Google OAuth state.");
@@ -35,5 +40,7 @@ export async function verifyGoogleLoginOAuthState(
   if (!redirectOrigin) {
     throw new Error("Invalid Google OAuth state.");
   }
-  return { redirectOrigin };
+  const returnPath =
+    typeof payload.returnPath === "string" ? payload.returnPath : null;
+  return { redirectOrigin, returnPath };
 }

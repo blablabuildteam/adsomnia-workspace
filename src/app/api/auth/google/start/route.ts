@@ -5,6 +5,7 @@ import {
   isGoogleLoginConfigured,
 } from "@/lib/integrations/google-login";
 import { createGoogleLoginOAuthState } from "@/lib/integrations/google-login-oauth-state";
+import { safeReturnPath } from "@/lib/return-path";
 
 function appOrigin(request: Request): string {
   const configured = (
@@ -27,7 +28,13 @@ export async function GET(request: Request) {
 
   try {
     const redirectOrigin = getGoogleLoginRedirectOrigin(request);
-    const state = await createGoogleLoginOAuthState(redirectOrigin);
+    const returnPath = safeReturnPath(
+      new URL(request.url).searchParams.get("next"),
+    );
+    const state = await createGoogleLoginOAuthState(
+      redirectOrigin,
+      returnPath,
+    );
     return NextResponse.redirect(getGoogleAuthorizeUrl(state, redirectOrigin));
   } catch {
     const dest = new URL("/login", origin);

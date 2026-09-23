@@ -3,10 +3,8 @@ import { ArrowRight, CheckCircle2, Lightbulb } from "lucide-react";
 import { STAGES, getStageColor } from "@/data/workflow";
 import { BrandTexture } from "@/components/ui/BrandTexture";
 import { DashboardGreeting } from "@/components/dashboard/DashboardGreeting";
-import {
-  sortTeamWorkstreams,
-  teamItemState,
-} from "@/lib/dashboard-attention";
+import { teamItemState } from "@/lib/dashboard-attention";
+import type { WorkstreamAccessLevel } from "@/lib/permissions";
 import type { InitiativeWithUsers } from "@/lib/queries";
 import {
   SectionHeading,
@@ -23,6 +21,7 @@ type Props = {
   userId: string;
   firstName: string;
   role: string;
+  grants?: { initiativeId: number; level: WorkstreamAccessLevel }[];
 };
 
 export function TeamDashboard({
@@ -31,16 +30,29 @@ export function TeamDashboard({
   userId,
   firstName,
   role,
+  grants = [],
 }: Props) {
   const feedback = new Set(feedbackIds);
-  const submitted = sortTeamWorkstreams(
-    rawItems.filter(
-      (item) => !item.archivedAt && item.submitter.id === userId,
-    ),
-    feedback,
-  );
+  const grantById = new Map(grants.map((grant) => [grant.initiativeId, grant.level]));
+  function itemState(item: InitiativeWithUsers) {
+    const owns = item.submitter.id === userId;
+    const grant = grantById.get(item.id);
+    if (!owns && grant !== "edit") {
+      return { kind: "waiting" as const, reason: "Shared with you" };
+    }
+    return teamItemState(item, feedback);
+  }
+  const submitted = rawItems
+    .filter((item) => !item.archivedAt)
+    .sort((a, b) => {
+      const aAction = itemState(a).kind === "action" ? 1 : 0;
+      const bAction = itemState(b).kind === "action" ? 1 : 0;
+      if (aAction !== bAction) return bAction - aAction;
+      return b.updatedAt.getTime() - a.updatedAt.getTime();
+    });
+
   const needsAction = submitted.filter(
-    (item) => teamItemState(item, feedback).kind === "action",
+    (item) => itemState(item).kind === "action",
   );
 
   return (
@@ -51,7 +63,7 @@ export function TeamDashboard({
           <DashboardGreeting
             firstName={firstName}
             role={role}
-            subtitle="Your submitted workstreams — where they sit in the pipeline, and whether they need you."
+            subtitle="Workstreams you submitted or were added to — where they sit, and whether they need you."
           />
           <div className="mt-5">
             <Link
@@ -89,7 +101,7 @@ export function TeamDashboard({
         ) : (
           <ul className="border border-border">
             {needsAction.map((item, index) => {
-              const state = teamItemState(item, feedback);
+              const state = itemState(item);
               return (
                 <li key={item.id}>
                   <Link
@@ -132,7 +144,7 @@ export function TeamDashboard({
 
       <section>
         <SectionHeading
-          kicker="Submitted by you"
+          kicker="Yours and shared"
           trailing={
             <span className="font-display text-xs font-bold tabular-nums text-muted">
               {submitted.length}
@@ -158,7 +170,8 @@ export function TeamDashboard({
               <WorkstreamCard
                 key={item.id}
                 item={item}
-                state={teamItemState(item, feedback)}
+                state={itemState(item)}
+                shared={item.submitter.id !== userId}
               />
             ))}
           </div>
@@ -171,9 +184,11 @@ export function TeamDashboard({
 function WorkstreamCard({
   item,
   state,
+  shared = false,
 }: {
   item: InitiativeWithUsers;
   state: ReturnType<typeof teamItemState>;
+  shared?: boolean;
 }) {
   const stage = STAGES.find((entry) => entry.id === item.currentStage);
   const stageColor = getStageColor(item.currentStage);
@@ -191,6 +206,11 @@ function WorkstreamCard({
               {item.ticketId}
             </span>
             <StatusBadge status={item.status} />
+            {shared && (
+              <span className="border border-border px-1.5 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+                Shared
+              </span>
+            )}
           </div>
           <p className="mt-1.5 text-sm font-medium leading-snug">{item.title}</p>
         </div>

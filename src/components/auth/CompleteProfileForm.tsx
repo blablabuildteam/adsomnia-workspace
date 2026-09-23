@@ -18,6 +18,7 @@ type Props = {
   defaultFirstName: string;
   defaultLastName: string;
   defaultJobTitle: string;
+  nextPath?: string | null;
 };
 
 export function CompleteProfileForm({
@@ -25,6 +26,7 @@ export function CompleteProfileForm({
   defaultFirstName,
   defaultLastName,
   defaultJobTitle,
+  nextPath,
 }: Props) {
   const [state, formAction, pending] = useActionState(completeProfile, initial);
 
@@ -62,6 +64,7 @@ export function CompleteProfileForm({
             className="approval-action-border approval-action-border--slow"
           />
           <CornerTicks pulse />
+          {nextPath ? <input type="hidden" name="next" value={nextPath} /> : null}
 
           {state.error && (
             <div className="mb-4 flex items-center gap-2 border border-btr/40 bg-btr/10 px-3 py-2.5 text-sm text-btr">

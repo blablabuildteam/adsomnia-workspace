@@ -18,6 +18,7 @@ import {
   parseThemePreference,
   type ThemePreference,
 } from "./theme";
+import { safeReturnPath } from "./return-path";
 
 export type LoginResult = {
   error?: string;
@@ -102,7 +103,7 @@ export async function completeProfile(
     })
     .where(eq(users.id, user.id));
 
-  redirect("/dashboard");
+  redirect(safeReturnPath(String(formData.get("next") ?? "")) ?? "/dashboard");
 }
 
 /** Edit profile from the sidebar (any role). */

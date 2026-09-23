@@ -1,8 +1,9 @@
 import { isGoogleLoginConfigured } from "@/lib/integrations/google-login";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { safeReturnPath } from "@/lib/return-path";
 
 type LoginPageProps = {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
@@ -11,6 +12,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     <LoginForm
       googleEnabled={isGoogleLoginConfigured()}
       errorCode={params.error}
+      nextPath={safeReturnPath(params.next)}
     />
   );
 }

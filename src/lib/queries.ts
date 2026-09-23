@@ -6,6 +6,7 @@ import {
   activityLog,
   comments,
   feedbackSubmissions,
+  workstreamAccess,
 } from "@/db/schema";
 import {
   eq,
@@ -16,6 +17,8 @@ import {
   isNull,
   notInArray,
   and,
+  or,
+  exists,
   sql,
   type SQL,
 } from "drizzle-orm";
@@ -127,10 +130,23 @@ type InitiativeRow = {
   sponsorId: string;
 };
 
-/** Team accounts are limited to their own submissions; leadership and assistants see all. */
+/** Team accounts see their own submissions and workstreams they were added to. */
 function ownerVisibility(user: PermissionUser): SQL | undefined {
   if (seesAllWorkstreams(user)) return undefined;
-  return eq(initiatives.submitterId, user.id);
+  return or(
+    eq(initiatives.submitterId, user.id),
+    exists(
+      db
+        .select({ id: workstreamAccess.id })
+        .from(workstreamAccess)
+        .where(
+          and(
+            eq(workstreamAccess.initiativeId, initiatives.id),
+            eq(workstreamAccess.userId, user.id),
+          ),
+        ),
+    ),
+  );
 }
 
 function whereVisible(

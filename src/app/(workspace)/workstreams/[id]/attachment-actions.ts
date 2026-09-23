@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { activityLog, initiatives } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { canViewInitiative } from "@/lib/permissions";
+import { loadInitiativeAccess } from "@/lib/workstream-access";
 import { displayName, getCurrentUser } from "@/lib/session";
 import {
   addWorkstreamFileAttachment,
@@ -33,7 +34,12 @@ async function loadVisibleInitiative(initiativeId: number) {
 
   if (
     !initiative ||
-    !canViewInitiative(user, { submitterId: initiative.submitterId })
+    !canViewInitiative(
+      user,
+      await loadInitiativeAccess(user, initiativeId, {
+        submitterId: initiative.submitterId,
+      }),
+    )
   ) {
     return { error: "Workstream not found." } as const;
   }

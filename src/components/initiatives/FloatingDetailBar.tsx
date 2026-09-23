@@ -10,6 +10,7 @@ type Props = {
   stageColor: string;
   sharePath?: string;
   archiveAction?: ReactNode;
+  accessAction?: ReactNode;
 };
 
 export function FloatingDetailBar({
@@ -18,6 +19,7 @@ export function FloatingDetailBar({
   stageColor,
   sharePath,
   archiveAction,
+  accessAction,
 }: Props) {
   const [visible, setVisible] = useState(false);
   const rafId = useRef(0);
@@ -71,6 +73,7 @@ export function FloatingDetailBar({
             {title}
           </h2>
           <div className="ml-auto flex shrink-0 items-center gap-2">
+            {accessAction}
             {archiveAction}
             {sharePath && <ShareButton path={sharePath} size="md" />}
             <button

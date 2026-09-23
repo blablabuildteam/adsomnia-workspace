@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getInitiativeById } from "@/lib/queries";
 import { canViewInitiative } from "@/lib/permissions";
+import { loadInitiativeAccess } from "@/lib/workstream-access";
 import { getCurrentUser } from "@/lib/session";
 import { getWorkstreamAttachmentFile } from "@/lib/workstream-attachments";
 
@@ -21,7 +22,14 @@ export async function GET(_request: Request, { params }: Props) {
   if (
     !user ||
     !initiative ||
-    !canViewInitiative(user, { submitterId: initiative.submitter.id })
+    !canViewInitiative(
+      user,
+      await loadInitiativeAccess(user, initiativeId, {
+        submitterId: initiative.submitter.id,
+        currentStage: initiative.currentStage,
+        status: initiative.status,
+      }),
+    )
   ) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

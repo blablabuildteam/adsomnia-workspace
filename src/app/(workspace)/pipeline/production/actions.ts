@@ -10,6 +10,7 @@ import {
   resolveJiraSpaceFromUrl,
 } from "@/lib/integrations/jira";
 import { canViewInitiative } from "@/lib/permissions";
+import { loadInitiativeAccess } from "@/lib/workstream-access";
 import {
   isTrackedLeadParty,
   type ProductionTask,
@@ -56,7 +57,15 @@ export async function loadProductionJourney(
     .where(eq(initiatives.id, initiativeId))
     .limit(1);
 
-  if (!existing || !canViewInitiative(user, existing)) return [];
+  if (
+    !existing ||
+    !canViewInitiative(
+      user,
+      await loadInitiativeAccess(user, initiativeId, existing),
+    )
+  ) {
+    return [];
+  }
   return getProductionJourney(initiativeId);
 }
 

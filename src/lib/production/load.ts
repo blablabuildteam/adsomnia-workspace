@@ -11,6 +11,7 @@ import {
   canViewInitiative,
   type PermissionUser,
 } from "@/lib/permissions";
+import { loadInitiativeAccess } from "@/lib/workstream-access";
 import {
   getActivityForInitiative,
   getInitiativeById,
@@ -447,7 +448,17 @@ export async function getProductionEpicTasks(
   initiativeId: number,
 ): Promise<{ byEpic: Record<string, ProductionTask[]>; error?: string }> {
   const item = await getInitiativeById(initiativeId);
-  if (!item || !canViewInitiative(user, { submitterId: item.submitter.id })) {
+  if (
+    !item ||
+    !canViewInitiative(
+      user,
+      await loadInitiativeAccess(user, initiativeId, {
+        submitterId: item.submitter.id,
+        currentStage: item.currentStage,
+        status: item.status,
+      }),
+    )
+  ) {
     return { byEpic: {}, error: "Project not found." };
   }
 

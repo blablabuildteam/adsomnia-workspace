@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   displayName,
@@ -6,6 +7,7 @@ import {
 } from "@/lib/session";
 import { canSeeJiraTokenReminder } from "@/lib/permissions";
 import { getJiraTokenReminder } from "@/lib/integrations/jira-token-reminder";
+import { loginPath, safeReturnPath } from "@/lib/return-path";
 import { WorkspaceShell } from "@/components/workspace/WorkspaceShell";
 
 export default async function WorkspaceLayout({
@@ -14,12 +16,18 @@ export default async function WorkspaceLayout({
   children: React.ReactNode;
 }) {
   const user = await getCurrentUser();
+  const headerStore = await headers();
+  const next = safeReturnPath(headerStore.get("x-pathname"));
   if (!user) {
-    redirect("/login");
+    redirect(loginPath(next));
   }
 
   if (needsProfileCompletion(user)) {
-    redirect("/complete-profile");
+    redirect(
+      next
+        ? `/complete-profile?next=${encodeURIComponent(next)}`
+        : "/complete-profile",
+    );
   }
 
   const jiraTokenReminder = canSeeJiraTokenReminder(user)

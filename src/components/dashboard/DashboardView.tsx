@@ -2,7 +2,11 @@ import { LeadershipDashboard } from "@/components/dashboard/LeadershipDashboard"
 import { TeamDashboard } from "@/components/dashboard/TeamDashboard";
 import { visibleOnDashboard } from "@/lib/dashboard-attention";
 import type { FastTrackItem } from "@/lib/fast-track";
-import { seesAllWorkstreams, type WorkspaceRole } from "@/lib/permissions";
+import {
+  seesAllWorkstreams,
+  type WorkstreamAccessLevel,
+  type WorkspaceRole,
+} from "@/lib/permissions";
 import type {
   InitiativeWithUsers,
   WorkspaceActivityEntry,
@@ -19,6 +23,7 @@ type DashboardProps = {
     firstName: string;
     role: WorkspaceRole;
   };
+  grants?: { initiativeId: number; level: WorkstreamAccessLevel }[];
 };
 
 export function DashboardView({
@@ -28,6 +33,7 @@ export function DashboardView({
   fastTrackError,
   feedbackIds,
   user,
+  grants = [],
 }: DashboardProps) {
   const active = initiatives.filter(visibleOnDashboard);
 
@@ -51,6 +57,7 @@ export function DashboardView({
       userId={user.id}
       firstName={user.firstName}
       role={user.role}
+      grants={grants}
     />
   );
 }

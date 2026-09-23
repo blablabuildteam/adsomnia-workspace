@@ -7,14 +7,18 @@
  * - `assistant` — read access to every workstream and the full Fast Track
  *   board (Daria, assisting Coen). No approval, setup, or onboarding actions.
  * - `team` — every other allowed-domain account (Adsomnia, Godai, blablabuild).
- *   Submit initiatives and follow only their own items. They may edit their
- *   own details while the item is still in Initiative. In Validation they
- *   can view the workstream; leadership fills the business case.
+ *   Submit initiatives and follow their own items, plus any workstream they
+ *   were explicitly added to. They may edit their own details while the item
+ *   is still in Initiative. In Validation they can view the workstream;
+ *   leadership fills the business case. An edit grant lets them change the
+ *   workstream the same way the creator or leadership can change its content.
  * - `production` — reserved; treated as team for write access today.
  * - Product Feedback inbox and the user directory are leadership-only.
  */
 
 export type WorkspaceRole = "leadership" | "production" | "team" | "assistant";
+
+export type WorkstreamAccessLevel = "view" | "edit";
 
 export type PermissionUser = {
   id: string;
@@ -25,6 +29,8 @@ export type InitiativeAccess = {
   submitterId: string;
   currentStage: string;
   status: string;
+  /** Explicit invite onto this workstream. Omit when the user was not granted one. */
+  memberAccess?: WorkstreamAccessLevel | null;
 };
 
 export function isLeadership(user: PermissionUser): boolean {
@@ -50,12 +56,33 @@ function isCreatorOrLeadership(
   return isCreator(user, initiative) || isLeadership(user);
 }
 
-/** Leadership and assistants see every workstream; team members see only what they submitted. */
+function hasEditGrant(
+  initiative: Pick<InitiativeAccess, "memberAccess">,
+): boolean {
+  return initiative.memberAccess === "edit";
+}
+
+function hasAnyGrant(
+  initiative: Pick<InitiativeAccess, "memberAccess">,
+): boolean {
+  return initiative.memberAccess === "view" || initiative.memberAccess === "edit";
+}
+
+/** Leadership and assistants can invite people onto a single workstream. */
+export function canManageWorkstreamAccess(user: PermissionUser): boolean {
+  return isLeadership(user) || user.role === "assistant";
+}
+
+/** Leadership and assistants see every workstream; team members see their own and any they were added to. */
 export function canViewInitiative(
   user: PermissionUser,
-  initiative: Pick<InitiativeAccess, "submitterId">,
+  initiative: Pick<InitiativeAccess, "submitterId" | "memberAccess">,
 ): boolean {
-  return isCreator(user, initiative) || seesAllWorkstreams(user);
+  return (
+    isCreator(user, initiative) ||
+    seesAllWorkstreams(user) ||
+    hasAnyGrant(initiative)
+  );
 }
 
 /** Any signed-in workspace account can file a new initiative. */
@@ -184,21 +211,26 @@ export function canEditIdeaDetails(
   user: PermissionUser,
   initiative: InitiativeAccess,
 ): boolean {
-  if (initiative.currentStage === "validation") return isLeadership(user);
+  if (initiative.currentStage === "validation") {
+    return isLeadership(user) || hasEditGrant(initiative);
+  }
   if (initiative.currentStage !== "idea") return false;
-  if (initiative.status === "rejected") return isCreator(user, initiative);
-  return isCreatorOrLeadership(user, initiative);
+  if (initiative.status === "rejected") {
+    return isCreator(user, initiative) || hasEditGrant(initiative);
+  }
+  return isCreatorOrLeadership(user, initiative) || hasEditGrant(initiative);
 }
 
 /**
- * Leadership fills and revises the business case. The submitter can view it.
+ * Leadership fills and revises the business case. An edit grant can as well.
+ * The submitter can view it.
  */
 export function canEditValidation(
   user: PermissionUser,
   initiative: InitiativeAccess,
 ): boolean {
   if (initiative.currentStage !== "validation") return false;
-  return isLeadership(user);
+  return isLeadership(user) || hasEditGrant(initiative);
 }
 
 export function canResubmitIdea(
@@ -206,9 +238,11 @@ export function canResubmitIdea(
   initiative: InitiativeAccess,
 ): boolean {
   if (initiative.currentStage !== "idea") return false;
-  if (initiative.status === "rejected") return isCreator(user, initiative);
+  if (initiative.status === "rejected") {
+    return isCreator(user, initiative) || hasEditGrant(initiative);
+  }
   if (initiative.status === "draft" || initiative.status === "on-hold") {
-    return isCreatorOrLeadership(user, initiative);
+    return isCreatorOrLeadership(user, initiative) || hasEditGrant(initiative);
   }
   return false;
 }
@@ -218,7 +252,7 @@ export function canResubmitValidation(
   initiative: InitiativeAccess,
 ): boolean {
   if (initiative.currentStage !== "validation") return false;
-  if (!isLeadership(user)) return false;
+  if (!isLeadership(user) && !hasEditGrant(initiative)) return false;
   return (
     initiative.status === "rejected" ||
     initiative.status === "draft" ||
@@ -239,7 +273,7 @@ export function canEditScoping(
     initiative.currentStage === "go-nogo" &&
     (initiative.status === "draft" || initiative.status === "on-hold");
   if (!inScoping && !goNoGoFeedback) return false;
-  return isCreatorOrLeadership(user, initiative);
+  return isCreatorOrLeadership(user, initiative) || hasEditGrant(initiative);
 }
 
 export function canResubmitScoping(
@@ -255,7 +289,7 @@ export function canResubmitScoping(
   if (initiative.status !== "draft" && initiative.status !== "on-hold") {
     return false;
   }
-  return isCreatorOrLeadership(user, initiative);
+  return isCreatorOrLeadership(user, initiative) || hasEditGrant(initiative);
 }
 
 export function roleLabel(role: string): string {

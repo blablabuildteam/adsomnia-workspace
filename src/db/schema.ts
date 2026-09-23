@@ -10,6 +10,7 @@ import {
   boolean,
   pgEnum,
   unique,
+  index,
 } from "drizzle-orm/pg-core";
 
 export const userRoleEnum = pgEnum("user_role", [
@@ -17,6 +18,11 @@ export const userRoleEnum = pgEnum("user_role", [
   "production",
   "team",
   "assistant",
+]);
+
+export const workstreamAccessLevelEnum = pgEnum("workstream_access_level", [
+  "view",
+  "edit",
 ]);
 
 export const themePreferenceEnum = pgEnum("theme_preference", [
@@ -102,6 +108,41 @@ export const initiatives = pgTable("initiatives", {
     .defaultNow()
     .$onUpdate(() => new Date()),
 });
+
+/**
+ * Extra people invited onto one workstream.
+ * Leadership and assistants already see every workstream; the submitter sees
+ * their own. This table is for everyone else.
+ */
+export const workstreamAccess = pgTable(
+  "workstream_access",
+  {
+    id: serial("id").primaryKey(),
+    initiativeId: integer("initiative_id")
+      .notNull()
+      .references(() => initiatives.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    level: workstreamAccessLevelEnum("level").notNull(),
+    grantedById: uuid("granted_by_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    initiativeUserUnique: unique("workstream_access_initiative_user_unique").on(
+      table.initiativeId,
+      table.userId,
+    ),
+    userIdIdx: index("workstream_access_user_id_idx").on(table.userId),
+  }),
+);
 
 /** Files, Drive docs, and links dropped on a workstream (including share-link guests). */
 export const workstreamAttachments = pgTable("workstream_attachments", {

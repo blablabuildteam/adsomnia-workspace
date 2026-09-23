@@ -20,13 +20,21 @@ const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
 type LoginFormProps = {
   googleEnabled: boolean;
   errorCode?: string;
+  nextPath?: string | null;
 };
 
 function loginDelay(ms: number): CSSProperties {
   return { "--login-delay": `${ms}ms` } as CSSProperties;
 }
 
-export function LoginForm({ googleEnabled, errorCode }: LoginFormProps) {
+export function LoginForm({
+  googleEnabled,
+  errorCode,
+  nextPath,
+}: LoginFormProps) {
+  const googleHref = nextPath
+    ? `/api/auth/google/start?next=${encodeURIComponent(nextPath)}`
+    : "/api/auth/google/start";
   const googleError =
     errorCode && GOOGLE_ERROR_MESSAGES[errorCode]
       ? GOOGLE_ERROR_MESSAGES[errorCode]
@@ -83,7 +91,7 @@ export function LoginForm({ googleEnabled, errorCode }: LoginFormProps) {
 
           {googleEnabled ? (
             <a
-              href="/api/auth/google/start"
+              href={googleHref}
               className="inline-flex w-full items-center justify-center gap-2 border border-foreground bg-foreground px-4 py-3 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors hover:bg-background hover:text-foreground"
             >
               <GoogleMark />

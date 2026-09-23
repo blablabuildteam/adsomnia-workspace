@@ -28,6 +28,8 @@ import { PhaseCard } from "./PhaseCard";
 import { IdeaDetailsSection } from "./IdeaDetailsSection";
 import { DownloadPdfButton } from "./DownloadPdfButton";
 import { ShareButton } from "./ShareButton";
+import { WorkstreamAccessButton } from "./WorkstreamAccessButton";
+import type { WorkstreamAccessPanel } from "@/lib/workstream-access";
 import { CurrentPhaseBar } from "./CurrentPhaseBar";
 import { FloatingDetailBar } from "./FloatingDetailBar";
 import { ArchiveWorkstreamButton } from "./ArchiveWorkstreamButton";
@@ -176,6 +178,10 @@ type Props = {
   canUserManageOnboarding?: boolean;
   /** Dev/test form prefill for allowlisted accounts. */
   showFormPrefill?: boolean;
+  /** Explicit edit grant on this workstream. */
+  hasEditGrant?: boolean;
+  /** Leadership and assistants can open the access panel. */
+  accessPanel?: WorkstreamAccessPanel | null;
 };
 
 export function InitiativeDetailView({
@@ -198,6 +204,8 @@ export function InitiativeDetailView({
   canUserManageSetup = false,
   canUserManageOnboarding = false,
   showFormPrefill = false,
+  hasEditGrant = false,
+  accessPanel = null,
 }: Props) {
   const stage = STAGES.find(
     (s) => s.id === initiative.currentStage,
@@ -233,15 +241,17 @@ export function InitiativeDetailView({
   const canEditIdea =
     (initiative.currentStage === "idea" &&
       (initiative.status === "rejected"
-        ? isCreator
-        : isCreator || canUserApprove)) ||
-    (initiative.currentStage === "validation" && canUserApprove);
+        ? isCreator || hasEditGrant
+        : isCreator || canUserApprove || hasEditGrant)) ||
+    (initiative.currentStage === "validation" &&
+      (canUserApprove || hasEditGrant));
 
   const ideaCanResubmit =
     initiative.currentStage === "idea" &&
-    ((ideaHasFeedback && (isCreator || canUserApprove)) ||
-      (initiative.status === "on-hold" && (isCreator || canUserApprove)) ||
-      (initiative.status === "rejected" && isCreator));
+    ((ideaHasFeedback && (isCreator || canUserApprove || hasEditGrant)) ||
+      (initiative.status === "on-hold" &&
+        (isCreator || canUserApprove || hasEditGrant)) ||
+      (initiative.status === "rejected" && (isCreator || hasEditGrant)));
 
   const showValidation = currentNum >= 2;
   const validationIsCurrent = initiative.currentStage === "validation";
@@ -256,13 +266,14 @@ export function InitiativeDetailView({
 
   const validationCanResubmit =
     validationIsCurrent &&
-    canUserApprove &&
+    (canUserApprove || hasEditGrant) &&
     (validationHasFeedback ||
       initiative.status === "on-hold" ||
       initiative.status === "rejected");
 
-  // Leadership fills the business case. The submitter can only view it.
-  const validationIsEditable = validationIsCurrent && canUserApprove;
+  // Leadership fills the business case. An edit grant can as well.
+  const validationIsEditable =
+    validationIsCurrent && (canUserApprove || hasEditGrant);
 
   // Only surface the latest validation decision when it matches the current
   // state (avoids showing stale decisions after a resubmission).
@@ -308,10 +319,11 @@ export function InitiativeDetailView({
     scopingIsCurrent && initiative.status === "submitted";
 
   const scopingCanResubmit =
-    (goNoGoHasFeedback || goNoGoOnHold) && (isCreator || canUserApprove);
+    (goNoGoHasFeedback || goNoGoOnHold) &&
+    (isCreator || canUserApprove || hasEditGrant);
 
   const scopingIsEditable =
-    (isCreator || canUserApprove) &&
+    (isCreator || canUserApprove || hasEditGrant) &&
     ((scopingIsCurrent &&
       (initiative.status === "approved" ||
         initiative.status === "draft" ||
@@ -392,6 +404,21 @@ export function InitiativeDetailView({
       archived={Boolean(initiative.archivedAt)}
     />
   );
+  const accessButton = accessPanel ? (
+    <WorkstreamAccessButton
+      initiativeId={initiative.id}
+      entries={accessPanel.entries}
+      candidates={accessPanel.candidates}
+    />
+  ) : null;
+  const accessButtonBar = accessPanel ? (
+    <WorkstreamAccessButton
+      initiativeId={initiative.id}
+      entries={accessPanel.entries}
+      candidates={accessPanel.candidates}
+      size="md"
+    />
+  ) : null;
   const archiveActionBar = canArchive && (
     <ArchiveWorkstreamButton
       initiativeId={initiative.id}
@@ -424,6 +451,7 @@ export function InitiativeDetailView({
         stageName={stage?.name ?? initiative.currentStage}
         stageColor={getStageColor(initiative.currentStage)}
         sharePath={sharePath}
+        accessAction={accessButtonBar}
         archiveAction={archiveActionBar}
       />
       <div className="mx-auto w-full max-w-[1200px] px-4 pb-40 pt-4 sm:px-6 sm:pt-6 lg:pb-48">
@@ -447,6 +475,7 @@ export function InitiativeDetailView({
               </h1>
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              {accessButton}
               {archiveAction}
               {sharePath && <ShareButton path={sharePath} />}
               <DownloadPdfButton />

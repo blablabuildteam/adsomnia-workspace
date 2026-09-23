@@ -7,6 +7,7 @@ import {
   getApprovalHistory,
   getMentionablePeople,
 } from "@/lib/queries";
+import { canManageWorkstreamAccess } from "@/lib/permissions";
 import {
   getCurrentUser,
   displayName,
@@ -16,6 +17,10 @@ import {
   canUseFormPrefill,
   canViewInitiative,
 } from "@/lib/session";
+import {
+  getWorkstreamAccessPanel,
+  loadInitiativeAccess,
+} from "@/lib/workstream-access";
 import { createSharePath } from "@/lib/share";
 import { listWorkstreamAttachments } from "@/lib/workstream-attachments";
 import type { ApprovalDecision } from "@/components/initiatives/ApprovalPanel";
@@ -39,10 +44,19 @@ export default async function InitiativePage({ params }: Props) {
     getCurrentUser(),
   ]);
 
+  const access = initiative && user
+    ? await loadInitiativeAccess(user, initiative.id, {
+        submitterId: initiative.submitter.id,
+        currentStage: initiative.currentStage,
+        status: initiative.status,
+      })
+    : null;
+
   if (
     !initiative ||
     !user ||
-    !canViewInitiative(user, { submitterId: initiative.submitter.id })
+    !access ||
+    !canViewInitiative(user, access)
   ) {
     return (
       <div className="mx-auto flex max-w-lg flex-1 flex-col items-center justify-center px-4 py-16 text-center">
@@ -56,13 +70,17 @@ export default async function InitiativePage({ params }: Props) {
     );
   }
 
-  const [comments, activity, approvals, mentionablePeople, attachments] = await Promise.all([
-    getCommentsForInitiative(initiative.id),
-    getActivityForInitiative(initiative.id),
-    getApprovalHistory(initiative.id),
-    getMentionablePeople(),
-    listWorkstreamAttachments(initiative.id),
-  ]);
+  const [comments, activity, approvals, mentionablePeople, attachments, accessPanel] =
+    await Promise.all([
+      getCommentsForInitiative(initiative.id),
+      getActivityForInitiative(initiative.id),
+      getApprovalHistory(initiative.id),
+      getMentionablePeople(),
+      listWorkstreamAttachments(initiative.id),
+      canManageWorkstreamAccess(user)
+        ? getWorkstreamAccessPanel(initiative.id)
+        : Promise.resolve(null),
+    ]);
   const canUserApprove = user ? canApprove(user) : false;
   const canUserManageSetup = user ? canManageSetup(user) : false;
   const canUserManageOnboarding = user ? canManageOnboarding(user) : false;
@@ -120,6 +138,8 @@ export default async function InitiativePage({ params }: Props) {
       canUserManageSetup={canUserManageSetup}
       canUserManageOnboarding={canUserManageOnboarding}
       showFormPrefill={user ? canUseFormPrefill(user) : false}
+      hasEditGrant={access.memberAccess === "edit"}
+      accessPanel={accessPanel}
     />
   );
 }

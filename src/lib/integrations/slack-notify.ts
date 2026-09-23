@@ -225,19 +225,20 @@ async function postDm(opts: {
     channel: dmChannel,
     text: opts.text,
     blocks: opts.blocks,
+    // A URL button still fires Slack interactivity, and crawling the
+    // login-gated workstream URL shows up as a failed link in the DM.
+    unfurl_links: false,
+    unfurl_media: false,
   });
 }
 
-function openButton(url: string): KnownBlock {
+function openLink(url: string): KnownBlock {
   return {
-    type: "actions",
-    elements: [
-      {
-        type: "button",
-        text: { type: "plain_text", text: "Open workstream" },
-        url,
-      },
-    ],
+    type: "section",
+    text: {
+      type: "mrkdwn",
+      text: `<${url}|Open workstream>`,
+    },
   };
 }
 
@@ -392,7 +393,7 @@ export async function notifyOwner(input: NotifyOwnerInput): Promise<void> {
       });
     }
 
-    blocks.push(openButton(url));
+    blocks.push(openLink(url));
 
     await postDm({
       client: home.client,
@@ -466,7 +467,7 @@ export async function notifyReviewers(
             text: `*${escapeMrkdwn(initiative.ticketId)}* — ${escapeMrkdwn(initiative.title)}\n${escapeMrkdwn(input.actorName)} submitted this workstream for *${escapeMrkdwn(stage)}* review.`,
           },
         },
-        openButton(url),
+        openLink(url),
       ];
 
       const fallback = `${initiative.ticketId} is ready for ${stage} review. ${input.actorName} submitted ${initiative.title}. ${url}`;
@@ -567,7 +568,7 @@ export async function notifyChatMentions(
             text: `>${escapeMrkdwn(preview)}`,
           },
         },
-        openButton(url),
+        openLink(url),
       ];
 
       const fallback = `${initiative.ticketId} — ${initiative.title}. ${input.actorName} mentioned you in chat: "${preview}" ${url}`;

@@ -16,6 +16,7 @@ import {
   type GoogleLoginProfile,
 } from "@/lib/integrations/google-login";
 import { verifyGoogleLoginOAuthState } from "@/lib/integrations/google-login-oauth-state";
+import { safeReturnPath } from "@/lib/return-path";
 
 function appOrigin(request: Request): string {
   const configured = (
@@ -66,7 +67,9 @@ export async function GET(request: Request) {
   }
 
   try {
-    const { redirectOrigin } = await verifyGoogleLoginOAuthState(state);
+    const { redirectOrigin, returnPath } =
+      await verifyGoogleLoginOAuthState(state);
+    const next = safeReturnPath(returnPath);
     const profile = await exchangeGoogleLoginCode(code, redirectOrigin);
 
     if (!profile.emailVerified) {
@@ -130,8 +133,10 @@ export async function GET(request: Request) {
 
     const dest =
       sessionUser && needsProfileCompletion(sessionUser)
-        ? "/complete-profile"
-        : "/dashboard";
+        ? next
+          ? `/complete-profile?next=${encodeURIComponent(next)}`
+          : "/complete-profile"
+        : (next ?? "/dashboard");
     const response = NextResponse.redirect(new URL(dest, origin));
     await writeSessionCookie(response, userId);
     return response;

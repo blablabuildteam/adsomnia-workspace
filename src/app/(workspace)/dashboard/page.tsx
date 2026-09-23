@@ -2,6 +2,7 @@ import { DashboardView } from "@/components/dashboard/DashboardView";
 import { loadFastTrackOverview, type FastTrackItem } from "@/lib/fast-track";
 import { withoutDeletedJiraSpaces } from "@/lib/production/load";
 import { seesAllWorkstreams } from "@/lib/permissions";
+import { listUserWorkstreamGrants } from "@/lib/workstream-access";
 import {
   getAllInitiatives,
   getInitiativeIdsWithLatestDecision,
@@ -19,7 +20,7 @@ export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const [rawItems, activity, ideaFeedback, validationFeedback, gonogoFeedback, fastTrack] =
+  const [rawItems, activity, ideaFeedback, validationFeedback, gonogoFeedback, fastTrack, grants] =
     await Promise.all([
       getAllInitiatives(user),
       getRecentWorkspaceActivity(12),
@@ -29,6 +30,9 @@ export default async function DashboardPage() {
       seesAllWorkstreams(user)
         ? loadFastTrackOverview(user)
         : Promise.resolve(EMPTY_FAST_TRACK),
+      seesAllWorkstreams(user)
+        ? Promise.resolve([])
+        : listUserWorkstreamGrants(user.id),
     ]);
 
   const items = await withoutDeletedJiraSpaces(rawItems);
@@ -49,6 +53,7 @@ export default async function DashboardPage() {
       fastTrackError={fastTrack.fetchError}
       feedbackIds={feedbackIds}
       user={{ id: user.id, firstName, role: user.role }}
+      grants={grants}
     />
   );
 }

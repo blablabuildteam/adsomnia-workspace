@@ -5,15 +5,21 @@ import {
   needsProfileCompletion,
 } from "@/lib/session";
 import { CompleteProfileForm } from "@/components/auth/CompleteProfileForm";
+import { safeReturnPath } from "@/lib/return-path";
 
-export default async function CompleteProfilePage() {
+type Props = {
+  searchParams: Promise<{ next?: string }>;
+};
+
+export default async function CompleteProfilePage({ searchParams }: Props) {
+  const next = safeReturnPath((await searchParams).next);
   const user = await getCurrentUser();
   if (!user) {
     redirect("/login");
   }
 
   if (!needsProfileCompletion(user)) {
-    redirect("/dashboard");
+    redirect(next ?? "/dashboard");
   }
 
   const first =
@@ -31,6 +37,7 @@ export default async function CompleteProfilePage() {
       defaultFirstName={first}
       defaultLastName={last}
       defaultJobTitle={user.jobTitle ?? ""}
+      nextPath={next}
     />
   );
 }

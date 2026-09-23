@@ -18,6 +18,7 @@ import {
   canResubmitValidation,
   canViewInitiative,
 } from "@/lib/permissions";
+import { loadInitiativeAccess } from "@/lib/workstream-access";
 import {
   isBusinessValueComplete,
   isScopingComplete,
@@ -134,7 +135,7 @@ export async function updateIdeaDetails(
     };
   }
 
-  if (!canEditIdeaDetails(user, existing)) {
+  if (!canEditIdeaDetails(user, await loadInitiativeAccess(user, initiativeId, existing))) {
     return {
       error:
         existing.currentStage === "validation"
@@ -206,7 +207,7 @@ export async function resubmitIdea(
     return { error: "This initiative is no longer in the Initiative stage." };
   }
 
-  if (!canResubmitIdea(user, existing)) {
+  if (!canResubmitIdea(user, await loadInitiativeAccess(user, initiativeId, existing))) {
     return {
       error:
         existing.status === "rejected"
@@ -295,7 +296,13 @@ export async function addComment(
     .where(eq(initiatives.id, initiativeId))
     .limit(1);
 
-  if (!existing || !canViewInitiative(user, existing)) {
+  if (
+    !existing ||
+    !canViewInitiative(
+      user,
+      await loadInitiativeAccess(user, initiativeId, existing),
+    )
+  ) {
     return { error: "Initiative not found." };
   }
 
@@ -740,7 +747,7 @@ export async function resubmitValidation(
     return { error: "This initiative is no longer in the Validation stage." };
   }
 
-  if (!canResubmitValidation(user, existing)) {
+  if (!canResubmitValidation(user, await loadInitiativeAccess(user, initiativeId, existing))) {
     return {
       error:
         existing.status === "draft" ||
@@ -812,7 +819,7 @@ export async function saveValidationData(
     .limit(1);
 
   if (!existing) return { error: "Initiative not found." };
-  if (!canEditValidation(user, existing)) {
+  if (!canEditValidation(user, await loadInitiativeAccess(user, initiativeId, existing))) {
     return {
       error:
         existing.currentStage !== "validation"
@@ -877,7 +884,7 @@ export async function submitValidationForApproval(
     .limit(1);
 
   if (!existing) return { error: "Initiative not found." };
-  if (!canEditValidation(user, existing)) {
+  if (!canEditValidation(user, await loadInitiativeAccess(user, initiativeId, existing))) {
     return {
       error:
         existing.currentStage !== "validation"
@@ -986,7 +993,7 @@ export async function saveScopingData(
     .limit(1);
 
   if (!existing) return { error: "Initiative not found." };
-  if (!canEditScoping(user, existing)) {
+  if (!canEditScoping(user, await loadInitiativeAccess(user, initiativeId, existing))) {
     return {
       error:
         existing.currentStage !== "scoping" &&
@@ -1041,7 +1048,10 @@ export async function submitScopingForApproval(
     .limit(1);
 
   if (!existing) return { error: "Initiative not found." };
-  if (!canEditScoping(user, existing) || existing.currentStage !== "scoping") {
+  if (
+    !canEditScoping(user, await loadInitiativeAccess(user, initiativeId, existing)) ||
+    existing.currentStage !== "scoping"
+  ) {
     return {
       error:
         existing.currentStage !== "scoping"
@@ -1113,7 +1123,7 @@ export async function resubmitScoping(
     return { error: "This initiative is no longer in Scoping or Go/No-Go." };
   }
 
-  if (!canResubmitScoping(user, existing)) {
+  if (!canResubmitScoping(user, await loadInitiativeAccess(user, initiativeId, existing))) {
     return {
       error:
         existing.status !== "draft" && existing.status !== "on-hold"
