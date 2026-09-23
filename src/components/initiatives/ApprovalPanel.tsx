@@ -21,6 +21,7 @@ import {
   type ApprovalResult,
 } from "@/app/(workspace)/workstreams/[id]/actions";
 import { convertToFastTrack } from "@/app/(workspace)/fast-track/actions";
+import { ConfirmFastTrackModal } from "@/components/fast-track/ConfirmFastTrackModal";
 import { inputClass } from "@/lib/form-styles";
 
 const initial: ApprovalResult = {};
@@ -133,6 +134,7 @@ export function ApprovalPanel({
   awaitingDecision = false,
 }: Props) {
   const [selectedAction, setSelectedAction] = useState<Action | null>(null);
+  const [confirmFastTrack, setConfirmFastTrack] = useState(false);
 
   const boundApprove = approveToValidation.bind(null, initiativeId);
   const boundFastTrack = convertToFastTrack.bind(null, initiativeId);
@@ -334,7 +336,12 @@ export function ApprovalPanel({
           </label>
           <div className="flex items-center justify-end gap-2">
             <button
-              type="submit"
+              type={selectedAction === "fast-track" ? "button" : "submit"}
+              onClick={
+                selectedAction === "fast-track"
+                  ? () => setConfirmFastTrack(true)
+                  : undefined
+              }
               disabled={pending}
               className={[
                 "group relative inline-flex items-center gap-2 overflow-hidden border px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-50",
@@ -366,13 +373,24 @@ export function ApprovalPanel({
             </button>
             <button
               type="button"
-              onClick={() => setSelectedAction(null)}
+              onClick={() => {
+                setConfirmFastTrack(false);
+                setSelectedAction(null);
+              }}
               disabled={pending}
               className="border border-border px-3 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-muted hover:text-foreground disabled:opacity-50"
             >
               Cancel
             </button>
           </div>
+          {selectedAction === "fast-track" && (
+            <ConfirmFastTrackModal
+              open={confirmFastTrack}
+              onClose={() => setConfirmFastTrack(false)}
+              pending={fastTrackPending}
+              formAction={fastTrackAction}
+            />
+          )}
         </form>
       )}
     </div>

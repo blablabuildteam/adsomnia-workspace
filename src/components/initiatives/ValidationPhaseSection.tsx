@@ -34,6 +34,7 @@ import {
   type ValidationResult,
 } from "@/app/(workspace)/workstreams/[id]/actions";
 import { convertToFastTrack } from "@/app/(workspace)/fast-track/actions";
+import { ConfirmFastTrackModal } from "@/components/fast-track/ConfirmFastTrackModal";
 import { inputClass } from "@/lib/form-styles";
 import { CharCount } from "@/components/ui/CharCount";
 import {
@@ -335,6 +336,7 @@ export function ValidationPhaseSection({
     fastTrackInitial,
   );
 
+  const [confirmFastTrack, setConfirmFastTrack] = useState(false);
   const pending = savePending || submitPending || resubmitPending || fastTrackPending;
   const error =
     saveState.error ||
@@ -755,11 +757,10 @@ export function ValidationPhaseSection({
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
           {canFastTrack && (
             <button
-              type="submit"
-              formAction={fastTrackAction}
-              formNoValidate
+              type="button"
               disabled={pending}
               title="Skip the rest of the pipeline and create a Fast-Track Jira task"
+              onClick={() => setConfirmFastTrack(true)}
               className="group relative inline-flex items-center gap-2 overflow-hidden border border-bbb bg-bbb/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-bbb transition-colors hover:bg-bbb/20 disabled:opacity-50"
             >
               <span className="absolute inset-0 origin-left scale-x-0 bg-bbb/15 transition-transform duration-300 ease-out group-hover:scale-x-100" />
@@ -823,6 +824,12 @@ export function ValidationPhaseSection({
           )}
         </div>
       </div>
+      <ConfirmFastTrackModal
+        open={confirmFastTrack}
+        onClose={() => setConfirmFastTrack(false)}
+        pending={fastTrackPending}
+        formAction={fastTrackAction}
+      />
     </>
   );
 }
