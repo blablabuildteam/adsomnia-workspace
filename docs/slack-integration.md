@@ -19,6 +19,7 @@ Later, Google login only changes how Adsomnia knows who you are; the Slack link 
 3. **OAuth & Permissions** → Bot Token Scopes:
    - `channels:manage`
    - `channels:read`
+   - `channels:join` (join an existing public channel)
    - `groups:write`
    - `groups:read`
    - `chat:write`
@@ -76,7 +77,18 @@ Other Setup users each Connect once for the same workspace so *they* get invited
 
 The tool creates the channel, invites you, bookmarks the project **Google Drive** and **Jira** URLs, stores ids/urls on `setupData.slack`, and sets `onboardingData.links.slackChannelUrl`. Slack creation lives in Kickoff Preparation so those links already exist.
 
-**Confirm existing** remains available if the channel was created outside the tool.
+## Connect an existing channel
+
+1. Choose the Slack workspace.
+2. Choose **Connect existing**.
+3. Search the channels in that workspace and select one.
+4. Click **Connect Slack Channel**.
+
+The bot joins a public channel it is not in yet, invites you, bookmarks Drive and Jira, posts the same project briefing, and stores the channel the same way as a created one.
+
+Private channels are listed only after someone adds the Adsomnia app to that channel in Slack. Reconnect Slack once after `channels:join` is added so an existing install can join public channels.
+
+Pasting a channel URL remains available when the channel is not visible to the app.
 
 ### Finding channels in Slack
 

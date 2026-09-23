@@ -51,10 +51,18 @@ You do **not** need to repeat this for every project.
 4. Choose **Public** or **Private**.
 5. Click **Create Channel**.
 
+Or connect a channel that already exists:
+
+1. Choose **Connect existing**.
+2. Search for the channel and select it.
+3. Click **Connect Slack Channel**.
+
+Public channels can be connected immediately. A **private** channel appears in the list only after someone in that channel adds the **Adsomnia Workspace** app to it.
+
 | Type | Who can see it |
 |------|----------------|
 | **Public** | Anyone in your Slack can find and join it |
-| **Private** | Only people who are invited (the creator is invited automatically) |
+| **Private** | Only people who are invited, and the app must be added to the channel before it can be connected |
 
 ---
 
@@ -63,8 +71,9 @@ You do **not** need to repeat this for every project.
 The app requests permission to:
 
 - Create public and private channels  
+- See channel names, and join an existing public channel  
 - Invite people into those channels  
-- Post a short message in the new channel  
+- Post a short message in the channel  
 - Add channel bookmarks for the project Google Drive and Jira links  
 - Look up members by email and send a direct message when leadership leaves feedback or a workstream advances  
 
@@ -80,6 +89,7 @@ If your company restricts app installs, a Slack **Workspace Owner / Admin** may 
 |---------|-------------|
 | Wrong workspace received the channel | In the dropdown, pick your company workspace; Connect again while that Slack workspace is selected on Slack’s approve screen |
 | Created a private channel but can’t see it | Complete **Part 2** (link your Slack user), then create again — or ask someone already in the channel to invite you |
+| Private channel missing from Connect existing | In Slack, add the Adsomnia Workspace app to that channel, then click **Refresh** |
 | “Connect Slack” errors after Allow | Confirm you used the production Adsomnia Workspace URL above, and that a Slack admin allowed the app |
 | App install blocked | Ask a Slack admin to allow the Adsomnia Workspace app for your workspace |
 
@@ -89,6 +99,6 @@ If your company restricts app installs, a Slack **Workspace Owner / Admin** may 
 
 1. **Admin (once):** Connect Slack → install Adsomnia Workspace into **your** Slack.  
 2. **Each channel creator (once):** Connect My Slack Account as themselves.  
-3. **Per project:** Choose your workspace → Create Channel.
+3. **Per project:** Choose your workspace → Create Channel, or Connect existing.
 
 Questions: contact your Adsomnia project lead.

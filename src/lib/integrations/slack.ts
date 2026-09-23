@@ -7,6 +7,7 @@ import { slackUserLinks, slackWorkspaces } from "@/db/schema";
 export const SLACK_BOT_SCOPES = [
   "channels:manage",
   "channels:read",
+  "channels:join",
   "groups:write",
   "groups:read",
   "chat:write",
@@ -134,8 +135,14 @@ function mapSlackError(code: string | undefined, fallback: string): string {
     case "token_revoked":
     case "account_inactive":
       return "Slack authorization expired or was revoked. Reconnect the Slack workspace.";
-    case "restricted_action":
     case "is_archived":
+      return "That Slack channel is archived.";
+    case "channel_not_found":
+      return "That Slack channel was not found in this workspace.";
+    case "not_in_channel":
+    case "method_not_supported_for_channel_type":
+      return "The Slack app is not in this private channel. Add the app to the channel in Slack, then try again.";
+    case "restricted_action":
       return "Slack blocked this action. Check workspace policies for channel creation.";
     case "ratelimited":
       return "Slack rate-limited the request. Try again in a moment.";
@@ -448,9 +455,297 @@ async function addChannelBookmarks(
 
   if (failed.length === 0) return undefined;
   if (missingScope) {
-    return "Channel created, but bookmarks need a Slack reconnect (bookmarks:write).";
+    return "Slack channel saved, but bookmarks need a Slack reconnect (bookmarks:write).";
   }
-  return `Channel created, but could not bookmark ${failed.join(" and ")}.`;
+  return `Slack channel saved, but could not bookmark ${failed.join(" and ")}.`;
+}
+
+export type SlackChannelSummary = {
+  id: string;
+  name: string;
+  isPrivate: boolean;
+  /** True when the bot is already a member. Private channels only appear when this is true. */
+  isMember: boolean;
+};
+
+const CHANNEL_LIST_CACHE_MS = 60_000;
+const CHANNEL_LIST_PAGE_SIZE = 200;
+const CHANNEL_LIST_MAX_PAGES = 20;
+const CHANNEL_LIST_RESULT_LIMIT = 40;
+
+const channelListCache = new Map<
+  string,
+  { at: number; channels: SlackChannelSummary[]; truncated: boolean }
+>();
+
+function slackErrorCode(err: unknown): string | undefined {
+  if (err && typeof err === "object" && "data" in err) {
+    const code = (err as { data?: { error?: string } }).data?.error;
+    return typeof code === "string" ? code : undefined;
+  }
+  return undefined;
+}
+
+async function requireProjectWorkspace(teamId: string) {
+  const workspace = await getWorkspace(teamId);
+  if (!workspace) {
+    throw new Error(
+      `Slack workspace "${teamId}" is not connected. Connect Slack first.`,
+    );
+  }
+  if (!isProjectSlackWorkspace(workspace.teamName)) {
+    throw new Error(
+      "Choose the Adsomnia or client Slack workspace — not blablabuild.",
+    );
+  }
+  return workspace;
+}
+
+async function requireLinkedSlackUser(adsomniaUserId: string, teamId: string) {
+  const userLink = await getUserSlackLink(adsomniaUserId, teamId);
+  if (!userLink) {
+    throw new Error(
+      "Connect your Slack account once before creating channels. Use Connect Slack while logged into the Slack user you want invited.",
+    );
+  }
+  return userLink;
+}
+
+function workspaceClient(botToken: string) {
+  return new WebClient(botToken, { logLevel: LogLevel.ERROR });
+}
+
+async function inviteLinkedUser(
+  client: WebClient,
+  channelId: string,
+  slackUserId: string,
+  isPrivate: boolean,
+  privateFailureMessage: string,
+) {
+  try {
+    await client.conversations.invite({
+      channel: channelId,
+      users: slackUserId,
+    });
+  } catch (inviteErr) {
+    const code = slackErrorCode(inviteErr);
+    if (code === "already_in_channel") return;
+    if (isPrivate) {
+      throw new Error(mapSlackError(code, privateFailureMessage));
+    }
+  }
+}
+
+async function announceInChannel(
+  client: WebClient,
+  channelId: string,
+  bookmarks?: SlackChannelBookmark[],
+  welcome?: SlackChannelWelcome,
+  fallbackText = "Channel created from Adsomnia Workspace for project coordination.",
+): Promise<string | undefined> {
+  try {
+    const message = welcome
+      ? buildWelcomeMessage(welcome)
+      : {
+          text: fallbackText,
+          blocks: undefined,
+        };
+    await client.chat.postMessage({
+      channel: channelId,
+      text: message.text,
+      ...(message.blocks ? { blocks: message.blocks } : {}),
+      unfurl_links: false,
+      unfurl_media: false,
+    });
+  } catch {
+    // Welcome post is optional; the channel link already succeeded.
+  }
+
+  if (!bookmarks || bookmarks.length === 0) return undefined;
+  return addChannelBookmarks(client, channelId, bookmarks);
+}
+
+async function loadWorkspaceChannels(teamId: string): Promise<{
+  channels: SlackChannelSummary[];
+  truncated: boolean;
+}> {
+  const cached = channelListCache.get(teamId);
+  if (cached && Date.now() - cached.at < CHANNEL_LIST_CACHE_MS) {
+    return { channels: cached.channels, truncated: cached.truncated };
+  }
+
+  const workspace = await requireProjectWorkspace(teamId);
+  const client = workspaceClient(workspace.botToken);
+  const channels: SlackChannelSummary[] = [];
+  let cursor: string | undefined;
+  let truncated = false;
+
+  for (let page = 0; page < CHANNEL_LIST_MAX_PAGES; page += 1) {
+    let result;
+    try {
+      result = await client.conversations.list({
+        types: "public_channel,private_channel",
+        exclude_archived: true,
+        limit: CHANNEL_LIST_PAGE_SIZE,
+        cursor,
+      });
+    } catch (err) {
+      throw new Error(
+        mapSlackError(
+          slackErrorCode(err),
+          "Could not load Slack channels. Reconnect Slack if this workspace was connected before channel listing was added.",
+        ),
+      );
+    }
+
+    if (!result.ok) {
+      throw new Error(
+        mapSlackError(
+          typeof result.error === "string" ? result.error : undefined,
+          "Could not load Slack channels.",
+        ),
+      );
+    }
+
+    for (const channel of result.channels ?? []) {
+      if (!channel.id || !channel.name || channel.is_archived) continue;
+      if (channel.is_im || channel.is_mpim) continue;
+      channels.push({
+        id: channel.id,
+        name: channel.name,
+        isPrivate: Boolean(channel.is_private),
+        isMember: Boolean(channel.is_member),
+      });
+    }
+
+    cursor = result.response_metadata?.next_cursor || undefined;
+    if (!cursor) break;
+    if (page === CHANNEL_LIST_MAX_PAGES - 1) truncated = true;
+  }
+
+  channels.sort((a, b) => a.name.localeCompare(b.name));
+  channelListCache.set(teamId, {
+    at: Date.now(),
+    channels,
+    truncated,
+  });
+  return { channels, truncated };
+}
+
+export async function listChannels(opts: {
+  teamId: string;
+  query?: string;
+  /** Skip the short cache so a channel the app just joined can appear. */
+  fresh?: boolean;
+}): Promise<{ channels: SlackChannelSummary[]; truncated: boolean }> {
+  if (opts.fresh) channelListCache.delete(opts.teamId);
+  const { channels, truncated } = await loadWorkspaceChannels(opts.teamId);
+  const query = (opts.query ?? "")
+    .trim()
+    .replace(/^#/, "")
+    .toLowerCase();
+  const matched = query
+    ? channels.filter((channel) => channel.name.toLowerCase().includes(query))
+    : channels;
+  return {
+    channels: matched.slice(0, CHANNEL_LIST_RESULT_LIMIT),
+    truncated,
+  };
+}
+
+export async function connectExistingChannel(opts: {
+  teamId: string;
+  channelId: string;
+  /** Adsomnia user connecting the channel — invited via their linked Slack id. */
+  adsomniaUserId: string;
+  bookmarks?: SlackChannelBookmark[];
+  welcome?: SlackChannelWelcome;
+}): Promise<CreateChannelResult> {
+  const channelId = opts.channelId.trim();
+  if (!/^[CG][A-Z0-9]+$/.test(channelId)) {
+    throw new Error("Choose a Slack channel from the list.");
+  }
+
+  const workspace = await requireProjectWorkspace(opts.teamId);
+  const userLink = await requireLinkedSlackUser(
+    opts.adsomniaUserId,
+    opts.teamId,
+  );
+  const client = workspaceClient(workspace.botToken);
+
+  let info;
+  try {
+    info = await client.conversations.info({ channel: channelId });
+  } catch (err) {
+    throw new Error(
+      mapSlackError(
+        slackErrorCode(err),
+        "Could not read that Slack channel.",
+      ),
+    );
+  }
+
+  const channel = info.channel;
+  if (!info.ok || !channel?.id || !channel.name) {
+    throw new Error(
+      mapSlackError(
+        typeof info.error === "string" ? info.error : undefined,
+        "Could not read that Slack channel.",
+      ),
+    );
+  }
+  if (channel.is_archived) {
+    throw new Error("That Slack channel is archived.");
+  }
+  if (channel.is_im || channel.is_mpim) {
+    throw new Error("Choose a Slack channel, not a direct message.");
+  }
+
+  const isPrivate = Boolean(channel.is_private);
+  if (!channel.is_member) {
+    if (isPrivate) {
+      throw new Error(
+        "The Slack app is not in this private channel. Add the app to the channel in Slack, then try again.",
+      );
+    }
+    try {
+      await client.conversations.join({ channel: channel.id });
+    } catch (err) {
+      const code = slackErrorCode(err);
+      if (code !== "already_in_channel") {
+        throw new Error(
+          mapSlackError(
+            code,
+            "Could not join this Slack channel. Reconnect Slack so the app can join existing channels.",
+          ),
+        );
+      }
+    }
+  }
+
+  await inviteLinkedUser(
+    client,
+    channel.id,
+    userLink.slackUserId,
+    isPrivate,
+    "Could not invite your Slack account to this private channel. Connect Slack again and retry.",
+  );
+  const bookmarkError = await announceInChannel(
+    client,
+    channel.id,
+    opts.bookmarks,
+    opts.welcome,
+  );
+
+  return {
+    channelId: channel.id,
+    channelName: channel.name,
+    channelUrl: buildChannelUrl(workspace.teamId, channel.id),
+    teamId: workspace.teamId,
+    teamName: workspace.teamName,
+    isPrivate,
+    bookmarkError,
+  };
 }
 
 export async function createChannel(opts: {
@@ -462,24 +757,11 @@ export async function createChannel(opts: {
   bookmarks?: SlackChannelBookmark[];
   welcome?: SlackChannelWelcome;
 }): Promise<CreateChannelResult> {
-  const workspace = await getWorkspace(opts.teamId);
-  if (!workspace) {
-    throw new Error(
-      `Slack workspace "${opts.teamId}" is not connected. Connect Slack first.`,
-    );
-  }
-  if (!isProjectSlackWorkspace(workspace.teamName)) {
-    throw new Error(
-      "Choose the Adsomnia or client Slack workspace — not blablabuild.",
-    );
-  }
-
-  const userLink = await getUserSlackLink(opts.adsomniaUserId, opts.teamId);
-  if (!userLink) {
-    throw new Error(
-      "Connect your Slack account once before creating channels. Use Connect Slack while logged into the Slack user you want invited.",
-    );
-  }
+  const workspace = await requireProjectWorkspace(opts.teamId);
+  const userLink = await requireLinkedSlackUser(
+    opts.adsomniaUserId,
+    opts.teamId,
+  );
 
   const name = sanitizeChannelName(opts.name);
   if (!name) {
@@ -487,9 +769,7 @@ export async function createChannel(opts: {
   }
 
   const isPrivate = Boolean(opts.isPrivate);
-  const client = new WebClient(workspace.botToken, {
-    logLevel: LogLevel.ERROR,
-  });
+  const client = workspaceClient(workspace.botToken);
 
   try {
     const result = await client.conversations.create({
@@ -509,51 +789,19 @@ export async function createChannel(opts: {
     const channelId = result.channel.id;
     const channelName = result.channel.name ?? name;
 
-    try {
-      await client.conversations.invite({
-        channel: channelId,
-        users: userLink.slackUserId,
-      });
-    } catch (inviteErr) {
-      const code =
-        inviteErr && typeof inviteErr === "object" && "data" in inviteErr
-          ? (inviteErr as { data?: { error?: string } }).data?.error
-          : undefined;
-      if (code !== "already_in_channel") {
-        if (isPrivate) {
-          throw new Error(
-            mapSlackError(
-              code,
-              "Channel was created but you could not be invited. Connect Slack again and retry, or open the channel from the link in Project Setup.",
-            ),
-          );
-        }
-        // Public channels remain findable via Browse; invite failure is non-fatal.
-      }
-    }
-
-    try {
-      const welcome = opts.welcome
-        ? buildWelcomeMessage(opts.welcome)
-        : {
-            text: `Channel created from Adsomnia Workspace for project coordination.`,
-            blocks: undefined,
-          };
-      await client.chat.postMessage({
-        channel: channelId,
-        text: welcome.text,
-        ...(welcome.blocks ? { blocks: welcome.blocks } : {}),
-        unfurl_links: false,
-        unfurl_media: false,
-      });
-    } catch {
-      // Welcome post is optional; channel create already succeeded.
-    }
-
-    const bookmarkError =
-      opts.bookmarks && opts.bookmarks.length > 0
-        ? await addChannelBookmarks(client, channelId, opts.bookmarks)
-        : undefined;
+    await inviteLinkedUser(
+      client,
+      channelId,
+      userLink.slackUserId,
+      isPrivate,
+      "Channel was created but you could not be invited. Connect Slack again and retry, or open the channel from the link in Project Setup.",
+    );
+    const bookmarkError = await announceInChannel(
+      client,
+      channelId,
+      opts.bookmarks,
+      opts.welcome,
+    );
 
     return {
       channelId,
@@ -565,11 +813,9 @@ export async function createChannel(opts: {
       bookmarkError,
     };
   } catch (err) {
-    if (err && typeof err === "object" && "data" in err) {
-      const data = (err as { data?: { error?: string } }).data;
-      throw new Error(
-        mapSlackError(data?.error, "Failed to create Slack channel."),
-      );
+    const code = slackErrorCode(err);
+    if (code) {
+      throw new Error(mapSlackError(code, "Failed to create Slack channel."));
     }
     if (err instanceof Error) throw err;
     throw new Error("Failed to create Slack channel.");

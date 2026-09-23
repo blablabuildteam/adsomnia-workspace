@@ -32,7 +32,6 @@ import {
   isOnboardingPhaseUnlocked,
   validateOnboardingTask,
   normalizeUrl,
-  type Attachment,
   type BusinessValueData,
   type ValidationData,
   type ScopingData,
@@ -45,7 +44,7 @@ import {
   type DriveFolderLink,
   type OnboardingData,
   type OnboardingTaskId,
-} from "@/lib/queries";
+} from "@/lib/validation-data";
 import {
   readIdeaFields,
   validateIdeaFields,
@@ -56,8 +55,11 @@ import {
   parseValidationFormData,
 } from "@/lib/validation-form";
 import {
+  connectExistingChannel,
   createChannel,
   sanitizeChannelName,
+  type SlackChannelBookmark,
+  type SlackChannelWelcome,
 } from "@/lib/integrations/slack";
 import { createSharePath } from "@/lib/share";
 import {
@@ -1545,6 +1547,150 @@ export async function completeSetupTask(
   return { success: true };
 }
 
+function slackChannelAttachments(
+  initiativeId: number,
+  row: {
+    ticketId: string;
+    title: string;
+    problemStatement: string | null;
+    expectedImpact: string | null;
+  },
+  setup: SetupData,
+): { bookmarks: SlackChannelBookmark[]; welcome: SlackChannelWelcome } {
+  const driveUrl =
+    typeof setup.drive?.driveUrl === "string" ? setup.drive.driveUrl.trim() : "";
+  const jiraUrl = toJiraSoftwareProjectListUrl(
+    typeof setup.jira?.boardUrl === "string"
+      ? setup.jira.boardUrl.trim()
+      : typeof setup.jira?.projectUrl === "string"
+        ? setup.jira.projectUrl.trim()
+        : undefined,
+    setup.jira?.projectKey,
+  );
+  const bookmarkCandidates: Array<SlackChannelBookmark | null> = [
+    driveUrl
+      ? {
+          title: setup.drive?.driveName?.trim() || "Google Drive",
+          link: driveUrl,
+          emoji: ":file_folder:",
+        }
+      : null,
+    jiraUrl
+      ? {
+          title: setup.jira?.projectName?.trim() || "Jira",
+          link: jiraUrl,
+          emoji: ":ticket:",
+        }
+      : null,
+  ];
+  const bookmarks = bookmarkCandidates.filter(
+    (bookmark): bookmark is SlackChannelBookmark => bookmark !== null,
+  );
+
+  const origin = (
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    ""
+  ).replace(/\/$/, "");
+
+  return {
+    bookmarks,
+    welcome: {
+      ticketId: row.ticketId,
+      title: row.title,
+      summary:
+        row.problemStatement?.trim() || row.expectedImpact?.trim() || null,
+      workstreamUrl: origin
+        ? `${origin}${createSharePath(initiativeId)}`
+        : null,
+      driveUrl: driveUrl || null,
+      jiraUrl: jiraUrl || null,
+    },
+  };
+}
+
+async function saveConnectedSlackChannel(
+  initiativeId: number,
+  user: { id: string; name: string },
+  setup: SetupData,
+  onboardingData: unknown,
+  created: {
+    channelId: string;
+    channelName: string;
+    channelUrl: string;
+    teamId: string;
+    teamName: string;
+    isPrivate: boolean;
+    bookmarkError?: string;
+  },
+): Promise<
+  SetupResult & {
+    channelId?: string;
+    channelName?: string;
+    channelUrl?: string;
+    isPrivate?: boolean;
+    bookmarkError?: string;
+  }
+> {
+  const now = new Date().toISOString();
+  const updated: SetupData = {
+    ...setup,
+    slack: {
+      ...setup.slack,
+      status: "completed",
+      channelName: created.channelName,
+      channelId: created.channelId,
+      channelUrl: created.channelUrl,
+      teamId: created.teamId,
+      teamName: created.teamName,
+      isPrivate: created.isPrivate,
+      completedAt: now,
+    },
+  };
+
+  const onboarding =
+    (onboardingData as OnboardingData | null) ?? createDefaultOnboardingData();
+
+  await db
+    .update(initiatives)
+    .set({
+      setupData: updated,
+      onboardingData: {
+        ...onboarding,
+        links: {
+          ...(onboarding.links ?? {}),
+          slackChannelUrl: created.channelUrl,
+        },
+      },
+      updatedAt: new Date(),
+    })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: "setup_task_completed",
+    details: {
+      taskId: "slack",
+      completedBy: user.name,
+      channelId: created.channelId,
+      teamId: created.teamId,
+    },
+  });
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  revalidatePath("/pipeline/setup");
+  revalidatePath("/dashboard");
+  return {
+    success: true,
+    channelId: created.channelId,
+    channelName: created.channelName,
+    channelUrl: created.channelUrl,
+    isPrivate: created.isPrivate,
+    bookmarkError: created.bookmarkError,
+  };
+}
+
 /**
  * Creates a Slack channel via the installed workspace bot, then marks the
  * Slack setup task complete and stores the channel deep link for onboarding.
@@ -1598,42 +1744,11 @@ export async function createAndCompleteSlackChannel(
     return { error: "Complete Environment Setup before Kickoff Preparation." };
   }
 
-  const driveUrl =
-    typeof setup.drive?.driveUrl === "string" ? setup.drive.driveUrl.trim() : "";
-  const jiraUrl = toJiraSoftwareProjectListUrl(
-    typeof setup.jira?.boardUrl === "string"
-      ? setup.jira.boardUrl.trim()
-      : typeof setup.jira?.projectUrl === "string"
-        ? setup.jira.projectUrl.trim()
-        : undefined,
-    setup.jira?.projectKey,
+  const { bookmarks, welcome } = slackChannelAttachments(
+    initiativeId,
+    row,
+    setup,
   );
-  const bookmarks = [
-    driveUrl
-      ? {
-          title: setup.drive?.driveName?.trim() || "Google Drive",
-          link: driveUrl,
-          emoji: ":file_folder:",
-        }
-      : null,
-    jiraUrl
-      ? {
-          title: setup.jira?.projectName?.trim() || "Jira",
-          link: jiraUrl,
-          emoji: ":ticket:",
-        }
-      : null,
-  ].filter((bookmark): bookmark is NonNullable<typeof bookmark> =>
-    Boolean(bookmark),
-  );
-
-  const origin = (
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.APP_URL ||
-    ""
-  ).replace(/\/$/, "");
-  const summary =
-    row.problemStatement?.trim() || row.expectedImpact?.trim() || null;
 
   let created;
   try {
@@ -1643,16 +1758,7 @@ export async function createAndCompleteSlackChannel(
       isPrivate: Boolean(input.isPrivate),
       adsomniaUserId: user.id,
       bookmarks,
-      welcome: {
-        ticketId: row.ticketId,
-        title: row.title,
-        summary,
-        workstreamUrl: origin
-          ? `${origin}${createSharePath(initiativeId)}`
-          : null,
-        driveUrl: driveUrl || null,
-        jiraUrl: jiraUrl || null,
-      },
+      welcome,
     });
   } catch (err) {
     return {
@@ -1661,63 +1767,101 @@ export async function createAndCompleteSlackChannel(
     };
   }
 
-  const now = new Date().toISOString();
-  const updated: SetupData = {
-    ...setup,
-    slack: {
-      ...setup.slack,
-      status: "completed",
-      channelName: created.channelName,
-      channelId: created.channelId,
-      channelUrl: created.channelUrl,
-      teamId: created.teamId,
-      teamName: created.teamName,
-      isPrivate: created.isPrivate,
-      completedAt: now,
-    },
-  };
-
-  const onboarding =
-    (row.onboardingData as OnboardingData | null) ??
-    createDefaultOnboardingData();
-
-  await db
-    .update(initiatives)
-    .set({
-      setupData: updated,
-      onboardingData: {
-        ...onboarding,
-        links: {
-          ...(onboarding.links ?? {}),
-          slackChannelUrl: created.channelUrl,
-        },
-      },
-      updatedAt: new Date(),
-    })
-    .where(eq(initiatives.id, initiativeId));
-
-  await db.insert(activityLog).values({
+  return saveConnectedSlackChannel(
     initiativeId,
-    userId: user.id,
-    action: "setup_task_completed",
-    details: {
-      taskId: "slack",
-      completedBy: user.name,
-      channelId: created.channelId,
-      teamId: created.teamId,
-    },
-  });
+    user,
+    setup,
+    row.onboardingData,
+    created,
+  );
+}
 
-  revalidatePath(`/workstreams/${initiativeId}`);
-  revalidatePath("/pipeline/setup");
-  revalidatePath("/dashboard");
-  return {
-    success: true,
-    channelId: created.channelId,
-    channelName: created.channelName,
-    channelUrl: created.channelUrl,
-    bookmarkError: created.bookmarkError,
-  };
+/**
+ * Joins an existing Slack channel in the selected workspace, invites the
+ * current user, bookmarks Drive and Jira, and marks the Slack setup task complete.
+ */
+export async function connectExistingSlackChannel(
+  initiativeId: number,
+  input: {
+    teamId: string;
+    channelId: string;
+  },
+): Promise<
+  SetupResult & {
+    channelId?: string;
+    channelName?: string;
+    channelUrl?: string;
+    isPrivate?: boolean;
+    bookmarkError?: string;
+  }
+> {
+  "use server";
+
+  const user = await getCurrentUser();
+  if (!user || !canManageSetup(user)) {
+    return { error: "Only the Head of Production can manage Project Setup." };
+  }
+
+  const teamId = input.teamId?.trim();
+  const channelId = input.channelId?.trim();
+  if (!teamId) return { error: "Select a Slack workspace." };
+  if (!channelId) return { error: "Choose a Slack channel." };
+
+  const [row] = await db
+    .select({
+      ticketId: initiatives.ticketId,
+      title: initiatives.title,
+      problemStatement: initiatives.problemStatement,
+      expectedImpact: initiatives.expectedImpact,
+      setupData: initiatives.setupData,
+      onboardingData: initiatives.onboardingData,
+      currentStage: initiatives.currentStage,
+    })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
+  if (!row) return { error: "Initiative not found." };
+  if (row.currentStage !== "setup") {
+    return { error: "Initiative is not in the Project Setup stage." };
+  }
+
+  const setup = (row.setupData as SetupData | null) ?? ({} as SetupData);
+  if (!isSetupPhaseUnlocked(setup, "C")) {
+    return { error: "Complete Environment Setup before Kickoff Preparation." };
+  }
+
+  const { bookmarks, welcome } = slackChannelAttachments(
+    initiativeId,
+    row,
+    setup,
+  );
+
+  let connected;
+  try {
+    connected = await connectExistingChannel({
+      teamId,
+      channelId,
+      adsomniaUserId: user.id,
+      bookmarks,
+      welcome,
+    });
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : "Failed to connect the Slack channel.",
+    };
+  }
+
+  return saveConnectedSlackChannel(
+    initiativeId,
+    user,
+    setup,
+    row.onboardingData,
+    connected,
+  );
 }
 
 /**
