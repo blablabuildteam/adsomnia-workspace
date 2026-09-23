@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
-import { Check, CheckCircle2 } from "lucide-react";
+import type { CSSProperties } from "react";
+import { CheckCircle2 } from "lucide-react";
 import { getStageColor } from "@/data/workflow";
 
 const DEFAULT_ACCENT = getStageColor("onboarding");
@@ -14,7 +14,7 @@ export function accentFillStyle(accent: string, strong = false): CSSProperties {
   };
 }
 
-/** Checkbox + "Confirm Done" row shared by onboarding and setup action items. */
+/** Statement + confirm action shared by onboarding and setup action items. */
 export function ConfirmRow({
   label,
   confirmLabel = "Confirm Done",
@@ -30,33 +30,14 @@ export function ConfirmRow({
   /** Phase accent — defaults to Onboarding teal. */
   accent?: string;
 }) {
-  const [confirmed, setConfirmed] = useState(false);
-
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-3 border border-border bg-surface px-3 py-2">
-        <button
-          type="button"
-          onClick={() => setConfirmed((current) => !current)}
-          className="flex min-w-0 items-center gap-3 text-left"
-        >
-          <span
-            aria-hidden
-            className="flex size-5 shrink-0 items-center justify-center border transition-colors"
-            style={
-              confirmed
-                ? accentFillStyle(accent, true)
-                : { borderColor: "var(--border-strong)", color: "transparent" }
-            }
-          >
-            <Check className="size-3.5" strokeWidth={3} />
-          </span>
-          <span className="text-xs text-foreground">{label}</span>
-        </button>
+        <p className="min-w-0 text-xs text-foreground">{label}</p>
         <button
           type="button"
           onClick={onConfirm}
-          disabled={!confirmed || !!blockedReason}
+          disabled={!!blockedReason}
           className="inline-flex shrink-0 items-center gap-2 border px-4 py-2 font-display text-[10px] font-bold uppercase tracking-wide transition-opacity hover:opacity-80 disabled:opacity-40"
           style={accentFillStyle(accent)}
         >
