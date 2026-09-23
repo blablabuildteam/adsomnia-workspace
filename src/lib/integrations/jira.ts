@@ -400,6 +400,201 @@ async function createSimplifiedProject(
   };
 }
 
+type ClassicCreateResult = {
+  id?: number | string;
+  key?: string;
+  self?: string;
+  errorMessages?: string[];
+  errors?: Record<string, string>;
+  message?: string;
+};
+
+function instanceEnv(instance: JiraInstance, suffix: string): string | undefined {
+  const value = process.env[`JIRA_${instance.toUpperCase()}_${suffix}`];
+  return value?.trim() || undefined;
+}
+
+/**
+ * Company-managed spaces can share a workflow scheme. blablabuild uses the
+ * Production scheme by default; other sites opt in with
+ * JIRA_<INSTANCE>_WORKFLOW_SCHEME (id or name) or
+ * JIRA_<INSTANCE>_TEMPLATE_PROJECT_KEY.
+ */
+function workflowSchemeRef(instance: JiraInstance): string | undefined {
+  return instanceEnv(instance, "WORKFLOW_SCHEME")
+    ?? (instance === "bbb" ? "Production" : undefined);
+}
+
+async function jiraJson<T>(
+  config: JiraConfig,
+  path: string,
+  init?: RequestInit,
+): Promise<{ ok: boolean; status: number; body: T }> {
+  const response = await fetch(`${normalizeHost(config.host)}${path}`, {
+    ...init,
+    headers: {
+      Authorization: jiraAuthHeader(config),
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...init?.headers,
+    },
+  });
+  const body = (await response.json().catch(() => ({}))) as T;
+  return { ok: response.ok, status: response.status, body };
+}
+
+function adminPermissionHint(status: number, message: string): string {
+  if (status === 401 || status === 403) {
+    return `${message} The Jira token user needs Administer Jira on this site.`;
+  }
+  return message;
+}
+
+async function workflowSchemeIdFromProject(
+  config: JiraConfig,
+  projectKey: string,
+): Promise<string | null> {
+  const project = await jiraJson<{ id?: string | number }>(
+    config,
+    `/rest/api/3/project/${encodeURIComponent(projectKey)}`,
+  );
+  if (!project.ok || project.body.id == null) return null;
+
+  const associated = await jiraJson<{
+    values?: { workflowScheme?: { id?: number | string } }[];
+  }>(
+    config,
+    `/rest/api/3/workflowscheme/project?projectId=${encodeURIComponent(String(project.body.id))}`,
+  );
+  const schemeId = associated.body.values?.[0]?.workflowScheme?.id;
+  return schemeId != null ? String(schemeId) : null;
+}
+
+async function workflowSchemeIdByName(
+  config: JiraConfig,
+  name: string,
+): Promise<string | null> {
+  const needle = name.trim().toLowerCase();
+  let startAt = 0;
+  for (let page = 0; page < 10; page += 1) {
+    const result = await jiraJson<{
+      isLast?: boolean;
+      maxResults?: number;
+      values?: { id?: number | string; name?: string }[];
+    }>(
+      config,
+      `/rest/api/3/workflowscheme?startAt=${startAt}&maxResults=50`,
+    );
+    if (!result.ok) {
+      throw new Error(
+        adminPermissionHint(
+          result.status,
+          "Could not list workflow schemes.",
+        ),
+      );
+    }
+    const match = result.body.values?.find(
+      (scheme) => (scheme.name ?? "").trim().toLowerCase() === needle,
+    );
+    if (match?.id != null) return String(match.id);
+    if (result.body.isLast !== false) break;
+    startAt += result.body.maxResults ?? 50;
+  }
+  return null;
+}
+
+async function resolveWorkflowSchemeId(
+  instance: JiraInstance,
+  config: JiraConfig,
+): Promise<string | null> {
+  const templateKey = instanceEnv(instance, "TEMPLATE_PROJECT_KEY");
+  if (templateKey) {
+    const fromTemplate = await workflowSchemeIdFromProject(config, templateKey);
+    if (fromTemplate) return fromTemplate;
+  }
+
+  const ref = workflowSchemeRef(instance);
+  if (!ref) return null;
+  if (/^\d+$/.test(ref)) return ref;
+
+  const fromName = await workflowSchemeIdByName(config, ref);
+  if (fromName) return fromName;
+
+  if (instance === "bbb") {
+    throw new Error(
+      `Could not find the "${ref}" workflow scheme on blablabuild Jira. Confirm it exists, or set JIRA_BBB_WORKFLOW_SCHEME / JIRA_BBB_TEMPLATE_PROJECT_KEY.`,
+    );
+  }
+  return null;
+}
+
+async function createClassicProject(
+  config: JiraConfig,
+  opts: {
+    key: string;
+    name: string;
+    description?: string;
+    templateKey: string;
+    leadAccountId: string;
+  },
+): Promise<{ id: string; key: string; self: string }> {
+  const result = await jiraJson<ClassicCreateResult>(
+    config,
+    "/rest/api/3/project",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        key: opts.key,
+        name: opts.name,
+        description: opts.description,
+        projectTypeKey: "software",
+        projectTemplateKey: opts.templateKey,
+        leadAccountId: opts.leadAccountId,
+        assigneeType: "PROJECT_LEAD",
+      }),
+    },
+  );
+  if (!result.ok) {
+    throw new Error(
+      adminPermissionHint(result.status, simplifiedCreateError(result.body)),
+    );
+  }
+
+  const key = result.body.key ?? opts.key;
+  return {
+    id: String(result.body.id ?? ""),
+    key,
+    self: result.body.self ?? "",
+  };
+}
+
+async function assignWorkflowScheme(
+  config: JiraConfig,
+  projectId: string,
+  workflowSchemeId: string,
+): Promise<void> {
+  const result = await jiraJson<SimplifiedCreateResult>(
+    config,
+    "/rest/api/3/workflowscheme/project",
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        projectId,
+        workflowSchemeId,
+      }),
+    },
+  );
+  if (!result.ok) {
+    throw new Error(
+      adminPermissionHint(
+        result.status,
+        simplifiedCreateError(result.body) ||
+          "Jira could not attach the Production workflow scheme.",
+      ),
+    );
+  }
+}
+
 export async function createProject(
   instance: JiraInstance,
   opts: {
@@ -411,11 +606,6 @@ export async function createProject(
   },
 ): Promise<{ id: string; key: string; self: string }> {
   const { client, config } = requireClient(instance);
-
-  const templateKey =
-    opts.template === "scrum"
-      ? "com.pyxis.greenhopper.jira:gh-simplified-agility-scrum"
-      : "com.pyxis.greenhopper.jira:gh-simplified-agility-kanban";
 
   const requestedKey = opts.key
     .toUpperCase()
@@ -437,6 +627,38 @@ export async function createProject(
     throw new Error(nameError);
   }
 
+  const workflowSchemeId = await resolveWorkflowSchemeId(instance, config);
+  if (workflowSchemeId) {
+    const me = await client.myself.getCurrentUser();
+    const leadAccountId = opts.leadAccountId ?? me.accountId;
+    if (!leadAccountId) {
+      throw new Error(
+        "Jira could not determine a project lead for this company-managed space.",
+      );
+    }
+    const created = await createClassicProject(config, {
+      key,
+      name,
+      description: opts.description,
+      leadAccountId,
+      templateKey:
+        opts.template === "scrum"
+          ? "com.pyxis.greenhopper.jira:gh-simplified-scrum-classic"
+          : "com.pyxis.greenhopper.jira:gh-simplified-kanban-classic",
+    });
+    if (!created.id) {
+      throw new Error(
+        "Jira created the space but did not return an id, so the Production workflow could not be attached.",
+      );
+    }
+    await assignWorkflowScheme(config, created.id, workflowSchemeId);
+    return created;
+  }
+
+  const templateKey =
+    opts.template === "scrum"
+      ? "com.pyxis.greenhopper.jira:gh-simplified-agility-scrum"
+      : "com.pyxis.greenhopper.jira:gh-simplified-agility-kanban";
   return createSimplifiedProject(config, { key, name, templateKey });
 }
 
