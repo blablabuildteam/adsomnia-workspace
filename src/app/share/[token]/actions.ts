@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { comments } from "@/db/schema";
 import { displayName, getCurrentUser } from "@/lib/session";
 import { verifyShareToken } from "@/lib/share";
+import { notifyChatMentions } from "@/lib/integrations/slack-notify";
 import {
   SHARE_GUEST_NAME_MAX,
   SHARE_GUEST_NAME_MIN,
@@ -60,6 +61,12 @@ export async function addShareComment(
     initiativeId,
     userId: null,
     guestAuthorName: guestName,
+    body,
+  });
+
+  await notifyChatMentions({
+    initiativeId,
+    actorName: guestName,
     body,
   });
 

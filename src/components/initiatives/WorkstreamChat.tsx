@@ -479,7 +479,7 @@ export function WorkstreamChat({
                   {initials(authorLabel)}
                 </span>
                 <div className="relative min-w-0 flex-1">
-                  {mentionOpen && !isGuestMode ? (
+                  {mentionOpen ? (
                     <ul
                       className="absolute inset-x-0 bottom-full z-10 mb-1 max-h-44 overflow-y-auto border border-border-strong bg-surface-elevated shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
                       role="listbox"
@@ -535,11 +535,7 @@ export function WorkstreamChat({
                     maxLength={MAX_BODY}
                     value={draft}
                     className={`${inputClass} resize-none py-2 pr-10 text-xs`}
-                    placeholder={
-                      isGuestMode
-                        ? "Write a remark…"
-                        : "Write a remark… Use @ to tag"
-                    }
+                    placeholder="Write a remark… Use @ to tag"
                     onChange={(event) => {
                       onDraftChange(
                         event.target.value,
@@ -558,7 +554,7 @@ export function WorkstreamChat({
                       }
                     }}
                     onKeyDown={(event) => {
-                      if (!isGuestMode && mentionMatches.length > 0) {
+                      if (mentionMatches.length > 0) {
                         if (event.key === "ArrowDown") {
                           event.preventDefault();
                           setMentionIndex(

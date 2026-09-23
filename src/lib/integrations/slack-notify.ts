@@ -503,7 +503,7 @@ export async function notifySubmittedForReview(
 
 export type NotifyChatMentionsInput = {
   initiativeId: number;
-  actorUserId: string;
+  actorUserId?: string;
   actorName: string;
   body: string;
 };

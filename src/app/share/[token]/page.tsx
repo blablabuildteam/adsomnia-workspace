@@ -9,6 +9,7 @@ import {
   getApprovalHistory,
   getCommentsForInitiative,
   getActivityForInitiative,
+  getMentionablePeople,
 } from "@/lib/queries";
 import { verifyShareToken } from "@/lib/share";
 import { listWorkstreamAttachments } from "@/lib/workstream-attachments";
@@ -49,12 +50,14 @@ export default async function SharedInitiativePage({ params }: Props) {
     notFound();
   }
 
-  const [user, comments, activity, attachments] = await Promise.all([
-    getCurrentUser(),
-    getCommentsForInitiative(initiative.id),
-    getActivityForInitiative(initiative.id),
-    listWorkstreamAttachments(initiative.id, token),
-  ]);
+  const [user, comments, activity, attachments, mentionablePeople] =
+    await Promise.all([
+      getCurrentUser(),
+      getCommentsForInitiative(initiative.id),
+      getActivityForInitiative(initiative.id),
+      listWorkstreamAttachments(initiative.id, token),
+      getMentionablePeople(),
+    ]);
 
   const approvals = await getApprovalHistory(initiative.id);
 
@@ -94,6 +97,7 @@ export default async function SharedInitiativePage({ params }: Props) {
       initiative={initiative}
       comments={comments}
       activity={activity}
+      mentionablePeople={mentionablePeople}
       attachments={attachments}
       canUserApprove={false}
       canComment
