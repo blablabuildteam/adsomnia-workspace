@@ -11,7 +11,7 @@ import {
   addShareAttachment,
   addShareFile,
 } from "@/app/share/[token]/actions";
-import { AttachmentZone } from "@/components/initiatives/AttachmentZone";
+import { AttachmentChip, AttachmentZone } from "@/components/initiatives/AttachmentZone";
 import { inputClass } from "@/lib/form-styles";
 import {
   SHARE_GUEST_NAME_MAX,
@@ -26,8 +26,10 @@ type Props = {
   shareToken?: string;
   currentUserId?: string;
   canRemove?: boolean;
-  /** When false, the parent (details header) already lists attachments. */
-  showList?: boolean;
+  /** Phase-funnel files shown read-only above workstream chips. */
+  extraAttachments?: Attachment[];
+  /** Inline sits inside the details header; card is the standalone box. */
+  variant?: "card" | "inline";
 };
 
 function subscribeGuestName(onStoreChange: () => void) {
@@ -53,7 +55,8 @@ export function WorkstreamAttachments({
   shareToken,
   currentUserId,
   canRemove = false,
-  showList = true,
+  extraAttachments = [],
+  variant = "card",
 }: Props) {
   const isGuestMode = Boolean(shareToken) && !currentUserId;
   const [items, setItems] = useState(attachments);
@@ -229,19 +232,140 @@ export function WorkstreamAttachments({
     });
   }
 
+  const seen = new Set<string>();
+  const displayItems: { attachment: Attachment; removable: boolean }[] = [];
+  for (const item of extraAttachments) {
+    const key = item.url?.trim() || `id:${item.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    displayItems.push({ attachment: item, removable: false });
+  }
+  for (const item of items) {
+    const key = item.url?.trim() || `id:${item.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    displayItems.push({ attachment: item, removable: canRemove });
+  }
+
+  const addBody = (
+    <>
+      {isGuestMode && !guestNameReady ? (
+        <div>
+          <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+            Your name
+          </p>
+          <p className="mb-3 text-xs text-muted">
+            Add your name once so the team can see who dropped each file.
+          </p>
+          <input
+            type="text"
+            value={guestNameDraft}
+            maxLength={SHARE_GUEST_NAME_MAX}
+            autoComplete="name"
+            className={`${inputClass} text-xs`}
+            placeholder="First and last name"
+            onChange={(event) => setGuestNameDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                saveGuestName();
+              }
+            }}
+          />
+          <button
+            type="button"
+            onClick={saveGuestName}
+            disabled={
+              guestNameDraft.trim().length < SHARE_GUEST_NAME_MIN ||
+              guestNameDraft.trim().length > SHARE_GUEST_NAME_MAX
+            }
+            className="mt-3 border border-foreground bg-foreground px-3 py-2 font-display text-[10px] font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90 disabled:opacity-40"
+          >
+            Continue
+          </button>
+        </div>
+      ) : (
+        <>
+          {isGuestMode && (
+            <p className="text-xs text-muted">
+              Adding as{" "}
+              <span className="font-medium text-foreground">{guestName}</span>
+              .{" "}
+              <button
+                type="button"
+                className="underline-offset-2 hover:underline"
+                onClick={() => setGuestNameReady(false)}
+              >
+                Change name
+              </button>
+            </p>
+          )}
+          {displayItems.length > 0 && (
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              {displayItems.map(({ attachment, removable }) => (
+                <AttachmentChip
+                  key={attachment.id}
+                  attachment={attachment}
+                  readOnly={!removable}
+                  onRemove={
+                    removable
+                      ? () =>
+                          handleChange(
+                            items.filter((item) => item.id !== attachment.id),
+                          )
+                      : undefined
+                  }
+                />
+              ))}
+            </div>
+          )}
+          <AttachmentZone
+            attachments={items}
+            onChange={handleChange}
+            onFilesAdded={handleFilesAdded}
+            resolveLinkTitle={false}
+            showList={false}
+            canRemove={canRemove}
+          />
+          <p className="text-[11px] text-muted">
+            Drop files or add a URL. Files can be up to 4 MB.
+          </p>
+        </>
+      )}
+      {error && <p className="text-sm text-danger">{error}</p>}
+    </>
+  );
+
+  if (variant === "inline") {
+    return (
+      <div className="border-t border-foreground/10 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <span className="font-display text-[9px] font-bold uppercase tracking-[0.25em] text-foreground/30">
+            Attachments
+            {displayItems.length > 0 ? ` · ${displayItems.length}` : ""}
+          </span>
+          {pending && (
+            <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+              Saving…
+            </span>
+          )}
+        </div>
+        <div className="mt-2.5 space-y-3">{addBody}</div>
+      </div>
+    );
+  }
+
   return (
     <section className="border border-border bg-surface">
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
         <div className="flex items-center gap-2">
           <Paperclip className="size-3.5 text-muted" />
           <h3 className="font-display text-xs font-bold uppercase tracking-wide">
-            {showList ? "Attachments" : "Add attachment"}
+            Attachments
           </h3>
-          {showList && (
-            <span className="font-display text-[10px] font-bold tabular-nums text-muted">
-              {items.length}
-            </span>
-          )}
+          <span className="font-display text-[10px] font-bold tabular-nums text-muted">
+            {displayItems.length}
+          </span>
         </div>
         {pending && (
           <span className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
@@ -249,73 +373,7 @@ export function WorkstreamAttachments({
           </span>
         )}
       </div>
-      <div className="space-y-3 px-4 py-4 sm:px-5">
-        {isGuestMode && !guestNameReady ? (
-          <div>
-            <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-              Your name
-            </p>
-            <p className="mb-3 text-xs text-muted">
-              Add your name once so the team can see who dropped each file.
-            </p>
-            <input
-              type="text"
-              value={guestNameDraft}
-              maxLength={SHARE_GUEST_NAME_MAX}
-              autoComplete="name"
-              className={`${inputClass} text-xs`}
-              placeholder="First and last name"
-              onChange={(event) => setGuestNameDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  saveGuestName();
-                }
-              }}
-            />
-            <button
-              type="button"
-              onClick={saveGuestName}
-              disabled={
-                guestNameDraft.trim().length < SHARE_GUEST_NAME_MIN ||
-                guestNameDraft.trim().length > SHARE_GUEST_NAME_MAX
-              }
-              className="mt-3 border border-foreground bg-foreground px-3 py-2 font-display text-[10px] font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90 disabled:opacity-40"
-            >
-              Continue
-            </button>
-          </div>
-        ) : (
-          <>
-            {isGuestMode && (
-              <p className="text-xs text-muted">
-                Adding as{" "}
-                <span className="font-medium text-foreground">{guestName}</span>
-                .{" "}
-                <button
-                  type="button"
-                  className="underline-offset-2 hover:underline"
-                  onClick={() => setGuestNameReady(false)}
-                >
-                  Change name
-                </button>
-              </p>
-            )}
-            <AttachmentZone
-              attachments={items}
-              onChange={handleChange}
-              onFilesAdded={handleFilesAdded}
-              resolveLinkTitle={false}
-              showList={showList}
-              canRemove={canRemove}
-            />
-            <p className="text-[11px] text-muted">
-              Drop files or add a URL. Files can be up to 4 MB.
-            </p>
-          </>
-        )}
-        {error && <p className="text-sm text-danger">{error}</p>}
-      </div>
+      <div className="space-y-3 px-4 py-4 sm:px-5">{addBody}</div>
     </section>
   );
 }

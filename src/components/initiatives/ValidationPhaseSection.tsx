@@ -22,6 +22,7 @@ import {
   Link2,
   Paperclip,
   PenLine,
+  Rocket,
   StickyNote,
   type LucideIcon,
 } from "lucide-react";
@@ -29,8 +30,10 @@ import {
   saveValidationData,
   submitValidationForApproval,
   resubmitValidation,
+  type ApprovalResult,
   type ValidationResult,
 } from "@/app/(workspace)/workstreams/[id]/actions";
+import { convertToFastTrack } from "@/app/(workspace)/fast-track/actions";
 import { inputClass } from "@/lib/form-styles";
 import { CharCount } from "@/components/ui/CharCount";
 import {
@@ -303,6 +306,8 @@ type Props = {
   resubmitting?: boolean;
   /** Show Save Changes + Resubmit buttons for feedback / on-hold / rejected. */
   canResubmit?: boolean;
+  /** Leadership can send the workstream to Fast-Track from the draft footer. */
+  canFastTrack?: boolean;
   showFormPrefill?: boolean;
 };
 
@@ -313,18 +318,29 @@ export function ValidationPhaseSection({
   feedback = null,
   resubmitting = false,
   canResubmit = false,
+  canFastTrack = false,
   showFormPrefill = false,
 }: Props) {
   const boundSave = saveValidationData.bind(null, initiativeId);
   const boundSubmit = submitValidationForApproval.bind(null, initiativeId);
   const boundResubmit = resubmitValidation.bind(null, initiativeId);
+  const boundFastTrack = convertToFastTrack.bind(null, initiativeId);
+  const fastTrackInitial: ApprovalResult = {};
 
   const [saveState, saveAction, savePending] = useActionState(boundSave, initial);
   const [submitState, submitAction, submitPending] = useActionState(boundSubmit, initial);
   const [resubmitState, resubmitAction, resubmitPending] = useActionState(boundResubmit, initial);
+  const [fastTrackState, fastTrackAction, fastTrackPending] = useActionState(
+    boundFastTrack,
+    fastTrackInitial,
+  );
 
-  const pending = savePending || submitPending || resubmitPending;
-  const error = saveState.error || submitState.error || resubmitState.error;
+  const pending = savePending || submitPending || resubmitPending || fastTrackPending;
+  const error =
+    saveState.error ||
+    submitState.error ||
+    resubmitState.error ||
+    fastTrackState.error;
   const saved = saveState.success;
   const [submissionUpdated, setSubmissionUpdated] = useState(false);
 
@@ -737,6 +753,22 @@ export function ValidationPhaseSection({
         </PhaseSectionStack>
 
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
+          {canFastTrack && (
+            <button
+              type="submit"
+              formAction={fastTrackAction}
+              formNoValidate
+              disabled={pending}
+              title="Skip the rest of the pipeline and create a Fast-Track Jira task"
+              className="group relative inline-flex items-center gap-2 overflow-hidden border border-bbb bg-bbb/10 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-bbb transition-colors hover:bg-bbb/20 disabled:opacity-50"
+            >
+              <span className="absolute inset-0 origin-left scale-x-0 bg-bbb/15 transition-transform duration-300 ease-out group-hover:scale-x-100" />
+              <Rocket className="relative size-3.5" />
+              <span className="relative">
+                {fastTrackPending ? "Pushing…" : "Push to Fast-Track"}
+              </span>
+            </button>
+          )}
           {!resubmitting && (
             <button
               type="submit"

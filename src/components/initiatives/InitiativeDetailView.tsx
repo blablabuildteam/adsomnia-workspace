@@ -455,6 +455,8 @@ export function InitiativeDetailView({
           style={enterStyle(70)}
           initiative={initiative}
           attachments={attachments}
+          shareToken={shareToken}
+          currentUserId={currentUserId}
           canRemoveWorkstreamAttachments={!shareToken && Boolean(currentUserId)}
           goDate={
             goNoGoDecision?.decision === "approved"
@@ -469,16 +471,17 @@ export function InitiativeDetailView({
         />
         )}
 
-        <div className={`mb-8 ${ENTER_CLASS}`} style={enterStyle(90)}>
-          <WorkstreamAttachments
-            initiativeId={initiative.id}
-            attachments={attachments}
-            shareToken={shareToken}
-            currentUserId={currentUserId}
-            canRemove={!shareToken && Boolean(currentUserId)}
-            showList={addedManually}
-          />
-        </div>
+        {addedManually && (
+          <div className={`mb-8 ${ENTER_CLASS}`} style={enterStyle(90)}>
+            <WorkstreamAttachments
+              initiativeId={initiative.id}
+              attachments={attachments}
+              shareToken={shareToken}
+              currentUserId={currentUserId}
+              canRemove={!shareToken && Boolean(currentUserId)}
+            />
+          </div>
+        )}
 
         <div id="detail-header-sentinel" aria-hidden="true" />
 
@@ -584,6 +587,7 @@ export function InitiativeDetailView({
                         feedback={displayedValidationDecision}
                         resubmitting={validationAwaitingDecision}
                         canResubmit={validationCanResubmit}
+                        canFastTrack={canUserApprove && !initiative.isFastTrack}
                         showFormPrefill={showFormPrefill}
                       />
                     </form>

@@ -433,7 +433,7 @@ function MilestoneCard({
           type="text"
           value={milestone.milestone}
           onChange={(e) => onChange({ ...milestone, milestone: e.target.value })}
-          placeholder="Milestone deliverable…"
+          placeholder="Milestone deliverable (optional)…"
           className="w-full border-b border-border bg-transparent px-0 py-1 text-xs text-foreground placeholder:text-muted/40 focus:border-muted focus:outline-none"
         />
         <div className="flex gap-2">
@@ -1154,7 +1154,7 @@ export function ScopingPhaseSection({
   // ── Completeness checks
   const milestonesReady =
     milestones.length > 0 &&
-    milestones.every((m) => m.epic.trim() && m.milestone.trim());
+    milestones.every((m) => m.epic.trim());
   const teamReady =
     team.length > 0 &&
     team.every((t) => t.role.trim() && t.name.trim() && t.totalHours > 0);

@@ -310,7 +310,7 @@ export type ScopingData = {
 export function isScopingComplete(data: ScopingData | null | undefined): boolean {
   if (!data) return false;
   const hasMilestones = (data.milestones?.length ?? 0) > 0 &&
-    data.milestones!.every((m) => m.epic.trim() && m.milestone.trim());
+    data.milestones!.every((m) => m.epic.trim());
   const hasTeam = (data.team?.length ?? 0) > 0 &&
     data.team!.every((t) => t.role.trim() && t.name.trim() && t.totalHours > 0);
   const hasImpact = isBusinessValueComplete(data.impact);

@@ -7,9 +7,13 @@ import { db } from "@/db";
 import { activityLog, approvals, initiatives } from "@/db/schema";
 import { getCurrentUser } from "@/lib/session";
 import { canAddFastTrack, canApprove } from "@/lib/permissions";
-import { FAST_TRACK_FIELD_LIMITS } from "@/lib/field-limits";
+import {
+  FAST_TRACK_FIELD_LIMITS,
+  validateValidationNarratives,
+} from "@/lib/field-limits";
 import { createFastTrackIssue } from "@/lib/integrations/jira";
 import { notifyOwner } from "@/lib/integrations/slack-notify";
+import { parseValidationFormData } from "@/lib/validation-form";
 import type { ApprovalResult } from "@/app/(workspace)/workstreams/[id]/actions";
 
 export async function convertToFastTrack(
@@ -48,14 +52,36 @@ export async function convertToFastTrack(
     return { error: "This initiative is already on Fast-Track." };
   }
   const fromStage = initiative.currentStage;
-  if (
-    (fromStage !== "idea" && fromStage !== "validation") ||
-    initiative.status !== "submitted"
-  ) {
+  const validationDraftStatuses = new Set([
+    "approved",
+    "draft",
+    "submitted",
+    "on-hold",
+    "rejected",
+  ]);
+  const canConvertFromIdea =
+    fromStage === "idea" && initiative.status === "submitted";
+  const canConvertFromValidation =
+    fromStage === "validation" &&
+    validationDraftStatuses.has(initiative.status);
+  if (!canConvertFromIdea && !canConvertFromValidation) {
     return {
       error:
-        "Only items in Initiative or Validation review can be sent to Fast-Track.",
+        "Only items in Initiative review or Validation can be sent to Fast-Track.",
     };
+  }
+
+  const looksLikeValidationForm =
+    formData.has("solutionDirection") ||
+    formData.has("tShirtSize") ||
+    formData.has("priority") ||
+    formData.has("leadProductionParty");
+  let validationData = undefined;
+  if (canConvertFromValidation && looksLikeValidationForm) {
+    const parsed = parseValidationFormData(formData);
+    const lengthError = validateValidationNarratives(parsed, "save");
+    if (lengthError) return { error: lengthError };
+    validationData = parsed;
   }
 
   let created: { key: string; url: string };
@@ -86,6 +112,7 @@ export async function convertToFastTrack(
       fastTrackJiraKey: created.key,
       fastTrackJiraUrl: created.url,
       status: "approved",
+      ...(validationData ? { validationData } : {}),
       updatedAt: new Date(),
     })
     .where(eq(initiatives.id, initiativeId));

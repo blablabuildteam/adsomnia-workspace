@@ -4,11 +4,10 @@ import {
   ChevronDown,
   ExternalLink,
 } from "lucide-react";
-import { useState, useTransition, type CSSProperties } from "react";
-import { removeWorkstreamAttachment } from "@/app/(workspace)/workstreams/[id]/attachment-actions";
+import { useState, type CSSProperties } from "react";
 import { PARTIES } from "@/data/workflow";
 import { MilestoneGantt } from "./MilestoneGantt";
-import { AttachmentChip } from "./AttachmentZone";
+import { WorkstreamAttachments } from "./WorkstreamAttachments";
 import { formatEuro, summarizeTeamCost } from "@/data/role-rates";
 import type { InitiativeWithUsers } from "@/lib/queries";
 import {
@@ -253,6 +252,8 @@ function collectFunnelAttachments(
 type Props = {
   initiative: InitiativeWithUsers;
   attachments?: Attachment[];
+  shareToken?: string;
+  currentUserId?: string;
   canRemoveWorkstreamAttachments?: boolean;
   goDate?: Date | null;
   goApprover?: string | null;
@@ -263,6 +264,8 @@ type Props = {
 export function DetailsQuickView({
   initiative,
   attachments = [],
+  shareToken,
+  currentUserId,
   canRemoveWorkstreamAttachments = false,
   goDate,
   goApprover,
@@ -270,9 +273,7 @@ export function DetailsQuickView({
   style,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
-  const [, startRemove] = useTransition();
   const currentNum = STAGE_NUM[initiative.currentStage] ?? 1;
-  const workstreamIds = new Set(attachments.map((item) => item.id));
 
   const vd = initiative.validationData;
   const sd = initiative.scopingData;
@@ -341,7 +342,7 @@ export function DetailsQuickView({
   const driveName = setup?.drive.driveName;
   const driveUrl = setup?.drive.driveUrl;
   const hasTools = hasSetup && !!(slackName || jiraUrl || driveUrl);
-  const funnelAttachments = collectFunnelAttachments(initiative, attachments);
+  const phaseAttachments = collectFunnelAttachments(initiative, []);
   const validationSnapshotCount = [adsomnia, tShirtSize, leadParty].filter(
     Boolean,
   ).length;
@@ -509,39 +510,15 @@ export function DetailsQuickView({
         </div>
       )}
 
-      {funnelAttachments.length > 0 && (
-        <div className="border-t border-foreground/10 py-3">
-          <span className="font-display text-[9px] font-bold uppercase tracking-[0.25em] text-foreground/30">
-            Attachments
-          </span>
-          <div className="mt-2.5 grid gap-1.5 sm:grid-cols-2">
-            {funnelAttachments.map((attachment) => {
-              const canRemove =
-                canRemoveWorkstreamAttachments &&
-                workstreamIds.has(attachment.id);
-              return (
-                <AttachmentChip
-                  key={attachment.id}
-                  attachment={attachment}
-                  readOnly={!canRemove}
-                  onRemove={
-                    canRemove
-                      ? () => {
-                          startRemove(async () => {
-                            await removeWorkstreamAttachment(
-                              initiative.id,
-                              attachment.id,
-                            );
-                          });
-                        }
-                      : undefined
-                  }
-                />
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <WorkstreamAttachments
+        variant="inline"
+        initiativeId={initiative.id}
+        attachments={attachments}
+        extraAttachments={phaseAttachments}
+        shareToken={shareToken}
+        currentUserId={currentUserId}
+        canRemove={canRemoveWorkstreamAttachments}
+      />
 
       {/* Footer meta — one slim line */}
       <div
