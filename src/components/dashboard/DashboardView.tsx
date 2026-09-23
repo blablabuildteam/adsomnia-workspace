@@ -2,7 +2,7 @@ import { LeadershipDashboard } from "@/components/dashboard/LeadershipDashboard"
 import { TeamDashboard } from "@/components/dashboard/TeamDashboard";
 import { visibleOnDashboard } from "@/lib/dashboard-attention";
 import type { FastTrackItem } from "@/lib/fast-track";
-import { isLeadership } from "@/lib/permissions";
+import { seesAllWorkstreams, type WorkspaceRole } from "@/lib/permissions";
 import type {
   InitiativeWithUsers,
   WorkspaceActivityEntry,
@@ -17,7 +17,7 @@ type DashboardProps = {
   user: {
     id: string;
     firstName: string;
-    role: "leadership" | "production" | "team";
+    role: WorkspaceRole;
   };
 };
 
@@ -31,7 +31,7 @@ export function DashboardView({
 }: DashboardProps) {
   const active = initiatives.filter(visibleOnDashboard);
 
-  if (isLeadership(user)) {
+  if (seesAllWorkstreams(user)) {
     return (
       <LeadershipDashboard
         initiatives={active}

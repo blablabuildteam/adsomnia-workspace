@@ -4,7 +4,7 @@ import {
   listFastTrackIssues,
   type FastTrackJiraIssue,
 } from "@/lib/integrations/jira";
-import { isLeadership, type PermissionUser } from "@/lib/permissions";
+import { seesAllWorkstreams, type PermissionUser } from "@/lib/permissions";
 import {
   getFastTrackInitiatives,
   getFastTrackRemarks,
@@ -209,7 +209,7 @@ export async function loadFastTrackOverview(
     );
   }
 
-  if (isLeadership(user)) {
+  if (seesAllWorkstreams(user)) {
     for (const issue of jiraIssues) {
       if (!issue.key || seenKeys.has(issue.key)) continue;
       if (
@@ -230,7 +230,7 @@ export async function loadFastTrackOverview(
 
   return {
     items,
-    boardUrl: isLeadership(user) ? getFastTrackBoardUrl() : null,
+    boardUrl: seesAllWorkstreams(user) ? getFastTrackBoardUrl() : null,
     fetchError,
   };
 }

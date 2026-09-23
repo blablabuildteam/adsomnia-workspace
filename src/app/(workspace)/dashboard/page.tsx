@@ -1,7 +1,7 @@
 import { DashboardView } from "@/components/dashboard/DashboardView";
 import { loadFastTrackOverview, type FastTrackItem } from "@/lib/fast-track";
 import { withoutDeletedJiraSpaces } from "@/lib/production/load";
-import { isLeadership } from "@/lib/permissions";
+import { seesAllWorkstreams } from "@/lib/permissions";
 import {
   getAllInitiatives,
   getInitiativeIdsWithLatestDecision,
@@ -26,7 +26,9 @@ export default async function DashboardPage() {
       getInitiativeIdsWithLatestDecision("idea", "feedback"),
       getInitiativeIdsWithLatestDecision("validation", "feedback"),
       getInitiativeIdsWithLatestDecision("go-nogo", "feedback"),
-      isLeadership(user) ? loadFastTrackOverview(user) : Promise.resolve(EMPTY_FAST_TRACK),
+      seesAllWorkstreams(user)
+        ? loadFastTrackOverview(user)
+        : Promise.resolve(EMPTY_FAST_TRACK),
     ]);
 
   const items = await withoutDeletedJiraSpaces(rawItems);

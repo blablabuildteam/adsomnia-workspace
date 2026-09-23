@@ -103,7 +103,7 @@ export type IdeaUpdateResult = {
   success?: boolean;
 };
 
-/** Creator (or leadership) updates initiative details in Initiative or Validation. */
+/** Creator or leadership updates initiative details. Validation edits are leadership-only. */
 export async function updateIdeaDetails(
   initiativeId: number,
   _prev: IdeaUpdateResult,
@@ -137,9 +137,11 @@ export async function updateIdeaDetails(
   if (!canEditIdeaDetails(user, existing)) {
     return {
       error:
-        existing.status === "rejected"
-          ? "Only the initiative owner can edit a rejected submission."
-          : "Only the creator or leadership can edit this initiative.",
+        existing.currentStage === "validation"
+          ? "Only leadership can edit initiative details during Validation."
+          : existing.status === "rejected"
+            ? "Only the initiative owner can edit a rejected submission."
+            : "Only the creator or leadership can edit this initiative.",
     };
   }
 
@@ -684,7 +686,7 @@ export async function rejectValidation(
   });
 }
 
-/** Send the business case back to the creator with feedback (editable again). */
+/** Send the business case back for revision. Leadership edits and resubmits. */
 export async function requestValidationChanges(
   initiativeId: number,
   _prev: ValidationDecisionResult,
@@ -741,11 +743,11 @@ export async function resubmitValidation(
   if (!canResubmitValidation(user, existing)) {
     return {
       error:
+        existing.status === "draft" ||
+        existing.status === "on-hold" ||
         existing.status === "rejected"
-          ? "Only the initiative owner can resubmit a rejected business case."
-          : existing.status === "draft" || existing.status === "on-hold"
-            ? "Only the creator or leadership can resubmit."
-            : "Only feedback, on-hold, or rejected items can be resubmitted.",
+          ? "Only leadership can resubmit a business case."
+          : "Only feedback, on-hold, or rejected items can be resubmitted.",
     };
   }
 
@@ -815,7 +817,7 @@ export async function saveValidationData(
       error:
         existing.currentStage !== "validation"
           ? "Validation details can only be edited during the Validation stage."
-          : "Only the creator or leadership can edit this business case.",
+          : "Only leadership can edit this business case.",
     };
   }
 
@@ -880,7 +882,7 @@ export async function submitValidationForApproval(
       error:
         existing.currentStage !== "validation"
           ? "This initiative is no longer in the Validation stage."
-          : "Only the creator or leadership can submit this business case.",
+          : "Only leadership can submit this business case.",
     };
   }
 

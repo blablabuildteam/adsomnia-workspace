@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import type { WorkspaceRole } from "./permissions";
 import type { ThemePreference } from "./theme";
 import {
   parseThemePreference,
@@ -52,7 +53,7 @@ export type SessionUser = {
   lastName: string | null;
   jobTitle: string | null;
   email: string;
-  role: "leadership" | "production" | "team";
+  role: WorkspaceRole;
   profileCompletedAt: Date | null;
   themePreference: ThemePreference;
 };

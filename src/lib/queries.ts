@@ -19,7 +19,11 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
-import { isLeadership, type PermissionUser } from "@/lib/permissions";
+import {
+  seesAllWorkstreams,
+  type PermissionUser,
+  type WorkspaceRole,
+} from "@/lib/permissions";
 import { displayName } from "@/lib/session";
 import type {
   ValidationData,
@@ -123,9 +127,9 @@ type InitiativeRow = {
   sponsorId: string;
 };
 
-/** Team accounts are limited to their own submissions; leadership sees all. */
+/** Team accounts are limited to their own submissions; leadership and assistants see all. */
 function ownerVisibility(user: PermissionUser): SQL | undefined {
-  if (isLeadership(user)) return undefined;
+  if (seesAllWorkstreams(user)) return undefined;
   return eq(initiatives.submitterId, user.id);
 }
 
@@ -612,7 +616,7 @@ export type RegisteredUserEntry = {
   name: string;
   email: string;
   jobTitle: string | null;
-  role: "leadership" | "production" | "team";
+  role: WorkspaceRole;
   profileComplete: boolean;
   createdAt: string;
 };

@@ -231,11 +231,11 @@ export function InitiativeDetailView({
   const showApprovalPanel = ideaAwaitingDecision || !!displayedIdeaDecision;
 
   const canEditIdea =
-    (initiative.currentStage === "idea" ||
-      initiative.currentStage === "validation") &&
-    (initiative.status === "rejected"
-      ? isCreator
-      : isCreator || canUserApprove);
+    (initiative.currentStage === "idea" &&
+      (initiative.status === "rejected"
+        ? isCreator
+        : isCreator || canUserApprove)) ||
+    (initiative.currentStage === "validation" && canUserApprove);
 
   const ideaCanResubmit =
     initiative.currentStage === "idea" &&
@@ -256,16 +256,13 @@ export function InitiativeDetailView({
 
   const validationCanResubmit =
     validationIsCurrent &&
-    ((validationHasFeedback && (isCreator || canUserApprove)) ||
-      (initiative.status === "on-hold" && (isCreator || canUserApprove)) ||
-      (initiative.status === "rejected" && isCreator));
+    canUserApprove &&
+    (validationHasFeedback ||
+      initiative.status === "on-hold" ||
+      initiative.status === "rejected");
 
-  // Creator or leadership can keep editing the business case in Validation.
-  const validationIsEditable =
-    validationIsCurrent &&
-    (initiative.status === "rejected"
-      ? isCreator
-      : isCreator || canUserApprove);
+  // Leadership fills the business case. The submitter can only view it.
+  const validationIsEditable = validationIsCurrent && canUserApprove;
 
   // Only surface the latest validation decision when it matches the current
   // state (avoids showing stale decisions after a resubmission).

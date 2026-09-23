@@ -12,6 +12,7 @@ type RoleFilter = "all" | RegisteredUserEntry["role"];
 const FILTERS: { key: RoleFilter; label: string }[] = [
   { key: "all", label: "All" },
   { key: "leadership", label: "Leadership" },
+  { key: "assistant", label: "Assistant" },
   { key: "team", label: "Team" },
   { key: "production", label: "Production" },
 ];
@@ -34,7 +35,7 @@ export function UsersDirectoryView({ users }: Props) {
   const [query, setQuery] = useState("");
 
   const counts = useMemo(() => {
-    const byRole = { leadership: 0, team: 0, production: 0 };
+    const byRole = { leadership: 0, assistant: 0, team: 0, production: 0 };
     for (const user of users) byRole[user.role] += 1;
     return byRole;
   }, [users]);

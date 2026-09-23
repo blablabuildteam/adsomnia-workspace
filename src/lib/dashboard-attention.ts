@@ -31,6 +31,20 @@ export function teamItemState(
 ): TeamItemState {
   const stage = stageName(item.currentStage);
 
+  // Validation is leadership's to fill. The submitter only follows along.
+  if (item.currentStage === "validation") {
+    if (item.status === "rejected") {
+      return { kind: "waiting", reason: "Rejected in Validation" };
+    }
+    if (item.status === "submitted") {
+      return { kind: "waiting", reason: "Waiting on review in Validation" };
+    }
+    if (item.status === "on-hold") {
+      return { kind: "waiting", reason: "On hold in Validation" };
+    }
+    return { kind: "waiting", reason: "In Validation" };
+  }
+
   if (item.status === "rejected") {
     return {
       kind: "action",

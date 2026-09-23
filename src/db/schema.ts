@@ -16,6 +16,7 @@ export const userRoleEnum = pgEnum("user_role", [
   "leadership",
   "production",
   "team",
+  "assistant",
 ]);
 
 export const themePreferenceEnum = pgEnum("theme_preference", [

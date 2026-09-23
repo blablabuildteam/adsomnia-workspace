@@ -4,14 +4,17 @@
  * - `leadership` — LOGIN_* admin emails (Sietse, Oleg, Jasper, Coen, plus
  *   Godai aliases sietse@godai.nl / jesper@godai.nl and seeded blablabuild
  *   admins). Approve, hold, set up projects, run onboarding.
+ * - `assistant` — read access to every workstream and the full Fast Track
+ *   board (Daria, assisting Coen). No approval, setup, or onboarding actions.
  * - `team` — every other allowed-domain account (Adsomnia, Godai, blablabuild).
- *   Submit initiatives, follow only their own items through later phases, and
- *   edit their own details while the item is still in Initiative or Validation.
+ *   Submit initiatives and follow only their own items. They may edit their
+ *   own details while the item is still in Initiative. In Validation they
+ *   can view the workstream; leadership fills the business case.
  * - `production` — reserved; treated as team for write access today.
  * - Product Feedback inbox and the user directory are leadership-only.
  */
 
-export type WorkspaceRole = "leadership" | "production" | "team";
+export type WorkspaceRole = "leadership" | "production" | "team" | "assistant";
 
 export type PermissionUser = {
   id: string;
@@ -24,10 +27,13 @@ export type InitiativeAccess = {
   status: string;
 };
 
-const EARLY_EDIT_STAGES = new Set(["idea", "validation"]);
-
 export function isLeadership(user: PermissionUser): boolean {
   return user.role === "leadership";
+}
+
+/** Leadership and assistants can open every workstream and the Fast Track board. */
+export function seesAllWorkstreams(user: PermissionUser): boolean {
+  return isLeadership(user) || user.role === "assistant";
 }
 
 export function isCreator(
@@ -44,12 +50,12 @@ function isCreatorOrLeadership(
   return isCreator(user, initiative) || isLeadership(user);
 }
 
-/** Leadership sees every workstream; team members see only what they submitted. */
+/** Leadership and assistants see every workstream; team members see only what they submitted. */
 export function canViewInitiative(
   user: PermissionUser,
   initiative: Pick<InitiativeAccess, "submitterId">,
 ): boolean {
-  return isCreatorOrLeadership(user, initiative);
+  return isCreator(user, initiative) || seesAllWorkstreams(user);
 }
 
 /** Any signed-in workspace account can file a new initiative. */
@@ -171,28 +177,28 @@ export function canViewUserDirectory(user: PermissionUser | null): boolean {
 
 /**
  * Creator or leadership may change the original initiative fields while the
- * item is still in Initiative or Validation. Rejected items: creator only.
+ * item is still in Initiative. Rejected items: creator only.
+ * Once the item is in Validation, only leadership may edit those fields.
  */
 export function canEditIdeaDetails(
   user: PermissionUser,
   initiative: InitiativeAccess,
 ): boolean {
-  if (!EARLY_EDIT_STAGES.has(initiative.currentStage)) return false;
+  if (initiative.currentStage === "validation") return isLeadership(user);
+  if (initiative.currentStage !== "idea") return false;
   if (initiative.status === "rejected") return isCreator(user, initiative);
   return isCreatorOrLeadership(user, initiative);
 }
 
 /**
- * Creator or leadership may change the business case while in Validation.
- * Rejected items: creator only.
+ * Leadership fills and revises the business case. The submitter can view it.
  */
 export function canEditValidation(
   user: PermissionUser,
   initiative: InitiativeAccess,
 ): boolean {
   if (initiative.currentStage !== "validation") return false;
-  if (initiative.status === "rejected") return isCreator(user, initiative);
-  return isCreatorOrLeadership(user, initiative);
+  return isLeadership(user);
 }
 
 export function canResubmitIdea(
@@ -212,11 +218,12 @@ export function canResubmitValidation(
   initiative: InitiativeAccess,
 ): boolean {
   if (initiative.currentStage !== "validation") return false;
-  if (initiative.status === "rejected") return isCreator(user, initiative);
-  if (initiative.status === "draft" || initiative.status === "on-hold") {
-    return isCreatorOrLeadership(user, initiative);
-  }
-  return false;
+  if (!isLeadership(user)) return false;
+  return (
+    initiative.status === "rejected" ||
+    initiative.status === "draft" ||
+    initiative.status === "on-hold"
+  );
 }
 
 /**
@@ -253,6 +260,7 @@ export function canResubmitScoping(
 
 export function roleLabel(role: string): string {
   if (role === "leadership") return "Leadership";
+  if (role === "assistant") return "Assistant";
   if (role === "production") return "Production";
   return "Team";
 }
