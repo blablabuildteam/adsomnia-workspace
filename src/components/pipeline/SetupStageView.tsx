@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Clock,
   Filter,
+  PauseCircle,
   Settings,
   Users,
 } from "lucide-react";
@@ -120,18 +121,20 @@ const hoverTicks =
 const stage = STAGES.find((s) => s.id === "setup")!;
 const stageColor = getStageColor("setup");
 
-type FilterKey = "all" | "in-progress" | "complete";
+type FilterKey = "all" | "in-progress" | "on-hold" | "complete";
 
 const FILTERS: { key: FilterKey; label: string; color: string }[] = [
   { key: "all", label: "All", color: "var(--foreground)" },
   { key: "in-progress", label: "In Progress", color: "var(--warning)" },
+  { key: "on-hold", label: "On Hold", color: "var(--hn-ink)" },
   { key: "complete", label: "Complete", color: "var(--success)" },
 ];
 
 function getEffectiveStatus(
-  setupData: SetupData | null,
+  item: InitiativeWithUsers,
 ): Exclude<FilterKey, "all"> {
-  const progress = getSetupProgress(setupData);
+  if (item.archivedAt) return "on-hold";
+  const progress = getSetupProgress(item.setupData);
   return progress.allDone ? "complete" : "in-progress";
 }
 
@@ -165,7 +168,15 @@ function SetupCard({ item }: { item: InitiativeWithUsers }) {
             <span className="font-display shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted">
               {item.ticketId}
             </span>
-            {progress.allDone ? (
+            {item.archivedAt ? (
+              <span
+                className="inline-flex items-center gap-1 border px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide"
+                style={{ borderColor: "var(--hn-ink)", color: "var(--hn-ink)" }}
+              >
+                <PauseCircle className="size-3" />
+                On Hold
+              </span>
+            ) : progress.allDone ? (
               <span className="inline-flex items-center gap-1 border border-success/40 bg-success/10 px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide text-success">
                 <CheckCircle2 className="size-3" />
                 Complete
@@ -287,17 +298,15 @@ export function SetupStageView({ initiatives }: Props) {
     activeFilter === "all"
       ? inStage
       : inStage.filter(
-          (i) => getEffectiveStatus(i.setupData) === activeFilter,
+          (i) => getEffectiveStatus(i) === activeFilter,
         );
 
   const counts: Record<FilterKey, number> = {
     all: inStage.length,
-    "in-progress": inStage.filter(
-      (i) => getEffectiveStatus(i.setupData) === "in-progress",
-    ).length,
-    complete: inStage.filter(
-      (i) => getEffectiveStatus(i.setupData) === "complete",
-    ).length,
+    "in-progress": inStage.filter((i) => getEffectiveStatus(i) === "in-progress")
+      .length,
+    "on-hold": inStage.filter((i) => getEffectiveStatus(i) === "on-hold").length,
+    complete: inStage.filter((i) => getEffectiveStatus(i) === "complete").length,
   };
 
   return (

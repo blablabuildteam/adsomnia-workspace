@@ -9,6 +9,7 @@ import {
   Clock,
   Filter,
   ListChecks,
+  PauseCircle,
   Presentation,
   Users,
 } from "lucide-react";
@@ -29,12 +30,13 @@ const hoverTicks =
 const stage = STAGES.find((s) => s.id === "onboarding")!;
 const stageColor = getStageColor(stage.id);
 
-type FilterKey = "all" | "briefing" | "action-items" | "complete";
+type FilterKey = "all" | "briefing" | "action-items" | "on-hold" | "complete";
 
 const FILTERS: { key: FilterKey; label: string; color: string }[] = [
   { key: "all", label: "All", color: "var(--foreground)" },
   { key: "briefing", label: "Briefing", color: stageColor },
   { key: "action-items", label: "Action Items", color: "var(--warning)" },
+  { key: "on-hold", label: "On Hold", color: "var(--hn-ink)" },
   { key: "complete", label: "Complete", color: "var(--success)" },
 ];
 
@@ -43,8 +45,10 @@ function resolveOnboardingData(item: InitiativeWithUsers): OnboardingData {
 }
 
 function getEffectiveStatus(
-  data: OnboardingData,
+  item: InitiativeWithUsers,
 ): Exclude<FilterKey, "all"> {
+  if (item.archivedAt) return "on-hold";
+  const data = resolveOnboardingData(item);
   if (!isOnboardingPhaseComplete(data, "briefing")) return "briefing";
   return getOnboardingProgress(data).allDone ? "complete" : "action-items";
 }
@@ -52,7 +56,7 @@ function getEffectiveStatus(
 function OnboardingCard({ item }: { item: InitiativeWithUsers }) {
   const data = resolveOnboardingData(item);
   const progress = getOnboardingProgress(data);
-  const status = getEffectiveStatus(data);
+  const status = getEffectiveStatus(item);
   const updatedLabel = item.updatedAt.toLocaleDateString("en-US", {
     day: "numeric",
     month: "short",
@@ -77,7 +81,15 @@ function OnboardingCard({ item }: { item: InitiativeWithUsers }) {
           <span className="font-display shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted">
             {item.ticketId}
           </span>
-          {status === "complete" ? (
+          {status === "on-hold" ? (
+            <span
+              className="inline-flex items-center gap-1 border px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide"
+              style={{ borderColor: "var(--hn-ink)", color: "var(--hn-ink)" }}
+            >
+              <PauseCircle className="size-3" />
+              On Hold
+            </span>
+          ) : status === "complete" ? (
             <span className="inline-flex items-center gap-1 border border-success/40 bg-success/10 px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide text-success">
               <CheckCircle2 className="size-3" />
               Complete
@@ -175,20 +187,16 @@ export function OnboardingStageView({ initiatives }: Props) {
     activeFilter === "all"
       ? inStage
       : inStage.filter(
-          (i) => getEffectiveStatus(resolveOnboardingData(i)) === activeFilter,
+          (i) => getEffectiveStatus(i) === activeFilter,
         );
 
   const counts: Record<FilterKey, number> = {
     all: inStage.length,
-    briefing: inStage.filter(
-      (i) => getEffectiveStatus(resolveOnboardingData(i)) === "briefing",
-    ).length,
-    "action-items": inStage.filter(
-      (i) => getEffectiveStatus(resolveOnboardingData(i)) === "action-items",
-    ).length,
-    complete: inStage.filter(
-      (i) => getEffectiveStatus(resolveOnboardingData(i)) === "complete",
-    ).length,
+    briefing: inStage.filter((i) => getEffectiveStatus(i) === "briefing").length,
+    "action-items": inStage.filter((i) => getEffectiveStatus(i) === "action-items")
+      .length,
+    "on-hold": inStage.filter((i) => getEffectiveStatus(i) === "on-hold").length,
+    complete: inStage.filter((i) => getEffectiveStatus(i) === "complete").length,
   };
 
   return (

@@ -50,8 +50,20 @@ const STATUS_META: Record<
   "on-hold": { label: "On Hold", color: "var(--hn-ink)", icon: PauseCircle },
 };
 
-function StatusBadge({ status, hasFeedback }: { status: string; hasFeedback?: boolean }) {
-  const key = hasFeedback && status === "draft" ? "feedback-received" : status;
+function StatusBadge({
+  status,
+  hasFeedback,
+  archived,
+}: {
+  status: string;
+  hasFeedback?: boolean;
+  archived?: boolean;
+}) {
+  const key = archived
+    ? "on-hold"
+    : hasFeedback && status === "draft"
+      ? "feedback-received"
+      : status;
   const meta = STATUS_META[key] ?? STATUS_META.draft;
   const Icon = meta.icon;
   return (
@@ -82,7 +94,11 @@ function InitiativeCard({ item, hasFeedback }: { item: InitiativeWithUsers; hasF
           <span className="font-display text-[10px] font-bold uppercase tracking-wider text-muted">
             {item.ticketId}
           </span>
-          <StatusBadge status={item.status} hasFeedback={hasFeedback} />
+          <StatusBadge
+            status={item.status}
+            hasFeedback={hasFeedback}
+            archived={Boolean(item.archivedAt)}
+          />
         </div>
         <div className="flex items-center gap-2 text-[10px] text-muted/70">
           <Clock className="size-3" />
@@ -178,22 +194,28 @@ export function InitiativesStageView({ initiatives, feedbackIds = [] }: Props) {
   // Approved into Validation, but Phase 2 details have not been started yet.
   // The first Validation save flips status from "approved" to "draft".
   const approvedAwaitingValidation = initiatives.filter(
-    (i) => i.currentStage === "validation" && i.status === "approved",
+    (i) =>
+      i.currentStage === "validation" &&
+      i.status === "approved" &&
+      !i.archivedAt,
   );
 
   const feedbackItems = inIdeaStage.filter(
-    (i) => i.status === "draft" && feedbackSet.has(i.id),
+    (i) => !i.archivedAt && i.status === "draft" && feedbackSet.has(i.id),
   );
 
   const allItems = [...inIdeaStage, ...approvedAwaitingValidation];
 
   const counts: Record<FilterKey, number> = {
     all: allItems.length,
-    submitted: inIdeaStage.filter((i) => i.status === "submitted").length,
+    submitted: inIdeaStage.filter((i) => !i.archivedAt && i.status === "submitted")
+      .length,
     feedback: feedbackItems.length,
     approved: approvedAwaitingValidation.length,
-    "on-hold": inIdeaStage.filter((i) => i.status === "on-hold").length,
-    rejected: inIdeaStage.filter((i) => i.status === "rejected").length,
+    "on-hold": inIdeaStage.filter((i) => i.archivedAt || i.status === "on-hold")
+      .length,
+    rejected: inIdeaStage.filter((i) => !i.archivedAt && i.status === "rejected")
+      .length,
   };
 
   const filtered =
@@ -203,7 +225,9 @@ export function InitiativesStageView({ initiatives, feedbackIds = [] }: Props) {
         ? feedbackItems
         : activeFilter === "approved"
           ? approvedAwaitingValidation
-          : inIdeaStage.filter((i) => i.status === activeFilter);
+          : activeFilter === "on-hold"
+            ? inIdeaStage.filter((i) => i.archivedAt || i.status === "on-hold")
+            : inIdeaStage.filter((i) => !i.archivedAt && i.status === activeFilter);
 
   return (
     <div className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">

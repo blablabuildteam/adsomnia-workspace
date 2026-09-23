@@ -35,26 +35,31 @@ const hoverTicks =
 const stage = STAGES.find((s) => s.id === "scoping")!;
 const stageColor = getStageColor(stage.id);
 
-type FilterKey = "all" | "in-progress" | "in-review" | "rejected";
+type FilterKey = "all" | "in-progress" | "in-review" | "on-hold" | "rejected";
 
 const FILTERS: { key: FilterKey; label: string; color: string }[] = [
   { key: "all", label: "All", color: "var(--foreground)" },
   { key: "in-progress", label: "In Progress", color: "var(--bbb-ink)" },
   { key: "in-review", label: "In Review", color: "var(--info)" },
+  { key: "on-hold", label: "On Hold", color: "var(--hn-ink)" },
   { key: "rejected", label: "Rejected", color: "var(--danger)" },
 ];
 
 function matchesScopingFilter(
-  status: InitiativeWithUsers["status"],
+  item: Pick<InitiativeWithUsers, "status" | "archivedAt">,
   filter: Exclude<FilterKey, "all">,
 ): boolean {
+  if (item.archivedAt || item.status === "on-hold") {
+    return filter === "on-hold";
+  }
+  if (filter === "on-hold") return false;
   if (filter === "in-progress") {
-    return status === "draft" || status === "approved";
+    return item.status === "draft" || item.status === "approved";
   }
   if (filter === "in-review") {
-    return status === "submitted";
+    return item.status === "submitted";
   }
-  return status === "rejected";
+  return item.status === "rejected";
 }
 
 const LEAD_PARTY_FILTERS = ["btr", "hn", "bbb", "as"] as const;
@@ -84,8 +89,8 @@ const STATUS_META: Record<
   "on-hold": { label: "On Hold", color: "var(--hn-ink)", icon: PauseCircle },
 };
 
-function StatusBadge({ status }: { status: string }) {
-  const meta = STATUS_META[status] ?? STATUS_META.draft;
+function StatusBadge({ status, archived }: { status: string; archived?: boolean }) {
+  const meta = STATUS_META[archived ? "on-hold" : status] ?? STATUS_META.draft;
   const Icon = meta.icon;
   return (
     <span
@@ -296,7 +301,7 @@ function ScopingCard({ item }: { item: InitiativeWithUsers }) {
           <span className="font-display shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted">
             {item.ticketId}
           </span>
-          <StatusBadge status={item.status} />
+          <StatusBadge status={item.status} archived={Boolean(item.archivedAt)} />
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <div
               className="h-1.5 min-w-0 flex-1 bg-border"
@@ -486,19 +491,18 @@ export function ScopingStageView({ initiatives }: Props) {
   const statusFiltered =
     activeFilter === "all"
       ? inStage
-      : inStage.filter((i) => matchesScopingFilter(i.status, activeFilter));
+      : inStage.filter((i) => matchesScopingFilter(i, activeFilter));
 
   const counts: Record<FilterKey, number> = {
     all: inStage.length,
     "in-progress": inStage.filter((i) =>
-      matchesScopingFilter(i.status, "in-progress"),
+      matchesScopingFilter(i, "in-progress"),
     ).length,
     "in-review": inStage.filter((i) =>
-      matchesScopingFilter(i.status, "in-review"),
+      matchesScopingFilter(i, "in-review"),
     ).length,
-    rejected: inStage.filter((i) =>
-      matchesScopingFilter(i.status, "rejected"),
-    ).length,
+    "on-hold": inStage.filter((i) => matchesScopingFilter(i, "on-hold")).length,
+    rejected: inStage.filter((i) => matchesScopingFilter(i, "rejected")).length,
   };
 
   const leadPartyCounts = Object.fromEntries(

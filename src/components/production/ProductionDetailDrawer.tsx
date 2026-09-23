@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   Archive,
   ArchiveRestore,
+  PauseCircle,
   ArrowUpRight,
   Calendar,
   ChevronDown,
@@ -482,9 +483,12 @@ export function ProductionDetailDrawer({
                 {project.title}
               </h2>
               {archived && (
-                <span className="mt-3 inline-flex items-center gap-1 border border-muted/40 px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                  <Archive className="size-3" />
-                  Archived
+                <span
+                  className="mt-3 inline-flex items-center gap-1 border px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide"
+                  style={{ borderColor: "var(--hn-ink)", color: "var(--hn-ink)" }}
+                >
+                  <PauseCircle className="size-3" />
+                  On Hold
                 </span>
               )}
               <div className="mt-4 grid grid-cols-3 gap-3">
@@ -760,7 +764,7 @@ export function ProductionDetailDrawer({
                 {archived ? (
                   <>
                     <ArchiveRestore className="size-3.5" />
-                    {archiving ? "Restoring…" : "Restore to Production"}
+                    {archiving ? "Restoring…" : "Restore"}
                   </>
                 ) : (
                   <>
@@ -880,8 +884,8 @@ export function ProductionDetailDrawer({
         }
       >
         <p className="text-sm leading-relaxed text-muted">
-          {project.title} will leave the active Production board and move to
-          Archive. You can restore it later.
+          {project.title} will move to On Hold in Production & Reporting. You
+          can restore it later.
         </p>
       </Modal>
     </div>

@@ -28,6 +28,10 @@ const ACTION_LABELS: Record<string, string> = {
   onboarding_completed: "finished Onboarding",
   production_priority_updated: "updated production priority",
   production_added_manually: "added a Production project",
+  production_archived: "archived a workstream to On Hold",
+  production_restored: "restored a workstream from On Hold",
+  workstream_archived: "archived a workstream to On Hold",
+  workstream_restored: "restored a workstream from On Hold",
 };
 
 export function formatActivityLabel(action: string): string {

@@ -30,6 +30,7 @@ import { DownloadPdfButton } from "./DownloadPdfButton";
 import { ShareButton } from "./ShareButton";
 import { CurrentPhaseBar } from "./CurrentPhaseBar";
 import { FloatingDetailBar } from "./FloatingDetailBar";
+import { ArchiveWorkstreamButton } from "./ArchiveWorkstreamButton";
 import {
   createDefaultOnboardingData,
   getOnboardingProgress,
@@ -385,6 +386,25 @@ export function InitiativeDetailView({
       })
     : null;
 
+  const canArchive = canUserApprove && !shareToken && !initiative.isFastTrack;
+  const archiveAction = canArchive && (
+    <ArchiveWorkstreamButton
+      initiativeId={initiative.id}
+      title={initiative.title}
+      stageName={stage?.name ?? initiative.currentStage}
+      archived={Boolean(initiative.archivedAt)}
+    />
+  );
+  const archiveActionBar = canArchive && (
+    <ArchiveWorkstreamButton
+      initiativeId={initiative.id}
+      title={initiative.title}
+      stageName={stage?.name ?? initiative.currentStage}
+      archived={Boolean(initiative.archivedAt)}
+      size="md"
+    />
+  );
+
   const currentPhaseBarStatus: "current" | "review" | "ready" | null =
     goNoGoIsCurrent
       ? goNoGoStatus === "review"
@@ -407,6 +427,7 @@ export function InitiativeDetailView({
         stageName={stage?.name ?? initiative.currentStage}
         stageColor={getStageColor(initiative.currentStage)}
         sharePath={sharePath}
+        archiveAction={archiveActionBar}
       />
       <div className="mx-auto w-full max-w-[1200px] px-4 pb-40 pt-4 sm:px-6 sm:pt-6 lg:pb-48">
         {/* Header */}
@@ -429,10 +450,19 @@ export function InitiativeDetailView({
               </h1>
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              {archiveAction}
               {sharePath && <ShareButton path={sharePath} />}
               <DownloadPdfButton />
             </div>
           </div>
+          {initiative.archivedAt && (
+            <p
+              className="mt-4 border px-4 py-3 font-display text-[11px] font-bold uppercase tracking-wide"
+              style={{ borderColor: "var(--hn-ink)", color: "var(--hn-ink)" }}
+            >
+              On Hold in {stage?.name ?? initiative.currentStage}
+            </p>
+          )}
         </header>
 
         {addedManually ? (

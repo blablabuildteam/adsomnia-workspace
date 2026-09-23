@@ -43,7 +43,9 @@ function getEffectiveStatus(
   status: string,
   id: number,
   feedbackSet: Set<number>,
+  archived = false,
 ): Exclude<FilterKey, "all"> {
+  if (archived) return "on-hold";
   if (status === "rejected") return "rejected";
   if (status === "approved") return "approved";
   if (status === "on-hold") return "on-hold";
@@ -77,8 +79,20 @@ const STATUS_META: Record<
   "on-hold": { label: "On Hold", color: "var(--hn-ink)", icon: PauseCircle },
 };
 
-function StatusBadge({ status, hasFeedback }: { status: string; hasFeedback?: boolean }) {
-  const key = hasFeedback && status === "draft" ? "feedback-received" : status;
+function StatusBadge({
+  status,
+  hasFeedback,
+  archived,
+}: {
+  status: string;
+  hasFeedback?: boolean;
+  archived?: boolean;
+}) {
+  const key = archived
+    ? "on-hold"
+    : hasFeedback && status === "draft"
+      ? "feedback-received"
+      : status;
   const meta = STATUS_META[key] ?? STATUS_META.submitted;
   const Icon = meta.icon;
   return (
@@ -270,7 +284,11 @@ function GoNoGoCard({ item, hasFeedback }: { item: InitiativeWithUsers; hasFeedb
           <span className="font-display shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted">
             {item.ticketId}
           </span>
-          <StatusBadge status={item.status} hasFeedback={hasFeedback} />
+          <StatusBadge
+            status={item.status}
+            hasFeedback={hasFeedback}
+            archived={Boolean(item.archivedAt)}
+          />
           {tShirtSize && (
             <span className="shrink-0 border border-border px-1.5 py-0.5 font-display text-[10px] font-bold text-muted">
               {tShirtSize}
@@ -432,25 +450,37 @@ export function GoNoGoStageView({ initiatives, feedbackIds = [] }: Props) {
     activeFilter === "all"
       ? inStage
       : inStage.filter(
-          (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === activeFilter,
+          (i) =>
+            getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+            activeFilter,
         );
 
   const counts: Record<FilterKey, number> = {
     all: inStage.length,
     awaiting: inStage.filter(
-      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "awaiting",
+      (i) =>
+        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        "awaiting",
     ).length,
     feedback: inStage.filter(
-      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "feedback",
+      (i) =>
+        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        "feedback",
     ).length,
     "on-hold": inStage.filter(
-      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "on-hold",
+      (i) =>
+        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        "on-hold",
     ).length,
     approved: inStage.filter(
-      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "approved",
+      (i) =>
+        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        "approved",
     ).length,
     rejected: inStage.filter(
-      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "rejected",
+      (i) =>
+        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        "rejected",
     ).length,
   };
 

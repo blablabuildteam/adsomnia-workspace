@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Download } from "lucide-react";
 import { ShareButton } from "./ShareButton";
 
@@ -9,6 +9,7 @@ type Props = {
   stageName: string;
   stageColor: string;
   sharePath?: string;
+  archiveAction?: ReactNode;
 };
 
 export function FloatingDetailBar({
@@ -16,6 +17,7 @@ export function FloatingDetailBar({
   stageName,
   stageColor,
   sharePath,
+  archiveAction,
 }: Props) {
   const [visible, setVisible] = useState(false);
   const rafId = useRef(0);
@@ -69,6 +71,7 @@ export function FloatingDetailBar({
             {title}
           </h2>
           <div className="ml-auto flex shrink-0 items-center gap-2">
+            {archiveAction}
             {sharePath && <ShareButton path={sharePath} size="md" />}
             <button
               type="button"

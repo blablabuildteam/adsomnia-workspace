@@ -57,7 +57,9 @@ function getEffectiveStatus(
   status: string,
   id: number,
   feedbackSet: Set<number>,
+  archived = false,
 ): "in-progress" | "review" | "feedback" | "on-hold" | "rejected" {
+  if (archived) return "on-hold";
   if (status === "submitted") return "review";
   if (status === "rejected") return "rejected";
   if (status === "on-hold") return "on-hold";
@@ -96,8 +98,20 @@ const STATUS_META: Record<
   "on-hold": { label: "On Hold", color: "var(--hn-ink)", icon: PauseCircle },
 };
 
-function StatusBadge({ status, hasFeedback }: { status: string; hasFeedback?: boolean }) {
-  const key = hasFeedback && (status === "draft" || status === "approved") ? "feedback-received" : status;
+function StatusBadge({
+  status,
+  hasFeedback,
+  archived,
+}: {
+  status: string;
+  hasFeedback?: boolean;
+  archived?: boolean;
+}) {
+  const key = archived
+    ? "on-hold"
+    : hasFeedback && (status === "draft" || status === "approved")
+      ? "feedback-received"
+      : status;
   const meta = STATUS_META[key] ?? STATUS_META.draft;
   const Icon = meta.icon;
   return (
@@ -206,7 +220,11 @@ function ValidationCard({ item, hasFeedback }: { item: InitiativeWithUsers; hasF
           <span className="font-display shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted">
             {item.ticketId}
           </span>
-          <StatusBadge status={item.status} hasFeedback={hasFeedback} />
+          <StatusBadge
+            status={item.status}
+            hasFeedback={hasFeedback}
+            archived={Boolean(item.archivedAt)}
+          />
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <div
               className="h-1.5 min-w-0 flex-1 bg-border"
@@ -350,7 +368,8 @@ export function ValidationStageView({ initiatives, feedbackIds = [] }: Props) {
   const feedbackSet = new Set(feedbackIds);
   const inStage = initiatives.filter((i) => i.currentStage === "validation");
   const approvedToScoping = initiatives.filter(
-    (i) => i.currentStage === "scoping" && i.status === "approved",
+    (i) =>
+      i.currentStage === "scoping" && i.status === "approved" && !i.archivedAt,
   );
 
   const allItems = [...inStage, ...approvedToScoping];
@@ -361,26 +380,38 @@ export function ValidationStageView({ initiatives, feedbackIds = [] }: Props) {
       : activeFilter === "approved"
         ? approvedToScoping
         : inStage.filter(
-            (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === activeFilter,
+            (i) =>
+              getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+              activeFilter,
           );
 
   const counts: Record<FilterKey, number> = {
     all: allItems.length,
     "in-progress": inStage.filter(
-      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "in-progress",
+      (i) =>
+        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        "in-progress",
     ).length,
     review: inStage.filter(
-      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "review",
+      (i) =>
+        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        "review",
     ).length,
     feedback: inStage.filter(
-      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "feedback",
+      (i) =>
+        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        "feedback",
     ).length,
     approved: approvedToScoping.length,
     "on-hold": inStage.filter(
-      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "on-hold",
+      (i) =>
+        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        "on-hold",
     ).length,
     rejected: inStage.filter(
-      (i) => getEffectiveStatus(i.status, i.id, feedbackSet) === "rejected",
+      (i) =>
+        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        "rejected",
     ).length,
   };
 

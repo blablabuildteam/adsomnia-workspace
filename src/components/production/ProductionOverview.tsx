@@ -3,11 +3,11 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Archive,
   Building2,
   CalendarRange,
   Filter,
   LayoutList,
+  PauseCircle,
   Plus,
   RefreshCw,
 } from "lucide-react";
@@ -198,8 +198,8 @@ export function ProductionOverview({
               : "border-transparent text-muted hover:text-foreground",
           ].join(" ")}
         >
-          <Archive className="size-3.5" />
-          Archive
+          <PauseCircle className="size-3.5" />
+          On Hold
           <span
             className={[
               "tabular-nums",
@@ -332,7 +332,7 @@ export function ProductionOverview({
             <CornerTicks />
             <p className="text-sm text-muted">
               {archiveView
-                ? "No archived production projects yet."
+                ? "No workstreams are On Hold in Production."
                 : projects.length === 0
                   ? canAddProject
                     ? "No workstreams are in Production yet. Add a project here, or complete Onboarding to land one from the pipeline."

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { initiatives, approvals, activityLog, comments } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { STAGES } from "@/data/workflow";
 import { displayName, getCurrentUser } from "@/lib/session";
 import {
   canApprove,
@@ -2503,5 +2504,86 @@ export async function advanceToProduction(
   revalidatePath("/pipeline/onboarding");
   revalidatePath("/pipeline/production");
   revalidatePath("/dashboard");
+  return { success: true };
+}
+
+export type ArchiveWorkstreamResult = { error?: string; success?: boolean };
+
+const ARCHIVE_PATHS = [
+  "/pipeline/initiatives",
+  "/pipeline/validation",
+  "/pipeline/scoping",
+  "/pipeline/go-nogo",
+  "/pipeline/setup",
+  "/pipeline/onboarding",
+  "/pipeline/production",
+  "/fast-track",
+  "/overview",
+  "/dashboard",
+  "/report",
+];
+
+/** Park a workstream in On Hold for its current phase, or restore it. */
+export async function setWorkstreamArchived(
+  initiativeId: number,
+  archived: boolean,
+): Promise<ArchiveWorkstreamResult> {
+  const user = await getCurrentUser();
+  if (!user || !canApprove(user)) {
+    return { error: "Only leadership can archive a workstream." };
+  }
+
+  const [row] = await db
+    .select({
+      id: initiatives.id,
+      currentStage: initiatives.currentStage,
+      title: initiatives.title,
+      status: initiatives.status,
+      submitterId: initiatives.submitterId,
+    })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
+  if (!row || !canViewInitiative(user, row)) {
+    return { error: "Workstream not found." };
+  }
+
+  const stageName =
+    STAGES.find((stage) => stage.id === row.currentStage)?.name ??
+    row.currentStage;
+
+  await db
+    .update(initiatives)
+    .set({
+      archivedAt: archived ? new Date() : null,
+      updatedAt: new Date(),
+    })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: archived ? "workstream_archived" : "workstream_restored",
+    details: {
+      title: row.title,
+      by: user.name,
+      stage: stageName,
+    },
+  });
+
+  await notifyOwner({
+    initiativeId,
+    actorUserId: user.id,
+    actorName: user.name,
+    kind: "status",
+    status: archived ? "on-hold" : row.status,
+    headline: archived
+      ? `archived this workstream to On Hold in ${stageName}`
+      : `restored this workstream in ${stageName}`,
+  });
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  for (const path of ARCHIVE_PATHS) revalidatePath(path);
   return { success: true };
 }
