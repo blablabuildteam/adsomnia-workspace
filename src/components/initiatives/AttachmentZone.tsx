@@ -176,6 +176,8 @@ type Props = {
   onChange: (attachments: Attachment[]) => void;
   /** When set, dropped/chosen files are uploaded instead of stored as metadata-only. */
   onFilesAdded?: (files: File[]) => Promise<void> | void;
+  /** When false, skip the extra title fetch (parent already persists + resolves titles). */
+  resolveLinkTitle?: boolean;
   readOnly?: boolean;
   canRemove?: boolean;
 };
@@ -184,6 +186,7 @@ export function AttachmentZone({
   attachments,
   onChange,
   onFilesAdded,
+  resolveLinkTitle = true,
   readOnly,
   canRemove = true,
 }: Props) {
@@ -228,14 +231,18 @@ export function AttachmentZone({
       kind === "link" ? hostFromUrl(url) : attachmentKindLabel(kind);
     const id = attachUid();
     const next: Attachment = { id, kind, title: fallbackTitle, url };
-
-    onChange([...attachments, next]);
+    const withLink = [...attachmentsRef.current, next];
+    attachmentsRef.current = withLink;
+    onChange(withLink);
     setLinkInput("");
     setShowLinkInput(false);
     setLinkError(null);
 
+    if (!resolveLinkTitle) return;
+
     void fetchPageTitle(url).then((pageTitle) => {
       if (!pageTitle) return;
+      if (!attachmentsRef.current.some((item) => item.id === id)) return;
       onChange(
         attachmentsRef.current.map((item) =>
           item.id === id ? { ...item, title: pageTitle, pageTitle } : item,

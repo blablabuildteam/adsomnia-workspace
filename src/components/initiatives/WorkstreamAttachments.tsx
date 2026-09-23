@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useSyncExternalStore } from "react";
+import { useRef, useState, useTransition, useSyncExternalStore } from "react";
 import { Paperclip } from "lucide-react";
 import {
   addWorkstreamAttachment,
@@ -54,9 +54,13 @@ export function WorkstreamAttachments({
 }: Props) {
   const isGuestMode = Boolean(shareToken) && !currentUserId;
   const [items, setItems] = useState(attachments);
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  const persistingUrls = useRef(new Set<string>());
   const [trackedAttachments, setTrackedAttachments] = useState(attachments);
   if (trackedAttachments !== attachments) {
     setTrackedAttachments(attachments);
+    itemsRef.current = attachments;
     setItems(attachments);
   }
   const [error, setError] = useState<string | null>(null);
@@ -138,34 +142,63 @@ export function WorkstreamAttachments({
   }
 
   function handleChange(next: Attachment[]) {
-    const existing = new Set(items.map((item) => item.id));
-    const added = next.filter((item) => !existing.has(item.id));
+    const current = itemsRef.current;
+    const existingIds = new Set(current.map((item) => item.id));
+    const existingUrls = new Set(
+      current
+        .map((item) => item.url)
+        .filter((url): url is string => Boolean(url)),
+    );
+    const added = next.filter((item) => {
+      if (existingIds.has(item.id)) return false;
+      if (!item.id.startsWith("att-")) return false;
+      if (item.kind === "file" && !item.url) return false;
+      if (item.url && (existingUrls.has(item.url) || persistingUrls.current.has(item.url))) {
+        return false;
+      }
+      return true;
+    });
     const removed = canRemove
-      ? items.filter((item) => !next.some((other) => other.id === item.id))
+      ? current.filter((item) => {
+          if (next.some((other) => other.id === item.id)) return false;
+          if (item.url && next.some((other) => other.url === item.url)) {
+            return false;
+          }
+          return true;
+        })
       : [];
 
-    setItems(canRemove ? next : [...items, ...added]);
+    const optimistic = canRemove && removed.length > 0 ? next : [...current, ...added];
+    itemsRef.current = optimistic;
+    setItems(optimistic);
     setError(null);
 
     startTransition(async () => {
       for (const item of added) {
-        if (item.kind === "file" && !item.url) continue;
+        if (item.url) persistingUrls.current.add(item.url);
         const result = await persistLink(item);
+        if (item.url) persistingUrls.current.delete(item.url);
         if (result.error) {
           setError(result.error);
+          itemsRef.current = attachments;
           setItems(attachments);
           return;
         }
         if (result.attachment) {
-          setItems((current) =>
-            current.map((row) => (row.id === item.id ? result.attachment! : row)),
-          );
+          setItems((rows) => {
+            const mapped = rows.map((row) =>
+              row.id === item.id ? result.attachment! : row,
+            );
+            itemsRef.current = mapped;
+            return mapped;
+          });
         }
       }
       for (const item of removed) {
         const result = await removeWorkstreamAttachment(initiativeId, item.id);
         if (result.error) {
           setError(result.error);
+          itemsRef.current = attachments;
           setItems(attachments);
           return;
         }
@@ -183,7 +216,11 @@ export function WorkstreamAttachments({
           return;
         }
         if (result.attachment) {
-          setItems((current) => [result.attachment!, ...current]);
+          setItems((current) => {
+            const next = [result.attachment!, ...current];
+            itemsRef.current = next;
+            return next;
+          });
         }
       }
     });
@@ -263,6 +300,7 @@ export function WorkstreamAttachments({
               attachments={items}
               onChange={handleChange}
               onFilesAdded={handleFilesAdded}
+              resolveLinkTitle={false}
               canRemove={canRemove}
             />
             <p className="text-[11px] text-muted">

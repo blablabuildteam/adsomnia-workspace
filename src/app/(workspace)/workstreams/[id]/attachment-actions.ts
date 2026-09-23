@@ -12,7 +12,6 @@ import {
   deleteWorkstreamAttachment,
   type WorkstreamAttachmentResult,
 } from "@/lib/workstream-attachments";
-import type { Attachment } from "@/lib/validation-data";
 
 function revalidateWorkstream(initiativeId: number, shareToken?: string) {
   revalidatePath(`/workstreams/${initiativeId}`);
@@ -141,5 +140,3 @@ export async function removeWorkstreamAttachment(
   }
   return result;
 }
-
-export type { Attachment };
