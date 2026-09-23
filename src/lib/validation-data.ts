@@ -523,8 +523,8 @@ export const SETUP_TASKS: {
 }[] = [
   { id: "drive", dataKey: "drive", label: "Create Google Drive", phase: "A", logo: "/logos/google-drive.png" },
   { id: "jira", dataKey: "jira", label: "Create Jira", phase: "A", logo: "/logos/jira.png" },
-  { id: "jira-planning", dataKey: "jiraPlanning", label: "Set Up Tickets per Epic", phase: "A", logo: "/logos/jira.png" },
   { id: "slack", dataKey: "slack", label: "Create Slack Channel", phase: "C", logo: "/logos/slack.png" },
+  { id: "jira-planning", dataKey: "jiraPlanning", label: "Set Up Tickets per Epic", phase: "C", logo: "/logos/jira.png" },
   { id: "kickoff-meeting", dataKey: "kickoffMeeting", label: "Book Kickoff Meeting", phase: "C", logo: "/logos/google-calendar.png" },
   { id: "invite-team", dataKey: "inviteTeam", label: "Invite Team to Tools", phase: "C" },
 ];
