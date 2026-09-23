@@ -28,23 +28,6 @@ import type {
   OnboardingData,
 } from "@/lib/validation-data";
 
-export type {
-  Attachment,
-  BusinessValueType,
-  BusinessValueData,
-  ValidationData,
-  ScopingData,
-  ScopingMilestone,
-  ScopingTeamMember,
-  ScopingScopeItem,
-  ScopingValueMetric,
-  SetupData,
-  SetupTaskId,
-  SetupTaskStatus,
-  DriveFolderLink,
-  OnboardingData,
-  OnboardingTaskId,
-} from "@/lib/validation-data";
 export {
   BUSINESS_VALUE_TYPES,
   isBusinessValueData,
