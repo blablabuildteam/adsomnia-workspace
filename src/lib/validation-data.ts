@@ -314,9 +314,8 @@ export function isScopingComplete(data: ScopingData | null | undefined): boolean
   const hasTeam = (data.team?.length ?? 0) > 0 &&
     data.team!.every((t) => t.role.trim() && t.name.trim() && t.totalHours > 0);
   const hasImpact = isBusinessValueComplete(data.impact);
-  const hasScope = (data.scopeItems?.length ?? 0) > 0;
   const hasConsensus = Boolean(data.consensusPriority?.trim());
-  return hasMilestones && hasTeam && hasImpact && hasScope && hasConsensus;
+  return hasMilestones && hasTeam && hasImpact && hasConsensus;
 }
 
 /** Adsomnia's own assignment from Validation. */
@@ -524,8 +523,8 @@ export const SETUP_TASKS: {
 }[] = [
   { id: "drive", dataKey: "drive", label: "Create Google Drive", phase: "A", logo: "/logos/google-drive.png" },
   { id: "jira", dataKey: "jira", label: "Create Jira", phase: "A", logo: "/logos/jira.png" },
-  { id: "jira-planning", dataKey: "jiraPlanning", label: "Set Up Tickets per Epic", phase: "A", logo: "/logos/jira.png" },
   { id: "slack", dataKey: "slack", label: "Create Slack Channel", phase: "C", logo: "/logos/slack.png" },
+  { id: "jira-planning", dataKey: "jiraPlanning", label: "Set Up Tickets per Epic", phase: "C", logo: "/logos/jira.png" },
   { id: "kickoff-meeting", dataKey: "kickoffMeeting", label: "Book Kickoff Meeting", phase: "C", logo: "/logos/google-calendar.png" },
   { id: "invite-team", dataKey: "inviteTeam", label: "Invite Team to Tools", phase: "C" },
 ];

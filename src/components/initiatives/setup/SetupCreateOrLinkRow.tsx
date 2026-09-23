@@ -11,14 +11,14 @@ type Props = {
     icon?: ReactNode;
     onClick: () => void;
   };
-  urlLabel: string;
-  urlValue: string;
-  urlPlaceholder: string;
+  urlLabel?: string;
+  urlValue?: string;
+  urlPlaceholder?: string;
   urlDisabled?: boolean;
-  onUrlChange: (value: string) => void;
-  saveLabel: string;
+  onUrlChange?: (value: string) => void;
+  saveLabel?: string;
   saveDisabled?: boolean;
-  onSave: () => void;
+  onSave?: () => void;
   extra?: ReactNode;
 };
 
@@ -34,6 +34,8 @@ export function SetupCreateOrLinkRow({
   onSave,
   extra,
 }: Props) {
+  const showLink = Boolean(onUrlChange && onSave);
+
   return (
     <div className="flex flex-wrap items-stretch gap-2">
       {create ? (
@@ -51,31 +53,37 @@ export function SetupCreateOrLinkRow({
             )}
             {create.busy ? (create.busyLabel ?? "Creating…") : create.label}
           </button>
-          <span className="flex items-center px-1 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-            or
-          </span>
+          {showLink ? (
+            <span className="flex items-center px-1 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+              or
+            </span>
+          ) : null}
         </>
       ) : null}
-      <label className="min-w-[14rem] flex-1">
-        <span className="sr-only">{urlLabel}</span>
-        <input
-          type="url"
-          value={urlValue}
-          onChange={(e) => onUrlChange(e.target.value)}
-          className={`${inputClass} h-full py-2.5`}
-          placeholder={urlPlaceholder}
-          disabled={urlDisabled}
-        />
-      </label>
-      <button
-        type="button"
-        onClick={onSave}
-        disabled={saveDisabled}
-        className="inline-flex shrink-0 items-center gap-2 border border-border px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-muted transition-colors hover:border-foreground hover:text-foreground disabled:opacity-40"
-      >
-        <Check className="size-3.5" />
-        {saveLabel}
-      </button>
+      {showLink ? (
+        <>
+          <label className="min-w-[14rem] flex-1">
+            <span className="sr-only">{urlLabel}</span>
+            <input
+              type="url"
+              value={urlValue}
+              onChange={(e) => onUrlChange?.(e.target.value)}
+              className={`${inputClass} h-full py-2.5`}
+              placeholder={urlPlaceholder}
+              disabled={urlDisabled}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saveDisabled}
+            className="inline-flex shrink-0 items-center gap-2 border border-border px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-muted transition-colors hover:border-foreground hover:text-foreground disabled:opacity-40"
+          >
+            <Check className="size-3.5" />
+            {saveLabel}
+          </button>
+        </>
+      ) : null}
       {extra}
     </div>
   );

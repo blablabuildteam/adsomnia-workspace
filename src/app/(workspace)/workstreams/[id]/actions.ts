@@ -945,6 +945,11 @@ function parseScopingFormData(formData: FormData): ScopingData {
   try { scopeItems = scopeRaw ? JSON.parse(scopeRaw) : undefined; } catch { /* skip */ }
   try { impact = impactRaw ? JSON.parse(impactRaw) : undefined; } catch { /* skip */ }
 
+  if (Array.isArray(scopeItems)) {
+    scopeItems = scopeItems.filter((item) => item.label?.trim());
+    if (scopeItems.length === 0) scopeItems = undefined;
+  }
+
   const consensusPriority =
     (formData.get("consensusPriority") as string)?.trim() || undefined;
 
@@ -1046,7 +1051,7 @@ export async function submitScopingForApproval(
 
   if (!isScopingComplete(data)) {
     return {
-      error: "All scoping fields must be completed before submitting. Ensure consensus priority, impact, milestones, team, and scope items are all provided.",
+      error: "All required scoping fields must be completed before submitting. Ensure consensus priority, impact, milestones, and team are all provided.",
     };
   }
 
@@ -1118,7 +1123,7 @@ export async function resubmitScoping(
   if (!isScopingComplete(data)) {
     return {
       error:
-        "All scoping fields must be completed before resubmitting. Ensure consensus priority, impact, milestones, team, and scope items are all provided.",
+        "All required scoping fields must be completed before resubmitting. Ensure consensus priority, impact, milestones, and team are all provided.",
     };
   }
 

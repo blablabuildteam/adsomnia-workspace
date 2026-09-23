@@ -67,7 +67,7 @@ const PARTY_LOGOS: Record<string, string> = {
   bbb: "/logos/blablabuild.png",
 };
 
-const SCOPING_SECTION_TOTAL = 5;
+const SCOPING_SECTION_TOTAL = 4;
 
 const STATUS_META: Record<
   string,
@@ -105,7 +105,6 @@ function getScopingSectionCount(data: ScopingData | null): number {
   if ((data.team?.length ?? 0) > 0) count++;
   if (isBusinessValueComplete(data.impact)) count++;
   if (data.consensusPriority?.trim()) count++;
-  if ((data.scopeItems?.length ?? 0) > 0) count++;
   return count;
 }
 

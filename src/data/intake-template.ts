@@ -252,9 +252,8 @@ export const INTAKE_SECTIONS: IntakeStageSection[] = [
         id: "scopeIn",
         label: "Scope Boundaries — In Scope",
         expectation:
-          "What is explicitly included in the first delivery slice? Be precise enough that Jira Epics can be created without re-negotiation.",
+          "Optional. What is explicitly included in the first delivery slice? Be precise enough that Jira Epics can be created without re-negotiation. Leave blank if scope is still open.",
         type: "textarea",
-        required: true,
         placeholder:
           "e.g. Pixel templates for DE/NL affiliate pages; Workspace config UI; HN delivery backlog in Jira.",
       },
@@ -262,9 +261,8 @@ export const INTAKE_SECTIONS: IntakeStageSection[] = [
         id: "scopeOut",
         label: "Scope Boundaries — Out of Scope / Deferred",
         expectation:
-          "What is explicitly excluded or deferred to a later phase? Prevents scope creep during Production.",
+          "Optional. What is explicitly excluded or deferred to a later phase? Prevents scope creep during Production. Leave blank if nothing is deferred yet.",
         type: "textarea",
-        required: true,
         placeholder: "e.g. Self-serve partner portal; FR/ES markets; automated QA bots (Later).",
       },
       {

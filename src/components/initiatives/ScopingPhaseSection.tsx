@@ -84,7 +84,7 @@ const FIELD_HELP: Record<string, string> = {
   consensusPriority:
     "Agreed placement between Adsomnia and the lead production party. Adsomnia's Validation assignment is shown as the starting point — confirm it or adjust to the consensus.",
   scope:
-    "Define what's in scope for the first delivery slice, and what's explicitly out. Flip items between in and out.",
+    "Optional. Define what's in scope for the first delivery slice, and what's explicitly out. Flip items between in and out. Leave both lists empty if scope is still open.",
   notes:
     "Optional notes that do not fit elsewhere — leftover context, open questions, or anything the Go/No-Go reviewers should see.",
   attachments:
@@ -1161,18 +1161,17 @@ export function ScopingPhaseSection({
   const valueReady =
     impactTypes.length > 0 &&
     impactTypes.every((type) => impactScores[type] !== null);
-  const scopeReady =
-    scopeItems.length > 0 && scopeItems.every((s) => s.label.trim());
+  const scopeFilled =
+    scopeItems.some((s) => s.label.trim().length > 0);
   const notesReady = dependencies.trim().length > 0;
   const canSubmit =
-    milestonesReady && teamReady && valueReady && scopeReady && consensusReady;
+    milestonesReady && teamReady && valueReady && consensusReady;
 
   const sections = [
     { done: milestonesReady, label: "Milestones" },
     { done: teamReady, label: "Team" },
     { done: valueReady, label: "Impact" },
     { done: consensusReady, label: "Priority" },
-    { done: scopeReady, label: "Scope" },
   ];
 
   function applyDevPrefill() {
@@ -1438,11 +1437,15 @@ export function ScopingPhaseSection({
           {/* ─── 5. Scope Boundaries (toggle chips) ────────── */}
           <PhaseSectionCard
             header={
-              <ScopingFieldLabel field="scope" required complete={scopeReady}>
+              <ScopingFieldLabel field="scope" complete={scopeFilled}>
                 Scope Boundaries
               </ScopingFieldLabel>
             }
           >
+            <p className="text-[11px] leading-relaxed text-muted">
+              Optional. List what the first delivery includes and what is
+              deferred. Leave both empty if scope is still open.
+            </p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">

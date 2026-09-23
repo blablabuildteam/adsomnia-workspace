@@ -585,13 +585,19 @@ export function SlackSetupTask({
                             setSelectedChannel(channel);
                             setError(null);
                           }}
+                          aria-pressed={selected}
                           className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs transition-colors ${
                             selected
                               ? "bg-foreground text-background"
                               : "text-foreground hover:bg-surface"
                           }`}
                         >
-                          <span className="truncate">#{channel.name}</span>
+                          <span className="flex min-w-0 items-center gap-2">
+                            {selected ? (
+                              <Check className="size-3.5 shrink-0" />
+                            ) : null}
+                            <span className="truncate">#{channel.name}</span>
+                          </span>
                           {channel.isPrivate ? (
                             <span
                               className={`shrink-0 text-[10px] uppercase tracking-wide ${
@@ -671,17 +677,21 @@ export function SlackSetupTask({
                 }
               : undefined
         }
-        urlLabel="Slack URL"
-        urlValue={channelUrl}
-        urlPlaceholder="https://app.slack.com/client/…"
-        urlDisabled={creating}
-        onUrlChange={(value) => {
-          setChannelUrl(value);
-          setError(null);
-        }}
-        saveLabel="Save Slack Link"
-        saveDisabled={creating || !channelUrl.trim()}
-        onSave={handleManualComplete}
+        {...(mode === "connect"
+          ? {}
+          : {
+              urlLabel: "Slack URL",
+              urlValue: channelUrl,
+              urlPlaceholder: "https://app.slack.com/client/…",
+              urlDisabled: creating,
+              onUrlChange: (value: string) => {
+                setChannelUrl(value);
+                setError(null);
+              },
+              saveLabel: "Save Slack Link",
+              saveDisabled: creating || !channelUrl.trim(),
+              onSave: handleManualComplete,
+            })}
         extra={
           editing ? (
             <button
