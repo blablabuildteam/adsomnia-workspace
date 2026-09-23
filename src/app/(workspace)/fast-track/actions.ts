@@ -11,7 +11,11 @@ import {
   FAST_TRACK_FIELD_LIMITS,
   validateValidationNarratives,
 } from "@/lib/field-limits";
-import { createFastTrackIssue } from "@/lib/integrations/jira";
+import {
+  createFastTrackChildIssue,
+  createFastTrackIssue,
+  FAST_TRACK_JIRA_PROJECT_KEY,
+} from "@/lib/integrations/jira";
 import { notifyOwner } from "@/lib/integrations/slack-notify";
 import { parseValidationFormData } from "@/lib/validation-form";
 import type { ApprovalResult } from "@/app/(workspace)/workstreams/[id]/actions";
@@ -101,7 +105,7 @@ export async function convertToFastTrack(
       error:
         error instanceof Error
           ? error.message
-          : "Could not create the Fast-Track task in Jira.",
+          : "Could not create the Fast-Track epic in Jira.",
     };
   }
 
@@ -170,13 +174,13 @@ function revalidateFastTrack(initiativeId?: number) {
   revalidatePath("/overview");
 }
 
-export async function createFastTrackTask(input: {
+export async function createFastTrackEpic(input: {
   title: string;
   description: string;
 }): Promise<CreateFastTrackResult> {
   const user = await getCurrentUser();
   if (!user || !canAddFastTrack(user)) {
-    return { error: "Only leadership can add a task from Fast-Track." };
+    return { error: "Only leadership can add an epic from Fast-Track." };
   }
 
   const title = input.title.trim();
@@ -214,7 +218,7 @@ export async function createFastTrackTask(input: {
       error:
         error instanceof Error
           ? error.message
-          : "Could not create the Fast-Track task in Jira.",
+          : "Could not create the Fast-Track epic in Jira.",
     };
   }
 
@@ -248,4 +252,72 @@ export async function createFastTrackTask(input: {
 
   revalidateFastTrack(row.id);
   return { key: created.key };
+}
+
+export type CreateFastTrackChildResult = {
+  error?: string;
+  task?: {
+    key: string;
+    url: string;
+    title: string;
+    description: string;
+  };
+};
+
+export async function createFastTrackChildTask(input: {
+  epicKey: string;
+  title: string;
+  description: string;
+}): Promise<CreateFastTrackChildResult> {
+  const user = await getCurrentUser();
+  if (!user || !canAddFastTrack(user)) {
+    return { error: "Only leadership can add a task under a Fast-Track epic." };
+  }
+
+  const epicKey = input.epicKey.trim().toUpperCase();
+  const title = input.title.trim();
+  const description = input.description.trim();
+  const prefix = `${FAST_TRACK_JIRA_PROJECT_KEY}-`;
+
+  if (!epicKey.startsWith(prefix) || !/^\d+$/.test(epicKey.slice(prefix.length))) {
+    return { error: "That epic is not on the Fast Track board." };
+  }
+  if (!title) {
+    return { error: "Title is required." };
+  }
+  if (title.length > FAST_TRACK_FIELD_LIMITS.title.max) {
+    return {
+      error: `Title must be ${FAST_TRACK_FIELD_LIMITS.title.max} characters or fewer.`,
+    };
+  }
+  if (description.length > FAST_TRACK_FIELD_LIMITS.description.max) {
+    return {
+      error: `Description must be ${FAST_TRACK_FIELD_LIMITS.description.max} characters or fewer.`,
+    };
+  }
+
+  try {
+    const created = await createFastTrackChildIssue({
+      parentKey: epicKey,
+      title,
+      description,
+    });
+    revalidateFastTrack();
+    return {
+      task: {
+        key: created.key,
+        url: created.url,
+        title,
+        description,
+      },
+    };
+  } catch (error) {
+    console.error("Fast-Track Jira child create failed:", error);
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Could not create the task in Jira.",
+    };
+  }
 }

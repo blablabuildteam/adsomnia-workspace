@@ -67,7 +67,7 @@ export function FastTrackGlance({ items, fetchError }: Props) {
       )}
       {shown.length === 0 ? (
         <div className="border border-border bg-surface px-4 py-4 text-sm text-muted">
-          No Fast-Track tasks on the board. Quick requests skip the pipeline
+          No Fast-Track epics on the board. Quick requests skip the pipeline
           and land here.
         </div>
       ) : (
@@ -78,6 +78,9 @@ export function FastTrackGlance({ items, fetchError }: Props) {
             const label = item.initiative?.ticketId ?? item.jiraKey ?? "Fast-Track";
             const meta = [
               item.assignee ?? "Unassigned",
+              item.tasks.length > 0
+                ? `${item.tasks.length} ${item.tasks.length === 1 ? "task" : "tasks"}`
+                : null,
               item.priority !== "—" && item.priority !== "None" ? item.priority : null,
               item.updated ? timeAgo(new Date(item.updated)) : null,
             ]

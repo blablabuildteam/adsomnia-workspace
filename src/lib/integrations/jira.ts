@@ -1,4 +1,4 @@
-import { createCloudClient } from "jira.js";
+import { createCloudClient, isApiError } from "jira.js";
 import {
   JIRA_EPIC_COLORS,
   JIRA_ISSUE_SUMMARY_MAX,
@@ -1334,6 +1334,10 @@ export type FastTrackJiraIssue = {
   created: string | null;
   updated: string | null;
   url: string;
+  issueType: string;
+  isEpic: boolean;
+  /** Direct parent issue key (Epic for a task, Epic Link fallback). */
+  parentKey: string | null;
 };
 
 function mapFastTrackIssue(
@@ -1365,6 +1369,9 @@ function mapFastTrackIssue(
     created: typeof fields.created === "string" ? fields.created : null,
     updated: typeof fields.updated === "string" ? fields.updated : null,
     url: `${normalizeHost(host)}/browse/${key}`,
+    issueType: issueTypeName(fields),
+    isEpic: isEpicIssueType(fields),
+    parentKey: parentEpicKey(fields) ?? null,
   };
 }
 
@@ -1377,6 +1384,9 @@ export async function listFastTrackIssues(): Promise<FastTrackJiraIssue[]> {
     "assignee",
     "reporter",
     "description",
+    "issuetype",
+    "parent",
+    "customfield_10014",
     "created",
     "updated",
   ];
@@ -1401,6 +1411,121 @@ export async function listFastTrackIssues(): Promise<FastTrackJiraIssue[]> {
     .map((issue) => mapFastTrackIssue(issue, config.host));
 }
 
+type FastTrackCreateType = {
+  id?: string;
+  name?: string;
+  hierarchyLevel?: number;
+};
+
+function issueTypeName(fields: IssueFields): string {
+  const issueType = fields.issuetype;
+  if (!issueType || typeof issueType !== "object") return "";
+  const name = (issueType as { name?: string }).name?.trim();
+  return name || "";
+}
+
+function isEpicIssueType(fields: IssueFields): boolean {
+  const issueType = fields.issuetype;
+  if (!issueType || typeof issueType !== "object") return false;
+  const typed = issueType as { name?: string; hierarchyLevel?: number };
+  if ((typed.name ?? "").toLowerCase() === "epic") return true;
+  return typed.hierarchyLevel === 1;
+}
+
+function jiraFailureMessage(error: unknown, fallback: string): string {
+  if (isApiError(error) && error.body && typeof error.body === "object") {
+    const body = error.body as {
+      errorMessages?: unknown;
+      errors?: Record<string, unknown>;
+      message?: unknown;
+    };
+    if (Array.isArray(body.errorMessages)) {
+      const first = body.errorMessages.find(
+        (item) => typeof item === "string" && item.trim(),
+      );
+      if (typeof first === "string") return first;
+    }
+    if (body.errors) {
+      const first = Object.values(body.errors).find(
+        (item) => typeof item === "string" && item.trim(),
+      );
+      if (typeof first === "string") return first;
+    }
+    if (typeof body.message === "string" && body.message.trim()) {
+      return body.message;
+    }
+  }
+  if (error instanceof Error && error.message.trim()) return error.message;
+  return fallback;
+}
+
+function jiraFieldErrors(error: unknown): Record<string, unknown> | null {
+  if (!isApiError(error) || !error.body || typeof error.body !== "object") {
+    return null;
+  }
+  const errors = (error.body as { errors?: Record<string, unknown> }).errors;
+  return errors ?? null;
+}
+
+async function fastTrackIssueTypes(
+  client: ReturnType<typeof createClient>,
+): Promise<FastTrackCreateType[]> {
+  const meta = await client.issues.getCreateIssueMetaIssueTypes({
+    projectIdOrKey: FAST_TRACK_JIRA_PROJECT_KEY,
+    maxResults: 50,
+  });
+  return [...(meta.issueTypes ?? []), ...(meta.createMetaIssueType ?? [])];
+}
+
+function pickEpicIssueType(
+  types: FastTrackCreateType[],
+): FastTrackCreateType | undefined {
+  return (
+    types.find((type) => (type.name ?? "").toLowerCase() === "epic") ??
+    types.find((type) => type.hierarchyLevel === 1)
+  );
+}
+
+function pickTaskIssueType(
+  types: FastTrackCreateType[],
+): FastTrackCreateType | undefined {
+  const skip = new Set(["epic", "sub-task", "subtask"]);
+  return (
+    types.find((type) => (type.name ?? "").toLowerCase() === "task") ??
+    types.find((type) => (type.name ?? "").toLowerCase() === "story") ??
+    types.find(
+      (type) =>
+        !skip.has((type.name ?? "").toLowerCase()) &&
+        (type.hierarchyLevel ?? 0) === 0,
+    )
+  );
+}
+
+async function fastTrackTypeFields(
+  client: ReturnType<typeof createClient>,
+  issueTypeId: string,
+): Promise<EpicFieldMeta[]> {
+  const fieldPage = await client.issues.getCreateIssueMetaIssueTypeId({
+    projectIdOrKey: FAST_TRACK_JIRA_PROJECT_KEY,
+    issueTypeId,
+    maxResults: 100,
+  });
+  return [...(fieldPage.fields ?? []), ...(fieldPage.results ?? [])] as EpicFieldMeta[];
+}
+
+async function applyRequiredReporter(
+  client: ReturnType<typeof createClient>,
+  fields: EpicFieldMeta[],
+  payload: Record<string, unknown>,
+) {
+  const reporterRequired = fields.some(
+    (field) => field.fieldId === "reporter" && field.required,
+  );
+  if (!reporterRequired) return;
+  const me = await client.myself.getCurrentUser();
+  if (me.accountId) payload.reporter = { accountId: me.accountId };
+}
+
 export async function createFastTrackIssue(input: {
   title: string;
   description?: string | null;
@@ -1412,22 +1537,18 @@ export async function createFastTrackIssue(input: {
   remark?: string | null;
 }): Promise<{ key: string; url: string }> {
   const { client, config } = requireClient(FAST_TRACK_JIRA_INSTANCE);
-  const meta = await client.issues.getCreateIssueMetaIssueTypes({
-    projectIdOrKey: FAST_TRACK_JIRA_PROJECT_KEY,
-    maxResults: 50,
-  });
-  const types = [
-    ...(meta.issueTypes ?? []),
-    ...(meta.createMetaIssueType ?? []),
-  ];
-  const skip = new Set(["epic", "sub-task", "subtask"]);
-  const issueType =
-    types.find((t) => (t.name ?? "").toLowerCase() === "task") ??
-    types.find((t) => (t.name ?? "").toLowerCase() === "story") ??
-    types.find((t) => !skip.has((t.name ?? "").toLowerCase()));
-  if (!issueType?.id) {
-    throw new Error("Could not find a Task issue type on the Fast Track board.");
+  const epicType = pickEpicIssueType(await fastTrackIssueTypes(client));
+  if (!epicType?.id) {
+    throw new Error("Could not find an Epic issue type on the Fast Track board.");
   }
+
+  const typeFields = await fastTrackTypeFields(client, epicType.id);
+  const epicNameFieldId = pickFieldId(
+    typeFields,
+    (field) =>
+      (field.name ?? "").toLowerCase() === "epic name" ||
+      (field.schema?.custom ?? "").includes("gh-epic-label"),
+  );
 
   const description = adfFromParagraphs([
     input.description ?? "",
@@ -1441,17 +1562,116 @@ export async function createFastTrackIssue(input: {
     input.remark ? `Leadership remark: ${input.remark}` : "",
   ]);
 
+  const summary = input.title.trim().slice(0, JIRA_ISSUE_SUMMARY_MAX);
+  const fieldsPayload: Record<string, unknown> = {
+    project: { key: FAST_TRACK_JIRA_PROJECT_KEY },
+    summary,
+    issuetype: { id: epicType.id },
+  };
+  if (description) fieldsPayload.description = description;
+  if (epicNameFieldId) fieldsPayload[epicNameFieldId] = summary;
+  await applyRequiredReporter(client, typeFields, fieldsPayload);
+
+  let issue: { key?: string };
+  try {
+    issue = await client.issues.createIssue({ fields: fieldsPayload });
+  } catch (error) {
+    throw new Error(
+      jiraFailureMessage(error, "Could not create the Fast-Track epic in Jira."),
+    );
+  }
+  const key = issue.key;
+  if (!key) {
+    throw new Error("Jira created the Fast-Track epic but did not return a key.");
+  }
+  return {
+    key,
+    url: `${normalizeHost(config.host)}/browse/${key}`,
+  };
+}
+
+export async function createFastTrackChildIssue(input: {
+  parentKey: string;
+  title: string;
+  description?: string | null;
+}): Promise<{ key: string; url: string }> {
+  const parentKey = input.parentKey.trim().toUpperCase();
+  const prefix = `${FAST_TRACK_JIRA_PROJECT_KEY}-`;
+  if (!parentKey.startsWith(prefix) || !/^\d+$/.test(parentKey.slice(prefix.length))) {
+    throw new Error("That epic is not on the Fast Track board.");
+  }
+
+  const { client, config } = requireClient(FAST_TRACK_JIRA_INSTANCE);
+
+  let parentIssue: { fields?: IssueFields };
+  try {
+    parentIssue = await client.issues.getIssue({
+      issueIdOrKey: parentKey,
+      fields: ["issuetype", "project"],
+    });
+  } catch (error) {
+    if (isApiError(error) && error.status === 404) {
+      throw new Error("That epic is not on the Fast Track board.");
+    }
+    throw new Error(
+      jiraFailureMessage(error, "Could not load that Fast-Track epic from Jira."),
+    );
+  }
+
+  const parentFields = (parentIssue.fields ?? {}) as IssueFields;
+  const project = parentFields.project;
+  const projectKey =
+    project && typeof project === "object" && "key" in project
+      ? String((project as { key?: string }).key ?? "")
+      : "";
+  if (projectKey.toUpperCase() !== FAST_TRACK_JIRA_PROJECT_KEY) {
+    throw new Error("That epic is not on the Fast Track board.");
+  }
+  if (!isEpicIssueType(parentFields)) {
+    throw new Error("Tasks can only be added under a Fast-Track epic.");
+  }
+
+  const taskType = pickTaskIssueType(await fastTrackIssueTypes(client));
+  if (!taskType?.id) {
+    throw new Error("Could not find a Task issue type on the Fast Track board.");
+  }
+
+  const typeFields = await fastTrackTypeFields(client, taskType.id);
+  const description = adfFromParagraphs([input.description ?? ""]);
   const fieldsPayload: Record<string, unknown> = {
     project: { key: FAST_TRACK_JIRA_PROJECT_KEY },
     summary: input.title.trim().slice(0, JIRA_ISSUE_SUMMARY_MAX),
-    issuetype: { id: issueType.id },
+    issuetype: { id: taskType.id },
   };
   if (description) fieldsPayload.description = description;
+  await applyRequiredReporter(client, typeFields, fieldsPayload);
 
-  const issue = await client.issues.createIssue({ fields: fieldsPayload });
+  let issue: { key?: string };
+  try {
+    issue = await client.issues.createIssue({
+      fields: { ...fieldsPayload, parent: { key: parentKey } },
+    });
+  } catch (error) {
+    const fieldErrors = jiraFieldErrors(error);
+    if (!fieldErrors || !("parent" in fieldErrors)) {
+      throw new Error(
+        jiraFailureMessage(error, "Could not create the task in Jira."),
+      );
+    }
+    try {
+      issue = await client.issues.createIssue({
+        fields: { ...fieldsPayload, customfield_10014: parentKey },
+      });
+    } catch (epicLinkError) {
+      throw new Error(
+        jiraFailureMessage(epicLinkError, "Could not create the task in Jira."),
+      );
+    }
+  }
+
   const key = issue.key;
   if (!key) {
-    throw new Error("Jira created the Fast-Track task but did not return a key.");
+    throw new Error("Jira created the task but did not return a key.");
   }
   return {
     key,

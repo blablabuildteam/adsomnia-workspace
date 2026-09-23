@@ -23,7 +23,7 @@ export type FastTrackInitiativeDetails = {
   remark: string | null;
 };
 
-export type FastTrackItem = {
+export type FastTrackTask = {
   id: string;
   title: string;
   status: string;
@@ -36,7 +36,13 @@ export type FastTrackItem = {
   updated: string | null;
   url: string | null;
   jiraKey: string | null;
+  issueType: string;
+};
+
+export type FastTrackItem = FastTrackTask & {
+  isEpic: boolean;
   initiative: FastTrackInitiativeDetails | null;
+  tasks: FastTrackTask[];
 };
 
 function toInitiativeDetails(
@@ -57,10 +63,46 @@ function toInitiativeDetails(
   };
 }
 
+function toTask(issue: FastTrackJiraIssue): FastTrackTask {
+  return {
+    id: issue.key,
+    title: issue.title,
+    status: issue.status,
+    statusCategory: issue.statusCategory,
+    priority: issue.priority,
+    assignee: issue.assignee,
+    reporter: issue.reporter,
+    description: issue.description,
+    created: issue.created,
+    updated: issue.updated,
+    url: issue.url,
+    jiraKey: issue.key,
+    issueType: issue.issueType || "Task",
+  };
+}
+
+function tasksFor(
+  parentKey: string | null | undefined,
+  childrenByParent: Map<string, FastTrackJiraIssue[]>,
+  hiddenKeys: Set<string>,
+): FastTrackTask[] {
+  if (!parentKey) return [];
+  return (childrenByParent.get(parentKey) ?? [])
+    .filter((issue) => issue.key && !hiddenKeys.has(issue.key))
+    .slice()
+    .sort((a, b) => {
+      const aTime = a.created ? Date.parse(a.created) : 0;
+      const bTime = b.created ? Date.parse(b.created) : 0;
+      return aTime - bTime;
+    })
+    .map(toTask);
+}
+
 function fromInitiative(
   item: InitiativeWithUsers,
   jira: FastTrackJiraIssue | undefined,
   remark: string | null,
+  tasks: FastTrackTask[],
 ): FastTrackItem {
   return {
     id: jira?.key ?? item.fastTrackJiraKey ?? `ws-${item.id}`,
@@ -75,25 +117,22 @@ function fromInitiative(
     updated: jira?.updated ?? item.updatedAt.toISOString(),
     url: jira?.url ?? item.fastTrackJiraUrl,
     jiraKey: jira?.key ?? item.fastTrackJiraKey,
+    issueType: jira?.issueType || (jira?.isEpic ? "Epic" : ""),
+    isEpic: jira?.isEpic ?? false,
     initiative: toInitiativeDetails(item, remark),
+    tasks,
   };
 }
 
-function fromJiraOnly(issue: FastTrackJiraIssue): FastTrackItem {
+function fromJiraOnly(
+  issue: FastTrackJiraIssue,
+  tasks: FastTrackTask[],
+): FastTrackItem {
   return {
-    id: issue.key,
-    title: issue.title,
-    status: issue.status,
-    statusCategory: issue.statusCategory,
-    priority: issue.priority,
-    assignee: issue.assignee,
-    reporter: issue.reporter,
-    description: issue.description,
-    created: issue.created,
-    updated: issue.updated,
-    url: issue.url,
-    jiraKey: issue.key,
+    ...toTask(issue),
+    isEpic: issue.isEpic,
     initiative: null,
+    tasks,
   };
 }
 
@@ -116,13 +155,26 @@ export async function loadFastTrackOverview(
     fetchError =
       error instanceof Error
         ? error.message
-        : "Could not load Fast-Track tasks from Jira.";
+        : "Could not load Fast-Track work from Jira.";
   }
 
   const jiraByKey = new Map(
     jiraIssues
       .filter((issue) => issue.key)
       .map((issue) => [issue.key, issue]),
+  );
+  const childrenByParent = new Map<string, FastTrackJiraIssue[]>();
+  for (const issue of jiraIssues) {
+    if (!issue.parentKey) continue;
+    const list = childrenByParent.get(issue.parentKey) ?? [];
+    list.push(issue);
+    childrenByParent.set(issue.parentKey, list);
+  }
+
+  const workspaceKeys = new Set(
+    workspaceItems
+      .map((item) => item.fastTrackJiraKey)
+      .filter((key): key is string => Boolean(key)),
   );
   const seenKeys = new Set<string>();
   const items: FastTrackItem[] = [];
@@ -132,14 +184,31 @@ export async function loadFastTrackOverview(
     const jira = key ? jiraByKey.get(key) : undefined;
     if (key) seenKeys.add(key);
     items.push(
-      fromInitiative(item, jira, remarks.get(item.id) ?? null),
+      fromInitiative(
+        item,
+        jira,
+        remarks.get(item.id) ?? null,
+        tasksFor(key, childrenByParent, workspaceKeys),
+      ),
     );
   }
 
   if (isLeadership(user)) {
     for (const issue of jiraIssues) {
-      if (seenKeys.has(issue.key)) continue;
-      items.push(fromJiraOnly(issue));
+      if (!issue.key || seenKeys.has(issue.key)) continue;
+      if (
+        issue.parentKey &&
+        (seenKeys.has(issue.parentKey) || jiraByKey.has(issue.parentKey))
+      ) {
+        continue;
+      }
+      seenKeys.add(issue.key);
+      items.push(
+        fromJiraOnly(
+          issue,
+          tasksFor(issue.key, childrenByParent, workspaceKeys),
+        ),
+      );
     }
   }
 

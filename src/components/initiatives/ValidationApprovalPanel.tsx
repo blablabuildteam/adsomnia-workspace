@@ -281,7 +281,7 @@ export function ValidationApprovalPanel({
         >
           {selectedAction === "fast-track" && (
             <p className="text-xs leading-relaxed text-muted">
-              Fast-Track skips the rest of the pipeline. A task is created on
+              Fast-Track skips the rest of the pipeline. An epic is created on
               the Fast Track Jira board for a quick fix that one or two people
               can finish in about a day.
             </p>

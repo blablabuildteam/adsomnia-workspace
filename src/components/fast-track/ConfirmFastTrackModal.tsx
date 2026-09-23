@@ -45,9 +45,9 @@ export function ConfirmFastTrackModal({
         </div>
         <div className="space-y-2 text-sm leading-relaxed text-foreground/90">
           <p>
-            This workstream will skip the rest of the pipeline. A task is
+            This workstream will skip the rest of the pipeline. An epic is
             created on the Fast Track Jira board for a quick fix that one or two
-            people can finish in about a day.
+            people can finish in about a day. Tasks can be nested under that epic.
           </p>
           <p className="text-xs text-muted">
             Current details are saved, then you are taken to the Fast-Track

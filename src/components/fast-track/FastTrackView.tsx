@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowUpRight,
   Calendar,
+  ChevronRight,
   Filter,
   Flag,
   Plus,
@@ -15,9 +16,10 @@ import {
   X,
 } from "lucide-react";
 import { AddFastTrackModal } from "@/components/fast-track/AddFastTrackModal";
+import { AddNestedFastTrackModal } from "@/components/fast-track/AddNestedFastTrackModal";
 import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
-import type { FastTrackItem } from "@/lib/fast-track";
+import type { FastTrackItem, FastTrackTask } from "@/lib/fast-track";
 
 const hoverTicks =
   "opacity-0 transition-opacity duration-300 group-hover:opacity-100";
@@ -28,6 +30,8 @@ const STATUS_CATEGORY_COLOR: Record<string, string> = {
   done: "#22c55e",
   undefined: "#A1A1A1",
 };
+
+const NEW_STATUS_COLOR = "#FFFFFF";
 
 const STATUS_FILTERS = [
   { key: "all", label: "All", color: "" },
@@ -41,8 +45,20 @@ type StatusFilter = (typeof STATUS_FILTERS)[number]["key"];
 const UNASSIGNED = "Unassigned";
 const PRIORITY_ORDER = ["Highest", "High", "Medium", "Low", "Lowest", "None", "—"];
 
-function assigneeLabel(item: FastTrackItem): string {
+function assigneeLabel(item: { assignee: string | null }): string {
   return item.assignee?.trim() || UNASSIGNED;
+}
+
+function rowMatches(
+  row: { statusCategory: string; priority: string; assignee: string | null },
+  statusFilter: StatusFilter,
+  priorityFilter: string | null,
+  assigneeFilter: string | null,
+): boolean {
+  if (statusFilter !== "all" && row.statusCategory !== statusFilter) return false;
+  if (priorityFilter && row.priority !== priorityFilter) return false;
+  if (assigneeFilter && assigneeLabel(row) !== assigneeFilter) return false;
+  return true;
 }
 
 function uniqueSorted(values: string[], preferredOrder?: readonly string[]): string[] {
@@ -70,6 +86,57 @@ function formatDate(value: string | null): string {
   return date.toLocaleDateString("en-US", { dateStyle: "medium" });
 }
 
+function countTaskProgress(tasks: { statusCategory: string }[]) {
+  let open = 0;
+  let inProgress = 0;
+  let done = 0;
+  for (const task of tasks) {
+    if (task.statusCategory === "done") done += 1;
+    else if (task.statusCategory === "indeterminate") inProgress += 1;
+    else open += 1;
+  }
+  return { open, inProgress, done };
+}
+
+function TaskProgress({
+  open,
+  inProgress,
+  done,
+}: {
+  open: number;
+  inProgress: number;
+  done: number;
+}) {
+  const total = open + inProgress + done;
+  if (total === 0) return null;
+  const parts = [
+    { count: open, label: "open", color: STATUS_CATEGORY_COLOR.new },
+    { count: inProgress, label: "in progress", color: STATUS_CATEGORY_COLOR.indeterminate },
+    { count: done, label: "done", color: STATUS_CATEGORY_COLOR.done },
+  ];
+  return (
+    <span
+      className="inline-flex items-center gap-2"
+      title={parts.map((part) => `${part.count} ${part.label}`).join(", ")}
+    >
+      <span className="flex h-1 w-14 overflow-hidden bg-border" aria-hidden>
+        {parts.map((part) => (
+          <span
+            key={part.label}
+            style={{
+              width: `${(part.count / total) * 100}%`,
+              backgroundColor: part.color,
+            }}
+          />
+        ))}
+      </span>
+      <span className="font-display text-[10px] font-bold tabular-nums text-muted">
+        {total}
+      </span>
+    </span>
+  );
+}
+
 function StatusBadge({
   status,
   category,
@@ -77,7 +144,10 @@ function StatusBadge({
   status: string;
   category: string;
 }) {
-  const color = STATUS_CATEGORY_COLOR[category] ?? STATUS_CATEGORY_COLOR.undefined;
+  const color =
+    status.trim().toLowerCase() === "new"
+      ? NEW_STATUS_COLOR
+      : STATUS_CATEGORY_COLOR[category] ?? STATUS_CATEGORY_COLOR.undefined;
   return (
     <span
       className="inline-flex items-center border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
@@ -101,7 +171,7 @@ function Field({
       <p className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
         {label}
       </p>
-      <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+      <p className="mt-1.5 whitespace-pre-wrap text-xs leading-relaxed text-foreground">
         {value}
       </p>
     </div>
@@ -110,12 +180,22 @@ function Field({
 
 function FastTrackDrawer({
   item,
+  parentTitle,
+  tasks,
+  canAddTask,
+  onAddTask,
+  onOpenTask,
   onClose,
 }: {
-  item: FastTrackItem;
+  item: FastTrackItem | FastTrackTask;
+  parentTitle?: string | null;
+  tasks?: FastTrackTask[];
+  canAddTask?: boolean;
+  onAddTask?: () => void;
+  onOpenTask?: (taskId: string) => void;
   onClose: () => void;
 }) {
-  const initiative = item.initiative;
+  const initiative = "initiative" in item ? item.initiative : null;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -129,9 +209,11 @@ function FastTrackDrawer({
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0">
             <p className="font-display text-[10px] font-bold uppercase tracking-[0.18em] text-bbb">
-              {initiative?.ticketId ?? item.jiraKey ?? "Fast-Track"}
+              {parentTitle
+                ? `Task in ${parentTitle}`
+                : initiative?.ticketId ?? item.jiraKey ?? "Fast-Track"}
             </p>
-            <h2 className="mt-1 font-display text-xl font-extrabold uppercase leading-tight tracking-tight">
+            <h2 className="mt-1 font-display text-lg font-extrabold uppercase leading-tight tracking-tight">
               {item.title}
             </h2>
           </div>
@@ -153,7 +235,7 @@ function FastTrackDrawer({
             </span>
           </div>
 
-          <dl className="grid grid-cols-2 gap-4 text-sm">
+          <dl className="grid grid-cols-2 gap-4 text-xs">
             <div>
               <dt className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
                 Assignee
@@ -191,7 +273,7 @@ function FastTrackDrawer({
               <p className="font-display text-[10px] font-bold uppercase tracking-[0.18em] text-bbb">
                 Original initiative
               </p>
-              <dl className="grid grid-cols-2 gap-4 text-sm">
+              <dl className="grid grid-cols-2 gap-4 text-xs">
                 <div>
                   <dt className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
                     Submitter
@@ -219,9 +301,51 @@ function FastTrackDrawer({
           {item.description && !initiative?.problemStatement && (
             <Field label="Description" value={item.description} />
           )}
+
+          {tasks && tasks.length > 0 && (
+            <div className="space-y-2 border-t border-border pt-5">
+              <p className="font-display text-[10px] font-bold uppercase tracking-[0.18em] text-bbb">
+                Tasks
+              </p>
+              <ul className="border border-border">
+                {tasks.map((task) => (
+                  <li key={task.id} className="border-b border-border last:border-b-0">
+                    <button
+                      type="button"
+                      onClick={() => onOpenTask?.(task.id)}
+                      className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-hover"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs font-medium text-foreground">
+                          {task.title}
+                        </span>
+                        <span className="mt-0.5 block font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+                          {task.jiraKey ?? task.issueType}
+                        </span>
+                      </span>
+                      <StatusBadge
+                        status={task.status}
+                        category={task.statusCategory}
+                      />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2 border-t border-border px-5 py-4">
+          {canAddTask && onAddTask && (
+            <button
+              type="button"
+              onClick={onAddTask}
+              className="inline-flex w-full items-center justify-center gap-2 border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background hover:opacity-90"
+            >
+              <Plus className="size-3.5" />
+              Add task
+            </button>
+          )}
           {initiative && (
             <Link
               href={`/workstreams/${initiative.id}`}
@@ -262,37 +386,64 @@ export function FastTrackView({
   canAdd = false,
 }: Props) {
   const router = useRouter();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<
+    | { kind: "item"; id: string }
+    | { kind: "task"; itemId: string; taskId: string }
+    | null
+  >(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [nestEpicKey, setNestEpicKey] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [pendingTasks, setPendingTasks] = useState<
+    Record<string, FastTrackTask[]>
+  >({});
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
   const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
 
-  const priorities = useMemo(
-    () => uniqueSorted(items.map((item) => item.priority), PRIORITY_ORDER),
-    [items],
-  );
-  const assignees = useMemo(
-    () => uniqueSorted(items.map(assigneeLabel)),
-    [items],
+  const boardItems = useMemo(
+    () =>
+      items.map((item) => {
+        const key = item.jiraKey ?? "";
+        const extra = (pendingTasks[key] ?? []).filter(
+          (task) => !item.tasks.some((existing) => existing.jiraKey === task.jiraKey),
+        );
+        if (extra.length === 0) return item;
+        return { ...item, tasks: [...item.tasks, ...extra] };
+      }),
+    [items, pendingTasks],
   );
 
-  const statusFiltered = useMemo(
+  const countRows = useMemo(
+    () => boardItems.flatMap((item) => [item, ...item.tasks]),
+    [boardItems],
+  );
+
+  const priorities = useMemo(
+    () => uniqueSorted(countRows.map((item) => item.priority), PRIORITY_ORDER),
+    [countRows],
+  );
+  const assignees = useMemo(
+    () => uniqueSorted(countRows.map(assigneeLabel)),
+    [countRows],
+  );
+
+  const statusPass = useMemo(
     () =>
       statusFilter === "all"
-        ? items
-        : items.filter((item) => item.statusCategory === statusFilter),
-    [items, statusFilter],
+        ? countRows
+        : countRows.filter((item) => item.statusCategory === statusFilter),
+    [countRows, statusFilter],
   );
 
   const statusCounts = useMemo(() => {
     const counts: Record<StatusFilter, number> = {
-      all: items.length,
+      all: countRows.length,
       new: 0,
       indeterminate: 0,
       done: 0,
     };
-    for (const item of items) {
+    for (const item of countRows) {
       if (
         item.statusCategory === "new" ||
         item.statusCategory === "indeterminate" ||
@@ -302,41 +453,70 @@ export function FastTrackView({
       }
     }
     return counts;
-  }, [items]);
+  }, [countRows]);
 
   const priorityCounts = useMemo(() => {
     const counts: Record<string, number> = Object.fromEntries(
       priorities.map((priority) => [priority, 0]),
     );
-    for (const item of statusFiltered) {
+    for (const item of statusPass) {
       counts[item.priority] = (counts[item.priority] ?? 0) + 1;
     }
     return counts;
-  }, [priorities, statusFiltered]);
+  }, [priorities, statusPass]);
 
   const assigneeCounts = useMemo(() => {
     const counts: Record<string, number> = Object.fromEntries(
       assignees.map((assignee) => [assignee, 0]),
     );
-    for (const item of statusFiltered) {
+    for (const item of statusPass) {
       const key = assigneeLabel(item);
       counts[key] = (counts[key] ?? 0) + 1;
     }
     return counts;
-  }, [assignees, statusFiltered]);
+  }, [assignees, statusPass]);
+
+  const filtersActive =
+    statusFilter !== "all" || priorityFilter !== null || assigneeFilter !== null;
 
   const filtered = useMemo(
     () =>
-      statusFiltered.filter((item) => {
-        if (priorityFilter && item.priority !== priorityFilter) return false;
-        if (assigneeFilter && assigneeLabel(item) !== assigneeFilter) return false;
-        return true;
+      boardItems.flatMap((item) => {
+        const parentMatches = rowMatches(
+          item,
+          statusFilter,
+          priorityFilter,
+          assigneeFilter,
+        );
+        const matchingTasks = item.tasks.filter((task) =>
+          rowMatches(task, statusFilter, priorityFilter, assigneeFilter),
+        );
+        if (!parentMatches && matchingTasks.length === 0) return [];
+        return [
+          {
+            ...item,
+            tasks: filtersActive ? matchingTasks : item.tasks,
+            taskTotal: item.tasks.length,
+            progress: countTaskProgress(item.tasks),
+          },
+        ];
       }),
-    [statusFiltered, priorityFilter, assigneeFilter],
+    [boardItems, statusFilter, priorityFilter, assigneeFilter, filtersActive],
   );
 
   const hasDimensionFilters = priorityFilter !== null || assigneeFilter !== null;
-  const selected = items.find((item) => item.id === selectedId) ?? null;
+  const selectedItem = selection
+    ? boardItems.find(
+        (item) =>
+          item.id === (selection.kind === "item" ? selection.id : selection.itemId),
+      ) ?? null
+    : null;
+  const selectedTask =
+    selection?.kind === "task"
+      ? selectedItem?.tasks.find((task) => task.id === selection.taskId) ?? null
+      : null;
+  const nestEpic =
+    boardItems.find((item) => item.jiraKey === nestEpicKey) ?? null;
 
   return (
     <div className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -351,12 +531,13 @@ export function FastTrackView({
               <p className="font-display text-[11px] font-bold uppercase tracking-[0.28em] text-muted">
                 Fast-Track
               </p>
-              <h1 className="font-display mt-2 text-4xl font-extrabold uppercase leading-[0.92] tracking-tight sm:text-5xl">
+              <h1 className="font-display mt-2 text-3xl font-extrabold uppercase leading-[0.92] tracking-tight sm:text-4xl">
                 Fast Track
               </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
+              <p className="mt-3 max-w-2xl text-xs leading-relaxed text-muted">
                 Quick fixes that skip the pipeline — one or two people, about a
-                day of work. Tasks live on the Adsomnia Fast Track Jira board.
+                day of work. Each item is an epic on the Adsomnia Fast Track
+                Jira board, with tasks nested underneath.
               </p>
             </div>
           </div>
@@ -369,7 +550,7 @@ export function FastTrackView({
                   className="inline-flex items-center gap-2 border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90"
                 >
                   <Plus className="size-3.5" />
-                  Add task
+                  Add epic
                 </button>
               )}
               {boardUrl && (
@@ -396,7 +577,7 @@ export function FastTrackView({
       </header>
 
       {fetchError && (
-        <p className="mb-4 border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+        <p className="mb-4 border border-danger/40 bg-danger/10 px-4 py-3 text-xs text-danger">
           {fetchError}
         </p>
       )}
@@ -411,7 +592,7 @@ export function FastTrackView({
               type="button"
               onClick={() => setStatusFilter(filter.key)}
               className={[
-                "flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-xs font-medium uppercase tracking-wide transition-colors",
+                "flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2 text-[11px] font-medium uppercase tracking-wide transition-colors",
                 isActive
                   ? "border-foreground text-foreground"
                   : "border-transparent text-muted hover:text-foreground",
@@ -563,76 +744,259 @@ export function FastTrackView({
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted">
-                  {items.length === 0
-                    ? "No Fast-Track tasks yet."
-                    : "No Fast-Track tasks match the current filters."}
+                <td colSpan={6} className="px-4 py-10 text-center text-xs text-muted">
+                  {boardItems.length === 0
+                    ? "No Fast-Track epics yet."
+                    : "No Fast-Track work matches the current filters."}
                 </td>
               </tr>
             ) : (
-              filtered.map((item) => (
-                <tr
-                  key={item.id}
-                  tabIndex={0}
-                  className="group relative cursor-pointer border-b border-border last:border-b-0 hover:bg-hover focus-visible:bg-hover focus-visible:outline-none"
-                  onClick={() => setSelectedId(item.id)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      setSelectedId(item.id);
-                    }
-                  }}
-                >
-                  <td className="px-4 py-3 text-sm font-medium text-foreground">
-                    <CornerTicks className={hoverTicks} />
-                    {item.title}
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusBadge
-                      status={item.status}
-                      category={item.statusCategory}
-                    />
-                  </td>
-                  <td className="px-4 py-3 text-xs uppercase tracking-wide text-muted">
-                    {item.priority}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-foreground">
-                    <span className="inline-flex items-center gap-1.5">
-                      <User className="size-3.5 text-muted" />
-                      {item.assignee ?? "Unassigned"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-foreground">
-                    <span className="inline-flex items-center gap-1.5">
-                      <User className="size-3.5 text-muted" />
-                      {item.reporter ?? "—"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {item.url && item.jiraKey ? (
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={(event) => event.stopPropagation()}
-                        className="inline-flex items-center gap-1 font-display text-[11px] font-bold uppercase tracking-wide text-bbb hover:underline"
-                      >
-                        {item.jiraKey}
-                        <ArrowUpRight className="size-3" />
-                      </a>
-                    ) : (
-                      <span className="text-xs text-muted">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))
+              filtered.map((item) => {
+                const tasksOpen =
+                  item.tasks.length > 0 && expandedIds.has(item.id);
+                const nestClass = [
+                  "overflow-hidden transition-[max-height,opacity,padding] duration-200 ease-out motion-reduce:transition-none",
+                  tasksOpen
+                    ? "max-h-24 py-2 opacity-100"
+                    : "max-h-0 py-0 opacity-0",
+                ].join(" ");
+                return (
+                <Fragment key={item.id}>
+                  <tr
+                    tabIndex={0}
+                    className="group relative cursor-pointer border-b border-border last:border-b-0 hover:bg-hover focus-visible:bg-hover focus-visible:outline-none"
+                    onClick={() => setSelection({ kind: "item", id: item.id })}
+                    onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget) return;
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSelection({ kind: "item", id: item.id });
+                      }
+                    }}
+                  >
+                    <td className="px-4 py-2.5 text-xs font-medium text-foreground">
+                      <CornerTicks className={hoverTicks} />
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                          <span className="min-w-0">
+                            {item.isEpic && (
+                              <span className="mr-2 font-display text-[10px] font-bold uppercase tracking-wide text-bbb">
+                                Epic
+                              </span>
+                            )}
+                            {item.title}
+                          </span>
+                          {item.taskTotal > 0 && (
+                            <TaskProgress {...item.progress} />
+                          )}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          {item.taskTotal > 0 && (
+                            <button
+                              type="button"
+                              aria-expanded={tasksOpen}
+                              aria-label={
+                                tasksOpen
+                                  ? `Collapse tasks in ${item.title}`
+                                  : `Expand tasks in ${item.title}`
+                              }
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setExpandedIds((current) => {
+                                  const next = new Set(current);
+                                  if (next.has(item.id)) next.delete(item.id);
+                                  else next.add(item.id);
+                                  return next;
+                                });
+                              }}
+                              className="inline-flex size-7 items-center justify-center text-muted hover:text-foreground"
+                            >
+                              <ChevronRight
+                                className={[
+                                  "size-3.5 transition-transform duration-200 ease-out motion-reduce:transition-none",
+                                  tasksOpen ? "rotate-90" : "",
+                                ].join(" ")}
+                              />
+                            </button>
+                          )}
+                          {canAdd && item.isEpic && item.jiraKey && (
+                            <button
+                              type="button"
+                              aria-label={`Add a task in ${item.title}`}
+                              title="Add task"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setNestEpicKey(item.jiraKey);
+                              }}
+                              className="inline-flex size-7 items-center justify-center border border-border text-muted transition-colors hover:border-foreground hover:text-foreground"
+                            >
+                              <Plus className="size-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge
+                        status={item.status}
+                        category={item.statusCategory}
+                      />
+                    </td>
+                    <td className="px-4 py-3 text-xs uppercase tracking-wide text-muted">
+                      {item.priority}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-foreground">
+                      <span className="inline-flex items-center gap-1.5">
+                        <User className="size-3 text-muted" />
+                        {item.assignee ?? "Unassigned"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-foreground">
+                      <span className="inline-flex items-center gap-1.5">
+                        <User className="size-3 text-muted" />
+                        {item.reporter ?? "—"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {item.url && item.jiraKey ? (
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(event) => event.stopPropagation()}
+                          className="inline-flex items-center gap-1 font-display text-[10px] font-bold uppercase tracking-wide text-bbb hover:underline"
+                        >
+                          {item.jiraKey}
+                          <ArrowUpRight className="size-3" />
+                        </a>
+                      ) : (
+                        <span className="text-xs text-muted">—</span>
+                      )}
+                    </td>
+                  </tr>
+                  {item.tasks.map((task) => (
+                    <tr
+                      key={task.id}
+                      tabIndex={tasksOpen ? 0 : -1}
+                      aria-hidden={!tasksOpen}
+                      className={
+                        tasksOpen
+                          ? "cursor-pointer border-b border-border bg-background last:border-b-0 hover:bg-hover focus-visible:bg-hover focus-visible:outline-none"
+                          : "pointer-events-none border-0"
+                      }
+                      onClick={() => {
+                        if (!tasksOpen) return;
+                        setSelection({
+                          kind: "task",
+                          itemId: item.id,
+                          taskId: task.id,
+                        });
+                      }}
+                      onKeyDown={(event) => {
+                        if (!tasksOpen || event.target !== event.currentTarget) return;
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setSelection({
+                            kind: "task",
+                            itemId: item.id,
+                            taskId: task.id,
+                          });
+                        }
+                      }}
+                    >
+                      <td className={tasksOpen ? "border-l-2 border-bbb/70 p-0" : "p-0"}>
+                        <div className={`${nestClass} pr-4 pl-10 text-xs text-foreground`}>
+                          <span className="mr-2 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+                            {task.issueType || "Task"}
+                          </span>
+                          {task.title}
+                        </div>
+                      </td>
+                      <td className="p-0">
+                        <div className={`${nestClass} px-4`}>
+                          <StatusBadge
+                            status={task.status}
+                            category={task.statusCategory}
+                          />
+                        </div>
+                      </td>
+                      <td className="p-0">
+                        <div className={`${nestClass} px-4 text-xs uppercase tracking-wide text-muted`}>
+                          {task.priority}
+                        </div>
+                      </td>
+                      <td className="p-0">
+                        <div className={`${nestClass} px-4 text-xs text-foreground`}>
+                          <span className="inline-flex items-center gap-1.5">
+                            <User className="size-3 text-muted" />
+                            {task.assignee ?? "Unassigned"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-0">
+                        <div className={`${nestClass} px-4 text-xs text-foreground`}>
+                          <span className="inline-flex items-center gap-1.5">
+                            <User className="size-3 text-muted" />
+                            {task.reporter ?? "—"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-0">
+                        <div className={`${nestClass} px-4`}>
+                          {task.url && task.jiraKey ? (
+                            <a
+                              href={task.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              tabIndex={tasksOpen ? 0 : -1}
+                              onClick={(event) => event.stopPropagation()}
+                              className="inline-flex items-center gap-1 font-display text-[10px] font-bold uppercase tracking-wide text-bbb hover:underline"
+                            >
+                              {task.jiraKey}
+                              <ArrowUpRight className="size-3" />
+                            </a>
+                          ) : (
+                            <span className="text-xs text-muted">—</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
 
-      {selected && (
-        <FastTrackDrawer item={selected} onClose={() => setSelectedId(null)} />
+      {selectedTask && selectedItem && (
+        <FastTrackDrawer
+          item={selectedTask}
+          parentTitle={selectedItem.title}
+          onClose={() => setSelection(null)}
+        />
+      )}
+
+      {selectedItem && !selectedTask && (
+        <FastTrackDrawer
+          item={selectedItem}
+          tasks={selectedItem.tasks}
+          canAddTask={canAdd && selectedItem.isEpic && Boolean(selectedItem.jiraKey)}
+          onAddTask={
+            selectedItem.jiraKey
+              ? () => setNestEpicKey(selectedItem.jiraKey)
+              : undefined
+          }
+          onOpenTask={(taskId) =>
+            setSelection({
+              kind: "task",
+              itemId: selectedItem.id,
+              taskId,
+            })
+          }
+          onClose={() => setSelection(null)}
+        />
       )}
 
       {canAdd && (
@@ -644,7 +1008,47 @@ export function FastTrackView({
             setStatusFilter("all");
             setPriorityFilter(null);
             setAssigneeFilter(null);
-            setSelectedId(key);
+            setSelection({ kind: "item", id: key });
+            router.refresh();
+          }}
+        />
+      )}
+
+      {canAdd && nestEpic?.jiraKey && (
+        <AddNestedFastTrackModal
+          open={nestEpicKey !== null}
+          epicKey={nestEpic.jiraKey}
+          epicTitle={nestEpic.title}
+          onClose={() => setNestEpicKey(null)}
+          onCreated={(created) => {
+            const epicKey = nestEpic.jiraKey;
+            if (!epicKey) return;
+            setPendingTasks((current) => ({
+              ...current,
+              [epicKey]: [
+                ...(current[epicKey] ?? []).filter(
+                  (task) => task.jiraKey !== created.key,
+                ),
+                {
+                  id: created.key,
+                  title: created.title,
+                  status: "To Do",
+                  statusCategory: "new",
+                  priority: "None",
+                  assignee: null,
+                  reporter: null,
+                  description: created.description,
+                  created: new Date().toISOString(),
+                  updated: new Date().toISOString(),
+                  url: created.url,
+                  jiraKey: created.key,
+                  issueType: "Task",
+                },
+              ],
+            }));
+            setNestEpicKey(null);
+            setExpandedIds((current) => new Set(current).add(nestEpic.id));
+            setSelection({ kind: "item", id: nestEpic.id });
             router.refresh();
           }}
         />

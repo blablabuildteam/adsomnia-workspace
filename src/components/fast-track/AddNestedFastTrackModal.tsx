@@ -1,18 +1,31 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createFastTrackEpic } from "@/app/(workspace)/fast-track/actions";
+import { createFastTrackChildTask } from "@/app/(workspace)/fast-track/actions";
 import { Modal, ModalButton } from "@/components/ui/Modal";
 import { inputClass } from "@/lib/form-styles";
 import { FAST_TRACK_FIELD_LIMITS } from "@/lib/field-limits";
 
 type Props = {
   open: boolean;
+  epicKey: string;
+  epicTitle: string;
   onClose: () => void;
-  onCreated: (key: string) => void;
+  onCreated: (task: {
+    key: string;
+    url: string;
+    title: string;
+    description: string;
+  }) => void;
 };
 
-export function AddFastTrackModal({ open, onClose, onCreated }: Props) {
+export function AddNestedFastTrackModal({
+  open,
+  epicKey,
+  epicTitle,
+  onClose,
+  onCreated,
+}: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -34,14 +47,19 @@ export function AddFastTrackModal({ open, onClose, onCreated }: Props) {
     if (pending) return;
     setError(null);
     startSubmit(async () => {
-      const result = await createFastTrackEpic({ title, description });
+      const result = await createFastTrackChildTask({
+        epicKey,
+        title,
+        description,
+      });
       if (result.error) {
         setError(result.error);
         return;
       }
-      if (result.key) {
+      if (result.task) {
+        const created = result.task;
         reset();
-        onCreated(result.key);
+        onCreated(created);
       }
     });
   }
@@ -50,7 +68,7 @@ export function AddFastTrackModal({ open, onClose, onCreated }: Props) {
     <Modal
       open={open}
       onClose={handleClose}
-      title="Add Fast-Track epic"
+      title="Add task"
       actions={
         <>
           <ModalButton onClick={handleClose} disabled={pending}>
@@ -59,16 +77,16 @@ export function AddFastTrackModal({ open, onClose, onCreated }: Props) {
           <ModalButton
             variant="primary"
             type="submit"
-            form="add-fast-track"
+            form="add-fast-track-task"
             disabled={pending}
           >
-            {pending ? "Adding…" : "Add epic"}
+            {pending ? "Adding…" : "Add task"}
           </ModalButton>
         </>
       }
     >
       <form
-        id="add-fast-track"
+        id="add-fast-track-task"
         className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault();
@@ -76,8 +94,10 @@ export function AddFastTrackModal({ open, onClose, onCreated }: Props) {
         }}
       >
         <p className="text-sm leading-relaxed text-muted">
-          Skips the pipeline and creates an epic on the Fast Track Jira board.
-          Add tasks under that epic from the board. They stay in sync with Jira.
+          Nested under{" "}
+          <span className="text-foreground">{epicTitle}</span>
+          {epicKey ? ` (${epicKey})` : ""}. The task is created in Jira on this
+          epic and shows on the board.
         </p>
 
         <label className="block">
@@ -89,7 +109,7 @@ export function AddFastTrackModal({ open, onClose, onCreated }: Props) {
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             maxLength={FAST_TRACK_FIELD_LIMITS.title.max}
-            placeholder="What needs to happen"
+            placeholder="What this task covers"
             className={inputClass}
           />
         </label>
@@ -102,9 +122,9 @@ export function AddFastTrackModal({ open, onClose, onCreated }: Props) {
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             maxLength={FAST_TRACK_FIELD_LIMITS.description.max}
-            rows={5}
-            placeholder="Context, who it is for, and anything Jira should know."
-            className={`${inputClass} min-h-[120px] resize-y`}
+            rows={4}
+            placeholder="Context for the people doing the work."
+            className={`${inputClass} min-h-[96px] resize-y`}
           />
         </label>
 
