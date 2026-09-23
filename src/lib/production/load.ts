@@ -2,6 +2,7 @@ import {
   getAvailableInstances,
   getProjectEpicTasks,
   getProjectsEpicProgress,
+  jiraSpaceStillExists,
   type JiraEpicSummary,
   type JiraEpicTaskProgress,
   type JiraInstance,
@@ -49,6 +50,11 @@ type CachedEpicProgress = {
 
 const epicProgressCache = new Map<string, CachedEpicProgress>();
 const epicTasksCache = new Map<string, { fetchedAt: number; byEpic: Record<string, ProductionTask[]> }>();
+const spacePresenceCache = new Map<
+  string,
+  { fetchedAt: number; exists: boolean | null }
+>();
+const spacePresenceInflight = new Map<string, Promise<boolean | null>>();
 
 function epicProgressCacheKey(instance: JiraInstance, projectKey: string) {
   return `${instance}:${projectKey.trim().toUpperCase()}`;
@@ -57,6 +63,51 @@ function epicProgressCacheKey(instance: JiraInstance, projectKey: string) {
 export function clearProductionJiraCache() {
   epicProgressCache.clear();
   epicTasksCache.clear();
+  spacePresenceCache.clear();
+  spacePresenceInflight.clear();
+}
+
+async function cachedJiraSpaceExists(
+  instance: JiraInstance,
+  projectKey: string,
+): Promise<boolean | null> {
+  const key = epicProgressCacheKey(instance, projectKey);
+  const cached = spacePresenceCache.get(key);
+  if (cached && Date.now() - cached.fetchedAt < JIRA_PROGRESS_TTL_MS) {
+    return cached.exists;
+  }
+  const inflight = spacePresenceInflight.get(key);
+  if (inflight) return inflight;
+
+  const request = jiraSpaceStillExists(instance, projectKey)
+    .then((exists) => {
+      spacePresenceCache.set(key, { fetchedAt: Date.now(), exists });
+      return exists;
+    })
+    .finally(() => {
+      spacePresenceInflight.delete(key);
+    });
+  spacePresenceInflight.set(key, request);
+  return request;
+}
+
+/** Drop production projects whose Jira space has been deleted. */
+export async function withoutDeletedJiraSpaces(
+  items: InitiativeWithUsers[],
+): Promise<InitiativeWithUsers[]> {
+  const keep = await Promise.all(
+    items.map(async (item) => {
+      if (item.currentStage !== "production") return true;
+      const target = resolveJiraTarget(item.setupData?.jira);
+      if (!target.instance || !target.projectKey) return true;
+      const exists = await cachedJiraSpaceExists(
+        target.instance,
+        target.projectKey,
+      );
+      return exists !== false;
+    }),
+  );
+  return items.filter((_, index) => keep[index]);
 }
 
 function readCachedEpicProgress(
@@ -330,7 +381,9 @@ export type ProductionOverviewData = {
 export async function getProductionOverview(
   user: PermissionUser,
 ): Promise<ProductionOverviewData> {
-  const initiatives = await getInitiativesByStage("production", user);
+  const initiatives = await withoutDeletedJiraSpaces(
+    await getInitiativesByStage("production", user),
+  );
   const today = todayIso();
 
   const neededByInstance = new Map<JiraInstance, string[]>();

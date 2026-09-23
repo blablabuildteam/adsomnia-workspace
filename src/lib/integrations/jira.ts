@@ -1,4 +1,4 @@
-import { createCloudClient, isApiError } from "jira.js";
+import { createCloudClient, isApiError, isNotFoundError } from "jira.js";
 import {
   JIRA_EPIC_COLORS,
   JIRA_ISSUE_SUMMARY_MAX,
@@ -243,6 +243,26 @@ export async function getJiraProject(
     key: (project.key ?? projectKey).toUpperCase(),
     name: project.name ?? projectKey,
   };
+}
+
+/**
+ * Whether a linked Jira space still exists.
+ * `false` means Jira reported it missing. `null` means the check failed,
+ * so callers should keep the local project visible.
+ */
+export async function jiraSpaceStillExists(
+  instance: JiraInstance,
+  projectKey: string,
+): Promise<boolean | null> {
+  try {
+    await getJiraProject(instance, projectKey);
+    return true;
+  } catch (error) {
+    if (isNotFoundError(error) || (isApiError(error) && error.status === 404)) {
+      return false;
+    }
+    return null;
+  }
 }
 
 function createClient(config: JiraConfig) {
@@ -1409,6 +1429,30 @@ export async function listFastTrackIssues(): Promise<FastTrackJiraIssue[]> {
   return issues
     .filter((issue) => issue.key)
     .map((issue) => mapFastTrackIssue(issue, config.host));
+}
+
+/**
+ * Whether a Fast-Track issue is still on the Jira board.
+ * `false` means Jira no longer has it. `null` means the check failed.
+ */
+export async function fastTrackIssueStillExists(
+  issueKey: string,
+): Promise<boolean | null> {
+  const key = issueKey.trim().toUpperCase();
+  if (!key) return false;
+  try {
+    const { client } = requireClient(FAST_TRACK_JIRA_INSTANCE);
+    await client.issues.getIssue({
+      issueIdOrKey: key,
+      fields: ["summary"],
+    });
+    return true;
+  } catch (error) {
+    if (isNotFoundError(error) || (isApiError(error) && error.status === 404)) {
+      return false;
+    }
+    return null;
+  }
 }
 
 type FastTrackCreateType = {

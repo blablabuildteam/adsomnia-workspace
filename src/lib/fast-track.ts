@@ -1,4 +1,5 @@
 import {
+  fastTrackIssueStillExists,
   getFastTrackBoardUrl,
   listFastTrackIssues,
   type FastTrackJiraIssue,
@@ -176,11 +177,26 @@ export async function loadFastTrackOverview(
       .map((item) => item.fastTrackJiraKey)
       .filter((key): key is string => Boolean(key)),
   );
+  const removedFromJira = new Set<string>();
+  if (!fetchError) {
+    const missingKeys = [
+      ...new Set(
+        [...workspaceKeys].filter((key) => !jiraByKey.has(key)),
+      ),
+    ];
+    await Promise.all(
+      missingKeys.map(async (key) => {
+        const exists = await fastTrackIssueStillExists(key);
+        if (exists === false) removedFromJira.add(key);
+      }),
+    );
+  }
   const seenKeys = new Set<string>();
   const items: FastTrackItem[] = [];
 
   for (const item of workspaceItems) {
     const key = item.fastTrackJiraKey;
+    if (key && removedFromJira.has(key)) continue;
     const jira = key ? jiraByKey.get(key) : undefined;
     if (key) seenKeys.add(key);
     items.push(

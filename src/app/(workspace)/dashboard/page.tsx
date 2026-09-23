@@ -1,5 +1,6 @@
 import { DashboardView } from "@/components/dashboard/DashboardView";
 import { loadFastTrackOverview, type FastTrackItem } from "@/lib/fast-track";
+import { withoutDeletedJiraSpaces } from "@/lib/production/load";
 import { isLeadership } from "@/lib/permissions";
 import {
   getAllInitiatives,
@@ -18,7 +19,7 @@ export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const [items, activity, ideaFeedback, validationFeedback, gonogoFeedback, fastTrack] =
+  const [rawItems, activity, ideaFeedback, validationFeedback, gonogoFeedback, fastTrack] =
     await Promise.all([
       getAllInitiatives(user),
       getRecentWorkspaceActivity(12),
@@ -28,6 +29,7 @@ export default async function DashboardPage() {
       isLeadership(user) ? loadFastTrackOverview(user) : Promise.resolve(EMPTY_FAST_TRACK),
     ]);
 
+  const items = await withoutDeletedJiraSpaces(rawItems);
   const feedbackIds = [
     ...ideaFeedback,
     ...validationFeedback,
