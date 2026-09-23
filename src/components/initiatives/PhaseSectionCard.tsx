@@ -10,13 +10,24 @@ export function PhaseSectionCard({
   header,
   children,
   bodyClassName = "space-y-3 p-4",
+  id,
+  highlighted = false,
 }: {
   header: ReactNode;
   children: ReactNode;
   bodyClassName?: string;
+  id?: string;
+  /** Marks a required section after the user tries to submit while it is incomplete. */
+  highlighted?: boolean;
 }) {
   return (
-    <section className="border border-border bg-hover">
+    <section
+      id={id}
+      className={[
+        "scroll-mt-24 border bg-hover",
+        highlighted ? "border-btr/70" : "border-border",
+      ].join(" ")}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-fill-subtle px-4 py-2.5">
         {header}
       </div>

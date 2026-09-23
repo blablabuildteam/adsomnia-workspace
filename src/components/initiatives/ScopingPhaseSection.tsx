@@ -4,6 +4,7 @@ import {
   useActionState,
   useCallback,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -65,6 +66,10 @@ import { BusinessValueTypeButton, ImpactSlider } from "./ImpactSlider";
 import { BallparkSlider } from "./BallparkSlider";
 import { AttachmentZone, AttachmentChip } from "./AttachmentZone";
 import { PhaseSectionCard, PhaseSectionStack } from "./PhaseSectionCard";
+import {
+  MissingRequirementsNotice,
+  type MissingRequirement,
+} from "@/components/ui/MissingRequirements";
 import { RoleCombobox } from "./RoleCombobox";
 import { ScopeCostBreakdown } from "./ScopeCostBreakdown";
 import { MilestoneGantt, MILESTONE_COLORS } from "./MilestoneGantt";
@@ -961,6 +966,87 @@ function sameImpactState(
   return a.types.every((type) => a.impacts[type] === b.impacts[type]);
 }
 
+function listAnd(parts: string[]): string {
+  if (parts.length <= 1) return parts[0] ?? "";
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+}
+
+function getScopingGaps(input: {
+  milestones: ScopingMilestone[];
+  team: ScopingTeamMember[];
+  impactTypes: BusinessValueType[];
+  impactScores: Record<BusinessValueType, number | null>;
+  consensusReady: boolean;
+}): MissingRequirement[] {
+  const gaps: MissingRequirement[] = [];
+
+  if (input.milestones.length === 0) {
+    gaps.push({
+      targetId: "scoping-milestones",
+      message: "Add at least one milestone with an epic name.",
+    });
+  } else {
+    input.milestones.forEach((milestone, index) => {
+      if (milestone.epic.trim()) return;
+      const deliverable = milestone.milestone.trim();
+      gaps.push({
+        targetId: "scoping-milestones",
+        message: deliverable
+          ? `Milestone ${index + 1} (“${deliverable}”) needs an epic name.`
+          : `Milestone ${index + 1} needs an epic name.`,
+      });
+    });
+  }
+
+  if (input.team.length === 0) {
+    gaps.push({
+      targetId: "scoping-team",
+      message:
+        "Add at least one team member with a role, a name, and total hours.",
+    });
+  } else {
+    input.team.forEach((member, index) => {
+      const missing: string[] = [];
+      if (!member.role.trim()) missing.push("a role");
+      if (!member.name.trim()) missing.push("a name");
+      if (!(member.totalHours > 0)) missing.push("total hours greater than 0");
+      if (missing.length === 0) return;
+      const who = member.name.trim() || `Team member ${index + 1}`;
+      gaps.push({
+        targetId: "scoping-team",
+        message: `${who} needs ${listAnd(missing)}.`,
+      });
+    });
+  }
+
+  if (input.impactTypes.length === 0) {
+    gaps.push({
+      targetId: "scoping-impact",
+      message: "Select at least one impact type and set its score.",
+    });
+  } else {
+    for (const type of input.impactTypes) {
+      if (input.impactScores[type] != null) continue;
+      const label =
+        BUSINESS_VALUE_TYPES.find((item) => item.id === type)?.label ?? type;
+      gaps.push({
+        targetId: "scoping-impact",
+        message: `Set an impact score for ${label}.`,
+      });
+    }
+  }
+
+  if (!input.consensusReady) {
+    gaps.push({
+      targetId: "scoping-priority",
+      message: "Choose a consensus priority.",
+    });
+  }
+
+  return gaps;
+}
+
 export function ScopingPhaseSection({
   initiativeId,
   data,
@@ -1166,6 +1252,25 @@ export function ScopingPhaseSection({
   const notesReady = dependencies.trim().length > 0;
   const canSubmit =
     milestonesReady && teamReady && valueReady && consensusReady;
+  const missingRequirements = getScopingGaps({
+    milestones,
+    team,
+    impactTypes,
+    impactScores,
+    consensusReady,
+  });
+  const [showMissing, setShowMissing] = useState(false);
+  const missingRef = useRef<HTMLDivElement>(null);
+
+  function revealMissing() {
+    setShowMissing(true);
+    requestAnimationFrame(() => {
+      missingRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    });
+  }
 
   const sections = [
     { done: milestonesReady, label: "Milestones" },
@@ -1232,6 +1337,8 @@ export function ScopingPhaseSection({
         <PhaseSectionStack>
           {/* ─── 1. Milestone Timeline ──────────────────────── */}
           <PhaseSectionCard
+            id="scoping-milestones"
+            highlighted={showMissing && !milestonesReady}
             header={
               <>
                 <ScopingFieldLabel field="milestones" required complete={milestonesReady}>
@@ -1269,6 +1376,8 @@ export function ScopingPhaseSection({
 
           {/* ─── 2. Team & Hour Estimates ───────────────────── */}
           <PhaseSectionCard
+            id="scoping-team"
+            highlighted={showMissing && !teamReady}
             header={
               <>
                 <ScopingFieldLabel field="team" required complete={teamReady}>
@@ -1306,6 +1415,8 @@ export function ScopingPhaseSection({
 
           {/* ─── 3. Impact ─────────────────────────────────── */}
           <PhaseSectionCard
+            id="scoping-impact"
+            highlighted={showMissing && !valueReady}
             header={
               <div className="flex flex-wrap items-center gap-2">
                 <ScopingFieldLabel field="impact" required complete={valueReady}>
@@ -1373,6 +1484,8 @@ export function ScopingPhaseSection({
 
           {/* ─── 4. Consensus Priority ─────────────────────── */}
           <PhaseSectionCard
+            id="scoping-priority"
+            highlighted={showMissing && !consensusReady}
             header={
               <div className="flex flex-wrap items-center gap-2">
                 <ScopingFieldLabel
@@ -1580,6 +1693,13 @@ export function ScopingPhaseSection({
           </PhaseSectionCard>
         </PhaseSectionStack>
 
+        {showMissing && missingRequirements.length > 0 && (
+          <MissingRequirementsNotice
+            items={missingRequirements}
+            noticeRef={missingRef}
+          />
+        )}
+
         {/* ─── Actions ─────────────────────────────────────── */}
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
           {saved && savedAt && (
@@ -1615,11 +1735,21 @@ export function ScopingPhaseSection({
           )}
           {canResubmit ? (
             <button
-              type="submit"
-              formAction={resubmitAction}
-              disabled={pending || !canSubmit}
-              title={!canSubmit ? "Fill in all required fields to resubmit" : undefined}
-              className="group relative inline-flex items-center gap-2 overflow-hidden border border-success bg-success px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+              type={canSubmit ? "submit" : "button"}
+              formAction={canSubmit ? resubmitAction : undefined}
+              disabled={pending}
+              onClick={() => {
+                if (!canSubmit) revealMissing();
+              }}
+              title={
+                !canSubmit
+                  ? "Click to see what still needs to be filled"
+                  : undefined
+              }
+              className={[
+                "group relative inline-flex items-center gap-2 overflow-hidden border border-success bg-success px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors disabled:opacity-50",
+                !canSubmit ? "opacity-50 hover:opacity-70" : "",
+              ].join(" ")}
             >
               <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />
               <Send className="relative size-3.5" />
@@ -1634,11 +1764,21 @@ export function ScopingPhaseSection({
             </span>
           ) : (
             <button
-              type="submit"
-              formAction={submitAction}
-              disabled={pending || !canSubmit}
-              title={!canSubmit ? "Fill in all required fields to submit" : undefined}
-              className="group relative inline-flex items-center gap-2 overflow-hidden border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+              type={canSubmit ? "submit" : "button"}
+              formAction={canSubmit ? submitAction : undefined}
+              disabled={pending}
+              onClick={() => {
+                if (!canSubmit) revealMissing();
+              }}
+              title={
+                !canSubmit
+                  ? "Click to see what still needs to be filled"
+                  : undefined
+              }
+              className={[
+                "group relative inline-flex items-center gap-2 overflow-hidden border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors disabled:opacity-50",
+                !canSubmit ? "opacity-50 hover:opacity-70" : "",
+              ].join(" ")}
             >
               <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />
               <SendHorizonal className="relative size-3.5" />

@@ -33,10 +33,15 @@ import { inputClass, readOnlyFieldClass } from "@/lib/form-styles";
 import { CharCount } from "@/components/ui/CharCount";
 import {
   IDEA_FIELD_LIMITS,
+  fieldLimitError,
   meetsFieldMin,
   validateIdeaFields,
   type IdeaFieldName,
 } from "@/lib/field-limits";
+import {
+  MissingRequirementsNotice,
+  type MissingRequirement,
+} from "@/components/ui/MissingRequirements";
 
 const IDEA_STAGE = STAGES.find((s) => s.id === "idea")!;
 
@@ -179,14 +184,24 @@ function FormProgressFrame({
 function FieldRow({
   number,
   complete = false,
+  highlighted = false,
+  id,
   children,
 }: {
   number: string;
   complete?: boolean;
+  highlighted?: boolean;
+  id?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="group flex gap-4 p-5 sm:gap-5 sm:p-6">
+    <div
+      id={id}
+      className={[
+        "group flex scroll-mt-24 gap-4 p-5 sm:gap-5 sm:p-6",
+        highlighted ? "bg-btr/5" : "",
+      ].join(" ")}
+    >
       <span
         aria-hidden
         className={[
@@ -226,6 +241,24 @@ const DEV_PREFILL: FormValues = {
 
 function isIdeaFieldComplete(name: IdeaFieldName, value: string): boolean {
   return meetsFieldMin(value, IDEA_FIELD_LIMITS[name]);
+}
+
+function getIdeaGaps(values: FormValues): MissingRequirement[] {
+  const gaps: MissingRequirement[] = [];
+  for (const field of FORM_FIELDS) {
+    const error = fieldLimitError(
+      field.label,
+      values[field.name],
+      IDEA_FIELD_LIMITS[field.name],
+    );
+    if (error) {
+      gaps.push({ targetId: `idea-${field.name}`, message: error });
+    }
+  }
+  if (!values.sponsor.trim()) {
+    gaps.push({ targetId: "idea-sponsor", message: "Choose a sponsor." });
+  }
+  return gaps;
 }
 
 const FORM_PROGRESS_TOTAL = 7;
@@ -355,17 +388,20 @@ export function IdeaFormView({
   };
 
   const formProgress = getFormProgress(values);
-  const canSubmit =
-    (
-      [
-        "title",
-        "problemStatement",
-        "opportunitySolution",
-        "expectedImpact",
-        "targetAudience",
-      ] as const
-    ).every((name) => isIdeaFieldComplete(name, values[name])) &&
-    values.sponsor.trim().length > 0;
+  const missingRequirements = getIdeaGaps(values);
+  const canSubmit = missingRequirements.length === 0;
+  const [showMissing, setShowMissing] = useState(false);
+  const missingRef = useRef<HTMLDivElement>(null);
+
+  function revealMissing() {
+    setShowMissing(true);
+    requestAnimationFrame(() => {
+      missingRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    });
+  }
 
   const handlePreSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     if (bypassAnalysis) {
@@ -556,8 +592,13 @@ export function IdeaFormView({
             {FORM_FIELDS.map((field, index) => (
               <FieldRow
                 key={field.name}
+                id={`idea-${field.name}`}
                 number={fieldNumber(index + 1)}
                 complete={isIdeaFieldComplete(field.name, values[field.name])}
+                highlighted={
+                  showMissing &&
+                  !isIdeaFieldComplete(field.name, values[field.name])
+                }
               >
                 <label
                   htmlFor={field.name}
@@ -606,8 +647,10 @@ export function IdeaFormView({
 
             {/* Sponsor */}
             <FieldRow
+              id="idea-sponsor"
               number={fieldNumber(FORM_FIELDS.length + 1)}
               complete={values.sponsor.trim().length > 0}
+              highlighted={showMissing && values.sponsor.trim().length === 0}
             >
               <label
                 htmlFor="sponsor"
@@ -656,17 +699,34 @@ export function IdeaFormView({
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-3 border-t border-border pt-6">
+          {showMissing && missingRequirements.length > 0 && (
+            <MissingRequirementsNotice
+              items={missingRequirements}
+              noticeRef={missingRef}
+            />
+          )}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="flex items-center gap-2 text-xs text-muted">
             <Sparkles className="size-3.5 shrink-0 opacity-70" aria-hidden />
             Each submission is checked for Fast-Track fit and overlap with
             work already in the funnel or in production.
           </p>
           <button
-            type="submit"
-            disabled={isSubmitting || !canSubmit}
-            title={!canSubmit ? "Fill in all required fields to the minimum length to submit" : undefined}
-            className="group inline-flex items-center justify-center gap-2 border border-foreground bg-foreground px-6 py-3 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            type={canSubmit ? "submit" : "button"}
+            disabled={isSubmitting}
+            onClick={() => {
+              if (!canSubmit) revealMissing();
+            }}
+            title={
+              !canSubmit
+                ? "Click to see what still needs to be filled"
+                : undefined
+            }
+            className={[
+              "group inline-flex items-center justify-center gap-2 border border-foreground bg-foreground px-6 py-3 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50",
+              !canSubmit ? "opacity-50 hover:opacity-70" : "",
+            ].join(" ")}
           >
             {analyzing ? (
               <>
@@ -682,6 +742,7 @@ export function IdeaFormView({
               </>
             )}
           </button>
+          </div>
         </div>
       </form>
 

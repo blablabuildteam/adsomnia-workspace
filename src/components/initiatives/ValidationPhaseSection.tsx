@@ -3,6 +3,7 @@
 import {
   useActionState,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -39,8 +40,13 @@ import { inputClass } from "@/lib/form-styles";
 import { CharCount } from "@/components/ui/CharCount";
 import {
   VALIDATION_FIELD_LIMITS,
+  fieldLimitError,
   meetsFieldMin,
 } from "@/lib/field-limits";
+import {
+  MissingRequirementsNotice,
+  type MissingRequirement,
+} from "@/components/ui/MissingRequirements";
 import {
   BUSINESS_VALUE_TYPES,
   IMPACT_DEFAULT,
@@ -312,6 +318,84 @@ type Props = {
   showFormPrefill?: boolean;
 };
 
+function getValidationGaps(input: {
+  businessValueTypes: BusinessValueType[];
+  businessValueImpacts: Record<BusinessValueType, number | null>;
+  leadPartySelect: string;
+  isOtherLead: boolean;
+  leadPartyOther: string;
+  solutionDirection: string;
+  tShirtSize: string;
+  priority: string;
+}): MissingRequirement[] {
+  const gaps: MissingRequirement[] = [];
+
+  if (input.businessValueTypes.length === 0) {
+    gaps.push({
+      targetId: "validation-business-value",
+      message: "Select at least one expected business value and set its impact.",
+    });
+  } else {
+    for (const type of input.businessValueTypes) {
+      if (input.businessValueImpacts[type] == null) {
+        const label =
+          BUSINESS_VALUE_TYPES.find((item) => item.id === type)?.label ?? type;
+        gaps.push({
+          targetId: "validation-business-value",
+          message: `Set an impact score for ${label}.`,
+        });
+      }
+    }
+  }
+
+  if (!input.leadPartySelect) {
+    gaps.push({
+      targetId: "validation-lead-party",
+      message: "Choose a lead production party.",
+    });
+  } else if (input.isOtherLead) {
+    const leadError = fieldLimitError(
+      "Lead production party",
+      input.leadPartyOther,
+      VALIDATION_FIELD_LIMITS.leadPartyOther,
+    );
+    if (leadError) {
+      gaps.push({
+        targetId: "validation-lead-party",
+        message: leadError,
+      });
+    }
+  }
+
+  const solutionError = fieldLimitError(
+    "High-level approach of the solution",
+    input.solutionDirection,
+    VALIDATION_FIELD_LIMITS.solutionDirection,
+  );
+  if (solutionError) {
+    gaps.push({
+      targetId: "validation-approach",
+      message: solutionError,
+    });
+  }
+
+  if (!input.tShirtSize) {
+    gaps.push({
+      targetId: "validation-tshirt",
+      message: "Choose an investment estimate (T-shirt size).",
+    });
+  }
+
+  if (!input.priority) {
+    gaps.push({
+      targetId: "validation-priority",
+      message: "Choose an Adsomnia priority.",
+    });
+  }
+
+  return gaps;
+}
+
 export function ValidationPhaseSection({
   initiativeId,
   data,
@@ -394,6 +478,29 @@ export function ValidationPhaseSection({
     tShirtSize.length > 0 &&
     priority.length > 0;
 
+  const missingRequirements = getValidationGaps({
+    businessValueTypes,
+    businessValueImpacts,
+    leadPartySelect,
+    isOtherLead,
+    leadPartyOther,
+    solutionDirection,
+    tShirtSize,
+    priority,
+  });
+  const [showMissing, setShowMissing] = useState(false);
+  const missingRef = useRef<HTMLDivElement>(null);
+
+  function revealMissing() {
+    setShowMissing(true);
+    requestAnimationFrame(() => {
+      missingRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    });
+  }
+
   function toggleBusinessValueType(type: BusinessValueType) {
     markFormDirty();
     setBusinessValueTypes((current) => {
@@ -453,6 +560,8 @@ export function ValidationPhaseSection({
 
         <PhaseSectionStack>
           <PhaseSectionCard
+            id="validation-business-value"
+            highlighted={showMissing && !businessValueComplete}
             header={
               <FieldLabel field="businessValue" required complete={businessValueComplete}>
                 Expected Business Value
@@ -510,6 +619,8 @@ export function ValidationPhaseSection({
           </PhaseSectionCard>
 
           <PhaseSectionCard
+            id="validation-lead-party"
+            highlighted={showMissing && !leadPartyComplete}
             header={
               <FieldLabel
                 field="leadProductionParty"
@@ -598,6 +709,8 @@ export function ValidationPhaseSection({
           </PhaseSectionCard>
 
           <PhaseSectionCard
+            id="validation-approach"
+            highlighted={showMissing && !solutionComplete}
             header={
               <FieldLabel
                 field="solutionDirection"
@@ -630,6 +743,8 @@ export function ValidationPhaseSection({
           </PhaseSectionCard>
 
           <PhaseSectionCard
+            id="validation-tshirt"
+            highlighted={showMissing && tShirtSize.length === 0}
             header={
               <FieldLabel
                 field="tShirtSize"
@@ -653,6 +768,8 @@ export function ValidationPhaseSection({
           </PhaseSectionCard>
 
           <PhaseSectionCard
+            id="validation-priority"
+            highlighted={showMissing && priority.length === 0}
             header={
               <FieldLabel field="priority" required complete={priority.length > 0}>
                 Adsomnia Priority
@@ -754,6 +871,13 @@ export function ValidationPhaseSection({
           </PhaseSectionCard>
         </PhaseSectionStack>
 
+        {showMissing && missingRequirements.length > 0 && (
+          <MissingRequirementsNotice
+            items={missingRequirements}
+            noticeRef={missingRef}
+          />
+        )}
+
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
           {canFastTrack && (
             <button
@@ -787,10 +911,21 @@ export function ValidationPhaseSection({
           )}
           {canResubmit ? (
             <button
-              type="submit"
-              formAction={resubmitAction}
+              type={canSubmit ? "submit" : "button"}
+              formAction={canSubmit ? resubmitAction : undefined}
               disabled={pending}
-              className="group relative inline-flex items-center gap-2 overflow-hidden border border-success bg-success px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors disabled:opacity-50"
+              onClick={() => {
+                if (!canSubmit) revealMissing();
+              }}
+              title={
+                !canSubmit
+                  ? "Click to see what still needs to be filled"
+                  : undefined
+              }
+              className={[
+                "group relative inline-flex items-center gap-2 overflow-hidden border border-success bg-success px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors disabled:opacity-50",
+                !canSubmit ? "opacity-50 hover:opacity-70" : "",
+              ].join(" ")}
             >
               <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />
               <Send className="relative size-3.5" />
@@ -805,11 +940,21 @@ export function ValidationPhaseSection({
             </span>
           ) : (
             <button
-              type="submit"
-              formAction={submitAction}
-              disabled={pending || !canSubmit}
-              title={!canSubmit ? "Fill in all required fields to the minimum length to submit" : undefined}
-              className="group relative inline-flex items-center gap-2 overflow-hidden border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+              type={canSubmit ? "submit" : "button"}
+              formAction={canSubmit ? submitAction : undefined}
+              disabled={pending}
+              onClick={() => {
+                if (!canSubmit) revealMissing();
+              }}
+              title={
+                !canSubmit
+                  ? "Click to see what still needs to be filled"
+                  : undefined
+              }
+              className={[
+                "group relative inline-flex items-center gap-2 overflow-hidden border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-colors disabled:opacity-50",
+                !canSubmit ? "opacity-50 hover:opacity-70" : "",
+              ].join(" ")}
             >
               <span className="absolute inset-0 origin-left scale-x-0 bg-background/20 transition-transform duration-300 ease-out group-hover:scale-x-100" />
               <SendHorizonal className="relative size-3.5" />
