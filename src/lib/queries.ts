@@ -607,6 +607,48 @@ export async function getFeedbackSubmissions(): Promise<
   }));
 }
 
+export type RegisteredUserEntry = {
+  id: string;
+  name: string;
+  email: string;
+  jobTitle: string | null;
+  role: "leadership" | "production" | "team";
+  profileComplete: boolean;
+  createdAt: string;
+};
+
+/** Newest registrations first. Callers must already have gated for leadership. */
+export async function getRegisteredUsers(): Promise<RegisteredUserEntry[]> {
+  const rows = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email,
+      jobTitle: users.jobTitle,
+      role: users.role,
+      profileCompletedAt: users.profileCompletedAt,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .orderBy(desc(users.createdAt), asc(users.email));
+
+  return rows.map((row) => ({
+    id: row.id,
+    name: displayName({
+      name: row.name,
+      firstName: row.firstName,
+      lastName: row.lastName,
+    }),
+    email: row.email,
+    jobTitle: row.jobTitle?.trim() || null,
+    role: row.role,
+    profileComplete: Boolean(row.profileCompletedAt),
+    createdAt: row.createdAt.toISOString(),
+  }));
+}
+
 export async function getFeedbackImage(
   id: number,
 ): Promise<{ imageData: string; imageFileName: string | null } | null> {

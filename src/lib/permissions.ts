@@ -8,7 +8,7 @@
  *   Submit initiatives, follow only their own items through later phases, and
  *   edit their own details while the item is still in Initiative or Validation.
  * - `production` — reserved; treated as team for write access today.
- * - Product Feedback inbox is leadership-only.
+ * - Product Feedback inbox and the user directory are leadership-only.
  */
 
 export type WorkspaceRole = "leadership" | "production" | "team";
@@ -161,6 +161,11 @@ export function canSubmitProductFeedback(user: PermissionUser | null): boolean {
 
 /** Feedback inbox is leadership-only. */
 export function canViewFeedbackInbox(user: PermissionUser | null): boolean {
+  return user != null && isLeadership(user);
+}
+
+/** Registered-user directory is leadership-only. */
+export function canViewUserDirectory(user: PermissionUser | null): boolean {
   return user != null && isLeadership(user);
 }
 

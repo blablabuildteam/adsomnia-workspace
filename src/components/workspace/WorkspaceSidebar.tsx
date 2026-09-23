@@ -13,6 +13,7 @@ import {
   Lightbulb,
   MessageSquare,
   Rocket,
+  Users,
 } from "lucide-react";
 import { STAGE_COLORS, type StageId } from "@/data/workflow";
 import {
@@ -298,6 +299,13 @@ export function WorkspaceSidebar({ user, collapsed, onToggle }: Props) {
 
       {user.role === "leadership" && (
         <div className="space-y-1 border-t border-border px-1.5 py-3">
+          <NavLink
+            href="/users"
+            label="Users"
+            icon={Users}
+            active={isActive(pathname, "/users")}
+            collapsed={collapsed}
+          />
           <NavLink
             href="/feedback"
             label="Feedback"
