@@ -5,6 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   ArrowUpRight,
   Calendar,
   ChevronRight,
@@ -44,6 +47,30 @@ type StatusFilter = (typeof STATUS_FILTERS)[number]["key"];
 
 const UNASSIGNED = "Unassigned";
 const PRIORITY_ORDER = ["Highest", "High", "Medium", "Low", "Lowest", "None", "—"];
+const STATUS_CATEGORY_ORDER = ["new", "indeterminate", "done", "undefined"];
+
+const SORT_COLUMNS = [
+  { key: "title", label: "Title" },
+  { key: "status", label: "Status" },
+  { key: "priority", label: "Priority" },
+  { key: "assignee", label: "Assignee" },
+  { key: "reporter", label: "Reporter" },
+  { key: "jira", label: "Jira" },
+] as const;
+
+type SortColumn = (typeof SORT_COLUMNS)[number]["key"];
+type SortDirection = "asc" | "desc";
+type SortState = { column: SortColumn; direction: SortDirection };
+
+type SortableRow = {
+  title: string;
+  status: string;
+  statusCategory: string;
+  priority: string;
+  assignee: string | null;
+  reporter: string | null;
+  jiraKey: string | null;
+};
 
 function assigneeLabel(item: { assignee: string | null }): string {
   return item.assignee?.trim() || UNASSIGNED;
@@ -77,6 +104,76 @@ function uniqueSorted(values: string[], preferredOrder?: readonly string[]): str
     if (b === UNASSIGNED) return -1;
     return a.localeCompare(b);
   });
+}
+
+function isBlank(value: string): boolean {
+  const trimmed = value.trim();
+  return trimmed.length === 0 || trimmed === "—" || trimmed === "-";
+}
+
+function compareText(a: string, b: string): number {
+  return a.localeCompare(b, "en", { sensitivity: "base", numeric: true });
+}
+
+function columnRank(
+  row: SortableRow,
+  column: SortColumn,
+): { missing: boolean; rank?: number; text?: string } {
+  switch (column) {
+    case "title":
+      return { missing: isBlank(row.title), text: row.title };
+    case "status": {
+      const index = STATUS_CATEGORY_ORDER.indexOf(row.statusCategory);
+      return {
+        missing: isBlank(row.status),
+        rank: index === -1 ? STATUS_CATEGORY_ORDER.length : index,
+        text: row.status,
+      };
+    }
+    case "priority": {
+      const index = PRIORITY_ORDER.indexOf(row.priority);
+      return {
+        missing: isBlank(row.priority),
+        rank: index === -1 ? PRIORITY_ORDER.length : index,
+      };
+    }
+    case "assignee": {
+      const label = assigneeLabel(row);
+      return { missing: label === UNASSIGNED, text: label };
+    }
+    case "reporter": {
+      const label = row.reporter?.trim() ?? "";
+      return { missing: isBlank(label), text: label };
+    }
+    case "jira": {
+      const key = row.jiraKey?.trim() ?? "";
+      return { missing: isBlank(key), text: key };
+    }
+  }
+}
+
+function compareRows(
+  a: SortableRow,
+  b: SortableRow,
+  column: SortColumn,
+  direction: SortDirection,
+): number {
+  const left = columnRank(a, column);
+  const right = columnRank(b, column);
+  if (left.missing !== right.missing) return left.missing ? 1 : -1;
+
+  let result = 0;
+  if (
+    left.rank !== undefined &&
+    right.rank !== undefined &&
+    left.rank !== right.rank
+  ) {
+    result = left.rank - right.rank;
+  } else if (left.text !== undefined && right.text !== undefined) {
+    result = compareText(left.text, right.text);
+  }
+  if (result === 0) return 0;
+  return direction === "asc" ? result : -result;
 }
 
 function formatDate(value: string | null): string {
@@ -372,6 +469,55 @@ function FastTrackDrawer({
   );
 }
 
+function SortableHeader({
+  label,
+  column,
+  sort,
+  onSort,
+}: {
+  label: string;
+  column: SortColumn;
+  sort: SortState | null;
+  onSort: (column: SortColumn) => void;
+}) {
+  const active = sort?.column === column;
+  const nextDirection =
+    active && sort.direction === "asc" ? "descending" : "ascending";
+  return (
+    <th
+      aria-sort={
+        active ? (sort.direction === "asc" ? "ascending" : "descending") : "none"
+      }
+      className="px-4 py-3 font-display text-[10px] font-bold uppercase tracking-wide"
+    >
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        aria-label={
+          active
+            ? `${label}, sorted ${sort.direction === "asc" ? "ascending" : "descending"}. Activate to sort ${nextDirection}.`
+            : `Sort by ${label}`
+        }
+        className={[
+          "inline-flex w-full items-center gap-1.5 text-left transition-colors",
+          active ? "text-foreground" : "text-muted hover:text-foreground",
+        ].join(" ")}
+      >
+        {label}
+        {active ? (
+          sort.direction === "asc" ? (
+            <ArrowUp className="size-3 shrink-0" aria-hidden />
+          ) : (
+            <ArrowDown className="size-3 shrink-0" aria-hidden />
+          )
+        ) : (
+          <ArrowUpDown className="size-3 shrink-0 opacity-40" aria-hidden />
+        )}
+      </button>
+    </th>
+  );
+}
+
 type Props = {
   items: FastTrackItem[];
   boardUrl: string | null;
@@ -400,6 +546,17 @@ export function FastTrackView({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
   const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortState | null>(null);
+
+  function toggleSort(column: SortColumn) {
+    setSort((current) => {
+      if (current?.column !== column) return { column, direction: "asc" };
+      return {
+        column,
+        direction: current.direction === "asc" ? "desc" : "asc",
+      };
+    });
+  }
 
   const boardItems = useMemo(
     () =>
@@ -503,6 +660,19 @@ export function FastTrackView({
       }),
     [boardItems, statusFilter, priorityFilter, assigneeFilter, filtersActive],
   );
+
+  const sorted = useMemo(() => {
+    if (!sort) return filtered;
+    const compare = (a: SortableRow, b: SortableRow) =>
+      compareRows(a, b, sort.column, sort.direction);
+    return filtered
+      .map((item) =>
+        item.tasks.length < 2
+          ? item
+          : { ...item, tasks: [...item.tasks].sort(compare) },
+      )
+      .sort(compare);
+  }, [filtered, sort]);
 
   const hasDimensionFilters = priorityFilter !== null || assigneeFilter !== null;
   const selectedItem = selection
@@ -721,28 +891,19 @@ export function FastTrackView({
         <table className="w-full min-w-[880px] text-left">
           <thead>
             <tr className="border-b border-border">
-              <th className="px-4 py-3 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                Title
-              </th>
-              <th className="px-4 py-3 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                Status
-              </th>
-              <th className="px-4 py-3 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                Priority
-              </th>
-              <th className="px-4 py-3 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                Assignee
-              </th>
-              <th className="px-4 py-3 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                Reporter
-              </th>
-              <th className="px-4 py-3 font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                Jira
-              </th>
+              {SORT_COLUMNS.map((column) => (
+                <SortableHeader
+                  key={column.key}
+                  label={column.label}
+                  column={column.key}
+                  sort={sort}
+                  onSort={toggleSort}
+                />
+              ))}
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {sorted.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-xs text-muted">
                   {boardItems.length === 0
@@ -751,7 +912,7 @@ export function FastTrackView({
                 </td>
               </tr>
             ) : (
-              filtered.map((item) => {
+              sorted.map((item) => {
                 const tasksOpen =
                   item.tasks.length > 0 && expandedIds.has(item.id);
                 const nestClass = [
