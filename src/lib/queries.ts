@@ -247,6 +247,41 @@ export async function getFastTrackInitiatives(
   return hydrateInitiatives(rows);
 }
 
+/** Fast-Track initiative linked to a Jira issue key. Share links authorize this lookup. */
+export async function getFastTrackInitiativeByJiraKey(
+  jiraKey: string,
+): Promise<InitiativeWithUsers | null> {
+  const key = jiraKey.trim().toUpperCase();
+  if (!key) return null;
+
+  const [row] = await db
+    .select(initiativeSelect)
+    .from(initiatives)
+    .where(
+      and(
+        eq(initiatives.isFastTrack, true),
+        sql`upper(${initiatives.fastTrackJiraKey}) = ${key}`,
+      ),
+    )
+    .limit(1);
+
+  if (!row) return null;
+  const [initiative] = await hydrateInitiatives([row]);
+  return initiative ?? null;
+}
+
+/** Jira keys already represented by a Fast-Track initiative. */
+export async function listFastTrackJiraKeys(): Promise<string[]> {
+  const rows = await db
+    .select({ fastTrackJiraKey: initiatives.fastTrackJiraKey })
+    .from(initiatives)
+    .where(eq(initiatives.isFastTrack, true));
+
+  return rows
+    .map((row) => row.fastTrackJiraKey)
+    .filter((key): key is string => Boolean(key));
+}
+
 export async function getFastTrackRemarks(
   initiativeIds: number[],
 ): Promise<Map<number, string>> {

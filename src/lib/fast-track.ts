@@ -1,15 +1,26 @@
+import { cache } from "react";
 import {
   fastTrackIssueStillExists,
   getFastTrackBoardUrl,
+  getFastTrackIssue,
+  listFastTrackChildIssues,
   listFastTrackIssues,
   type FastTrackJiraIssue,
 } from "@/lib/integrations/jira";
 import { seesAllWorkstreams, type PermissionUser } from "@/lib/permissions";
 import {
+  getFastTrackInitiativeByJiraKey,
   getFastTrackInitiatives,
   getFastTrackRemarks,
+  getInitiativeById,
+  listFastTrackJiraKeys,
   type InitiativeWithUsers,
 } from "@/lib/queries";
+import {
+  verifyFastTrackShareToken,
+  createFastTrackSharePath,
+  type FastTrackShareSubject,
+} from "@/lib/share";
 
 export type FastTrackInitiativeDetails = {
   id: number;
@@ -40,12 +51,18 @@ export type FastTrackTask = {
   url: string | null;
   jiraKey: string | null;
   issueType: string;
+  /** Public path for this item. Null until the server has a stable id. */
+  sharePath: string | null;
 };
 
 export type FastTrackItem = FastTrackTask & {
   isEpic: boolean;
   initiative: FastTrackInitiativeDetails | null;
   tasks: FastTrackTask[];
+};
+
+export type SharedFastTrackItem = FastTrackItem & {
+  parentTitle: string | null;
 };
 
 function toInitiativeDetails(
@@ -66,6 +83,16 @@ function toInitiativeDetails(
   };
 }
 
+function sharePathFor(
+  jiraKey: string | null | undefined,
+  initiativeId?: number,
+): string | null {
+  const key = jiraKey?.trim();
+  if (key) return createFastTrackSharePath({ jiraKey: key });
+  if (initiativeId) return createFastTrackSharePath({ initiativeId });
+  return null;
+}
+
 function toTask(issue: FastTrackJiraIssue): FastTrackTask {
   return {
     id: issue.key,
@@ -82,6 +109,7 @@ function toTask(issue: FastTrackJiraIssue): FastTrackTask {
     url: issue.url,
     jiraKey: issue.key,
     issueType: issue.issueType || "Task",
+    sharePath: sharePathFor(issue.key),
   };
 }
 
@@ -123,6 +151,7 @@ function fromInitiative(
     url: jira?.url ?? item.fastTrackJiraUrl,
     jiraKey: jira?.key ?? item.fastTrackJiraKey,
     issueType: jira?.issueType || (jira?.isEpic ? "Epic" : ""),
+    sharePath: sharePathFor(jira?.key ?? item.fastTrackJiraKey, item.id),
     isEpic: jira?.isEpic ?? false,
     initiative: toInitiativeDetails(item, remark),
     tasks,
@@ -238,3 +267,116 @@ export async function loadFastTrackOverview(
     fetchError,
   };
 }
+
+async function childTasks(
+  parentKey: string | null,
+  hiddenKeys: Set<string>,
+): Promise<FastTrackTask[]> {
+  if (!parentKey) return [];
+  try {
+    const children = await listFastTrackChildIssues(parentKey);
+    const childrenByParent = new Map<string, FastTrackJiraIssue[]>([
+      [parentKey, children],
+    ]);
+    return tasksFor(parentKey, childrenByParent, hiddenKeys);
+  } catch (error) {
+    console.error("Fast-Track child list failed:", error);
+    return [];
+  }
+}
+
+async function withParentTitle(
+  item: FastTrackItem,
+  issue: FastTrackJiraIssue | null,
+): Promise<SharedFastTrackItem> {
+  if (!issue || issue.isEpic || !issue.parentKey) {
+    return { ...item, parentTitle: null };
+  }
+  try {
+    const parent = await getFastTrackIssue(issue.parentKey);
+    return { ...item, parentTitle: parent?.title ?? null };
+  } catch (error) {
+    console.error("Fast-Track parent lookup failed:", error);
+    return { ...item, parentTitle: null };
+  }
+}
+
+async function itemFromSubject(
+  subject: FastTrackShareSubject,
+): Promise<SharedFastTrackItem | null> {
+  if ("initiativeId" in subject) {
+    const initiative = await getInitiativeById(subject.initiativeId);
+    if (!initiative?.isFastTrack) return null;
+
+    const key = initiative.fastTrackJiraKey;
+    const issuePromise = key
+      ? getFastTrackIssue(key).catch((error: unknown) => {
+          console.error("Fast-Track share lookup failed:", error);
+          return null;
+        })
+      : Promise.resolve(null);
+
+    const [issue, remarks, hiddenKeys] = await Promise.all([
+      issuePromise,
+      getFastTrackRemarks([initiative.id]),
+      listFastTrackJiraKeys(),
+    ]);
+    const parentKey = issue?.isEpic ? issue.key : !issue && key ? key : null;
+    const tasks = await childTasks(parentKey, new Set(hiddenKeys));
+    return withParentTitle(
+      fromInitiative(
+        initiative,
+        issue ?? undefined,
+        remarks.get(initiative.id) ?? null,
+        tasks,
+      ),
+      issue,
+    );
+  }
+
+  const issuePromise = getFastTrackIssue(subject.jiraKey);
+  const [initiative, hiddenKeys] = await Promise.all([
+    getFastTrackInitiativeByJiraKey(subject.jiraKey),
+    listFastTrackJiraKeys(),
+  ]);
+
+  let issue: FastTrackJiraIssue | null = null;
+  try {
+    issue = await issuePromise;
+  } catch (error) {
+    if (!initiative) throw error;
+    console.error("Fast-Track share lookup failed:", error);
+  }
+  if (!issue && !initiative) return null;
+
+  const parentKey = issue?.isEpic
+    ? issue.key
+    : !issue && initiative?.fastTrackJiraKey
+      ? initiative.fastTrackJiraKey
+      : null;
+  const tasks = await childTasks(parentKey, new Set(hiddenKeys));
+
+  if (initiative) {
+    const remarks = await getFastTrackRemarks([initiative.id]);
+    return withParentTitle(
+      fromInitiative(
+        initiative,
+        issue ?? undefined,
+        remarks.get(initiative.id) ?? null,
+        tasks,
+      ),
+      issue,
+    );
+  }
+  if (!issue) return null;
+  return withParentTitle(fromJiraOnly(issue, tasks), issue);
+}
+
+/** One Fast-Track item for a public share link. Deduped within a request. */
+export const loadSharedFastTrackItem = cache(
+  async (token: string): Promise<SharedFastTrackItem | null> => {
+    const subject = verifyFastTrackShareToken(token);
+    if (!subject) return null;
+    return itemFromSubject(subject);
+  },
+);

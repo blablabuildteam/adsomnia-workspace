@@ -1398,22 +1398,28 @@ function mapFastTrackIssue(
   };
 }
 
+const FAST_TRACK_ISSUE_FIELDS = [
+  "summary",
+  "status",
+  "priority",
+  "assignee",
+  "reporter",
+  "description",
+  "issuetype",
+  "parent",
+  "customfield_10014",
+  "created",
+  "updated",
+  "duedate",
+];
+
+function isFastTrackIssueKey(issueKey: string): boolean {
+  return projectKeyFromIssueKey(issueKey) === FAST_TRACK_JIRA_PROJECT_KEY;
+}
+
 export async function listFastTrackIssues(): Promise<FastTrackJiraIssue[]> {
   const { client, config } = requireClient(FAST_TRACK_JIRA_INSTANCE);
-  const fields = [
-    "summary",
-    "status",
-    "priority",
-    "assignee",
-    "reporter",
-    "description",
-    "issuetype",
-    "parent",
-    "customfield_10014",
-    "created",
-    "updated",
-    "duedate",
-  ];
+  const fields = FAST_TRACK_ISSUE_FIELDS;
   let issues: { key?: string; fields?: IssueFields }[];
   try {
     issues = await searchIssues(
@@ -1433,6 +1439,47 @@ export async function listFastTrackIssues(): Promise<FastTrackJiraIssue[]> {
   return issues
     .filter((issue) => issue.key)
     .map((issue) => mapFastTrackIssue(issue, config.host));
+}
+
+/** One Fast-Track issue, or null when Jira no longer has it. */
+export async function getFastTrackIssue(
+  issueKey: string,
+): Promise<FastTrackJiraIssue | null> {
+  const key = issueKey.trim().toUpperCase();
+  if (!isFastTrackIssueKey(key)) return null;
+  try {
+    const { client, config } = requireClient(FAST_TRACK_JIRA_INSTANCE);
+    const issue = await client.issues.getIssue({
+      issueIdOrKey: key,
+      fields: FAST_TRACK_ISSUE_FIELDS,
+    });
+    if (!issue.key || !isFastTrackIssueKey(issue.key)) return null;
+    return mapFastTrackIssue(
+      { key: issue.key, fields: (issue.fields ?? {}) as IssueFields },
+      config.host,
+    );
+  } catch (error) {
+    if (isNotFoundError(error) || (isApiError(error) && error.status === 404)) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+/** Tasks nested under a Fast-Track epic. */
+export async function listFastTrackChildIssues(
+  parentKey: string,
+): Promise<FastTrackJiraIssue[]> {
+  const key = parentKey.trim().toUpperCase();
+  if (!isFastTrackIssueKey(key)) return [];
+  const { client, config } = requireClient(FAST_TRACK_JIRA_INSTANCE);
+  const safeKey = key.replace(/"/g, "");
+  const jql = `parent = "${safeKey}" OR "Epic Link" = "${safeKey}" ORDER BY created ASC`;
+  const issues = await searchIssues(client, jql, FAST_TRACK_ISSUE_FIELDS, 200);
+  return issues
+    .filter((issue) => issue.key && isFastTrackIssueKey(issue.key))
+    .map((issue) => mapFastTrackIssue(issue, config.host))
+    .filter((issue) => issue.key !== key && issue.parentKey === key);
 }
 
 /**

@@ -1,9 +1,7 @@
 "use client";
 
-import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { Fragment, useMemo, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowDown,
@@ -21,24 +19,23 @@ import {
 } from "lucide-react";
 import { AddFastTrackModal } from "@/components/fast-track/AddFastTrackModal";
 import { AddNestedFastTrackModal } from "@/components/fast-track/AddNestedFastTrackModal";
+import {
+  FastTrackDetailBody,
+  HoverTip,
+  STATUS_CATEGORY_COLOR,
+  daysUntilDue,
+  dueHoverLabel,
+  formatDueDate,
+  parseIsoDateLocal,
+  StatusBadge,
+} from "@/components/fast-track/FastTrackDetailBody";
+import { ShareButton } from "@/components/initiatives/ShareButton";
 import { BrandTexture } from "@/components/ui/BrandTexture";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import type { FastTrackItem, FastTrackTask } from "@/lib/fast-track";
 
 const hoverTicks =
   "opacity-0 transition-opacity duration-300 group-hover:opacity-100";
-
-const STATUS_CATEGORY_COLOR: Record<string, string> = {
-  new: "#38BDF8",
-  indeterminate: "#E8A07C",
-  done: "#22c55e",
-  undefined: "#A1A1A1",
-};
-
-// Follow the current theme so a literal Jira status of "New" stays visible on
-// both dark and light backgrounds (previously hard-coded to #FFFFFF, which
-// disappeared in light mode).
-const NEW_STATUS_COLOR = "var(--foreground)";
 
 const STATUS_FILTERS = [
   { key: "all", label: "All", color: "" },
@@ -188,95 +185,6 @@ function compareRows(
   return direction === "asc" ? result : -result;
 }
 
-function formatDate(value: string | null): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("en-US", { dateStyle: "medium" });
-}
-
-/**
- * Parse Jira's YYYY-MM-DD `duedate` as a local-midnight date so the label and
- * overdue math don't drift by a timezone.
- */
-function parseIsoDateLocal(iso: string): Date {
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, (m ?? 1) - 1, d ?? 1);
-}
-
-function formatDueDate(iso: string | null): string {
-  if (!iso) return "—";
-  const date = parseIsoDateLocal(iso);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("en-US", { dateStyle: "medium" });
-}
-
-function daysUntilDue(iso: string): number {
-  const target = parseIsoDateLocal(iso).getTime();
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  return Math.round((target - today) / 86_400_000);
-}
-
-function dueHoverLabel(days: number): string {
-  if (days < 0) return `${Math.abs(days)}d overdue`;
-  if (days === 0) return "Due today";
-  if (days === 1) return "Due tomorrow";
-  return `${days}d remaining`;
-}
-
-/**
- * Lightweight hover/focus tooltip rendered into a portal so it isn't clipped
- * by the overview table's `overflow-x-auto` wrapper.
- */
-function HoverTip({
-  label,
-  className,
-  children,
-}: {
-  label: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState<{ top: number; left: number }>({
-    top: 0,
-    left: 0,
-  });
-  const anchorRef = useRef<HTMLSpanElement | null>(null);
-
-  useLayoutEffect(() => {
-    if (!open || !anchorRef.current) return;
-    const rect = anchorRef.current.getBoundingClientRect();
-    setPos({ top: rect.bottom + 6, left: rect.left + rect.width / 2 });
-  }, [open]);
-
-  return (
-    <span
-      ref={anchorRef}
-      className={className}
-      onPointerEnter={() => setOpen(true)}
-      onPointerLeave={() => setOpen(false)}
-      onFocus={() => setOpen(true)}
-      onBlur={() => setOpen(false)}
-    >
-      {children}
-      {open &&
-        typeof document !== "undefined" &&
-        createPortal(
-          <span
-            role="tooltip"
-            className="pointer-events-none fixed z-[90] -translate-x-1/2 whitespace-nowrap border border-border-strong bg-surface-elevated px-2 py-1 font-display text-[10px] font-bold uppercase tracking-wide text-foreground shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
-            style={{ top: pos.top, left: pos.left }}
-          >
-            {label}
-          </span>,
-          document.body,
-        )}
-    </span>
-  );
-}
-
 function DueCell({ dueDate }: { dueDate: string | null }) {
   if (!dueDate) return <span className="text-xs text-muted">—</span>;
   const days = daysUntilDue(dueDate);
@@ -344,65 +252,21 @@ function TaskProgress({
   );
 }
 
-function StatusBadge({
-  status,
-  category,
-}: {
-  status: string;
-  category: string;
-}) {
-  const color =
-    status.trim().toLowerCase() === "new"
-      ? NEW_STATUS_COLOR
-      : STATUS_CATEGORY_COLOR[category] ?? STATUS_CATEGORY_COLOR.undefined;
-  return (
-    <span
-      className="inline-flex items-center border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-      style={{ borderColor: color, color }}
-    >
-      {status}
-    </span>
-  );
-}
-
-function Field({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | null | undefined;
-}) {
-  if (!value?.trim()) return null;
-  return (
-    <div>
-      <p className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-        {label}
-      </p>
-      <p className="mt-1.5 whitespace-pre-wrap text-xs leading-relaxed text-foreground">
-        {value}
-      </p>
-    </div>
-  );
-}
-
 function FastTrackDrawer({
   item,
   parentTitle,
   tasks,
-  canAddTask,
-  onAddTask,
   onOpenTask,
   onClose,
 }: {
   item: FastTrackItem | FastTrackTask;
   parentTitle?: string | null;
   tasks?: FastTrackTask[];
-  canAddTask?: boolean;
-  onAddTask?: () => void;
   onOpenTask?: (taskId: string) => void;
   onClose: () => void;
 }) {
   const initiative = "initiative" in item ? item.initiative : null;
+  const hasActions = Boolean(item.sharePath || item.url);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -434,172 +298,37 @@ function FastTrackDrawer({
           </button>
         </div>
 
-        <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
-          <div className="flex flex-wrap gap-2">
-            <StatusBadge status={item.status} category={item.statusCategory} />
-            <span className="inline-flex items-center border border-border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted">
-              {item.priority}
-            </span>
-          </div>
+        <div className="flex-1 overflow-y-auto px-5 py-5">
+          <FastTrackDetailBody
+            item={item}
+            tasks={tasks}
+            onOpenTask={onOpenTask}
+          />
+        </div>
 
-          <dl className="grid grid-cols-2 gap-4 text-xs">
-            <div>
-              <dt className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                Assignee
-              </dt>
-              <dd className="mt-1 text-foreground">{item.assignee ?? "Unassigned"}</dd>
-            </div>
-            <div>
-              <dt className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                Reporter
-              </dt>
-              <dd className="mt-1 text-foreground">{item.reporter ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                Created
-              </dt>
-              <dd className="mt-1 inline-flex items-center gap-1.5 text-foreground">
-                <Calendar className="size-3.5 text-muted" />
-                {formatDate(item.created)}
-              </dd>
-            </div>
-            <div>
-              <dt className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                Updated
-              </dt>
-              <dd className="mt-1 inline-flex items-center gap-1.5 text-foreground">
-                <Calendar className="size-3.5 text-muted" />
-                {formatDate(item.updated)}
-              </dd>
-            </div>
-            <div>
-              <dt className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                Due
-              </dt>
-              <dd className="mt-1">
-                {item.dueDate ? (
-                  <HoverTip
-                    label={dueHoverLabel(daysUntilDue(item.dueDate))}
-                    className={[
-                      "inline-flex items-center gap-1.5",
-                      daysUntilDue(item.dueDate) < 0
-                        ? "text-danger"
-                        : "text-foreground",
-                    ].join(" ")}
-                  >
-                    <Calendar className="size-3.5 text-muted" />
-                    {formatDueDate(item.dueDate)}
-                  </HoverTip>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 text-foreground">
-                    <Calendar className="size-3.5 text-muted" />
-                    —
-                  </span>
-                )}
-              </dd>
-            </div>
-          </dl>
-
-          {initiative && (
-            <div className="space-y-4 border-t border-border pt-5">
-              <p className="font-display text-[10px] font-bold uppercase tracking-[0.18em] text-bbb">
-                Original initiative
-              </p>
-              <dl className="grid grid-cols-2 gap-4 text-xs">
-                <div>
-                  <dt className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                    Submitter
-                  </dt>
-                  <dd className="mt-1 text-foreground">{initiative.submitter}</dd>
-                </div>
-                <div>
-                  <dt className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                    Sponsor
-                  </dt>
-                  <dd className="mt-1 text-foreground">{initiative.sponsor}</dd>
-                </div>
-              </dl>
-              <Field label="Problem statement" value={initiative.problemStatement} />
-              <Field
-                label="Opportunity / solution"
-                value={initiative.opportunitySolution}
+        {hasActions ? (
+          <div className="space-y-2 border-t border-border px-5 py-4">
+            {item.sharePath ? (
+              <ShareButton
+                path={item.sharePath}
+                fullWidth
+                label="Share link"
               />
-              <Field label="Expected impact" value={initiative.expectedImpact} />
-              <Field label="Target audience" value={initiative.targetAudience} />
-              <Field label="Leadership remark" value={initiative.remark} />
-            </div>
-          )}
-
-          {item.description && !initiative?.problemStatement && (
-            <Field label="Description" value={item.description} />
-          )}
-
-          {tasks && tasks.length > 0 && (
-            <div className="space-y-2 border-t border-border pt-5">
-              <p className="font-display text-[10px] font-bold uppercase tracking-[0.18em] text-bbb">
-                Tasks
-              </p>
-              <ul className="border border-border">
-                {tasks.map((task) => (
-                  <li key={task.id} className="border-b border-border last:border-b-0">
-                    <button
-                      type="button"
-                      onClick={() => onOpenTask?.(task.id)}
-                      className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-hover"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate text-xs font-medium text-foreground">
-                          {task.title}
-                        </span>
-                        <span className="mt-0.5 block font-display text-[10px] font-bold uppercase tracking-wide text-muted">
-                          {task.jiraKey ?? task.issueType}
-                        </span>
-                      </span>
-                      <StatusBadge
-                        status={task.status}
-                        category={task.statusCategory}
-                      />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-2 border-t border-border px-5 py-4">
-          {canAddTask && onAddTask && (
-            <button
-              type="button"
-              onClick={onAddTask}
-              className="inline-flex w-full items-center justify-center gap-2 border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background hover:opacity-90"
-            >
-              <Plus className="size-3.5" />
-              Add task
-            </button>
-          )}
-          {initiative && (
-            <Link
-              href={`/workstreams/${initiative.id}`}
-              className="inline-flex w-full items-center justify-center gap-2 border border-border px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-foreground hover:border-border-strong"
-            >
-              Open workstream
-            </Link>
-          )}
-          {item.url && (
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex w-full items-center justify-center gap-2 border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background hover:opacity-90"
-            >
-              Open in Jira
-              {item.jiraKey ? ` · ${item.jiraKey}` : ""}
-              <ArrowUpRight className="size-3.5" />
-            </a>
-          )}
-        </div>
+            ) : null}
+            {item.url ? (
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex w-full items-center justify-center gap-2 border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background hover:opacity-90"
+              >
+                Open in Jira
+                {item.jiraKey ? ` · ${item.jiraKey}` : ""}
+                <ArrowUpRight className="size-3.5" />
+              </a>
+            ) : null}
+          </div>
+        ) : null}
       </aside>
     </div>
   );
@@ -1287,12 +1016,6 @@ export function FastTrackView({
         <FastTrackDrawer
           item={selectedItem}
           tasks={selectedItem.tasks}
-          canAddTask={canAdd && selectedItem.isEpic && Boolean(selectedItem.jiraKey)}
-          onAddTask={
-            selectedItem.jiraKey
-              ? () => setNestEpicKey(selectedItem.jiraKey)
-              : undefined
-          }
           onOpenTask={(taskId) =>
             setSelection({
               kind: "task",
@@ -1349,6 +1072,7 @@ export function FastTrackView({
                   url: created.url,
                   jiraKey: created.key,
                   issueType: "Task",
+                  sharePath: null,
                 },
               ],
             }));
