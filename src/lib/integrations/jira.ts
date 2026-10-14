@@ -1353,6 +1353,8 @@ export type FastTrackJiraIssue = {
   description: string;
   created: string | null;
   updated: string | null;
+  /** ISO date (YYYY-MM-DD) from Jira `duedate`, if set. */
+  dueDate: string | null;
   url: string;
   issueType: string;
   isEpic: boolean;
@@ -1388,6 +1390,7 @@ function mapFastTrackIssue(
     description: flattenAdf(fields.description),
     created: typeof fields.created === "string" ? fields.created : null,
     updated: typeof fields.updated === "string" ? fields.updated : null,
+    dueDate: asIsoDate(fields.duedate) ?? null,
     url: `${normalizeHost(host)}/browse/${key}`,
     issueType: issueTypeName(fields),
     isEpic: isEpicIssueType(fields),
@@ -1409,6 +1412,7 @@ export async function listFastTrackIssues(): Promise<FastTrackJiraIssue[]> {
     "customfield_10014",
     "created",
     "updated",
+    "duedate",
   ];
   let issues: { key?: string; fields?: IssueFields }[];
   try {

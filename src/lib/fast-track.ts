@@ -35,6 +35,8 @@ export type FastTrackTask = {
   description: string;
   created: string | null;
   updated: string | null;
+  /** ISO date (YYYY-MM-DD) from Jira `duedate`, if set. */
+  dueDate: string | null;
   url: string | null;
   jiraKey: string | null;
   issueType: string;
@@ -76,6 +78,7 @@ function toTask(issue: FastTrackJiraIssue): FastTrackTask {
     description: issue.description,
     created: issue.created,
     updated: issue.updated,
+    dueDate: issue.dueDate,
     url: issue.url,
     jiraKey: issue.key,
     issueType: issue.issueType || "Task",
@@ -116,6 +119,7 @@ function fromInitiative(
     description: jira?.description || item.description || "",
     created: jira?.created ?? item.createdAt.toISOString(),
     updated: jira?.updated ?? item.updatedAt.toISOString(),
+    dueDate: jira?.dueDate ?? null,
     url: jira?.url ?? item.fastTrackJiraUrl,
     jiraKey: jira?.key ?? item.fastTrackJiraKey,
     issueType: jira?.issueType || (jira?.isEpic ? "Epic" : ""),

@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -34,7 +35,10 @@ const STATUS_CATEGORY_COLOR: Record<string, string> = {
   undefined: "#A1A1A1",
 };
 
-const NEW_STATUS_COLOR = "#FFFFFF";
+// Follow the current theme so a literal Jira status of "New" stays visible on
+// both dark and light backgrounds (previously hard-coded to #FFFFFF, which
+// disappeared in light mode).
+const NEW_STATUS_COLOR = "var(--foreground)";
 
 const STATUS_FILTERS = [
   { key: "all", label: "All", color: "" },
@@ -55,6 +59,7 @@ const SORT_COLUMNS = [
   { key: "priority", label: "Priority" },
   { key: "assignee", label: "Assignee" },
   { key: "reporter", label: "Reporter" },
+  { key: "due", label: "Due" },
   { key: "jira", label: "Jira" },
 ] as const;
 
@@ -69,6 +74,7 @@ type SortableRow = {
   priority: string;
   assignee: string | null;
   reporter: string | null;
+  dueDate: string | null;
   jiraKey: string | null;
 };
 
@@ -145,6 +151,12 @@ function columnRank(
       const label = row.reporter?.trim() ?? "";
       return { missing: isBlank(label), text: label };
     }
+    case "due": {
+      const iso = row.dueDate?.trim();
+      if (!iso) return { missing: true };
+      const ms = parseIsoDateLocal(iso).getTime();
+      return { missing: false, rank: ms };
+    }
     case "jira": {
       const key = row.jiraKey?.trim() ?? "";
       return { missing: isBlank(key), text: key };
@@ -181,6 +193,104 @@ function formatDate(value: string | null): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleDateString("en-US", { dateStyle: "medium" });
+}
+
+/**
+ * Parse Jira's YYYY-MM-DD `duedate` as a local-midnight date so the label and
+ * overdue math don't drift by a timezone.
+ */
+function parseIsoDateLocal(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+function formatDueDate(iso: string | null): string {
+  if (!iso) return "—";
+  const date = parseIsoDateLocal(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-US", { dateStyle: "medium" });
+}
+
+function daysUntilDue(iso: string): number {
+  const target = parseIsoDateLocal(iso).getTime();
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return Math.round((target - today) / 86_400_000);
+}
+
+function dueHoverLabel(days: number): string {
+  if (days < 0) return `${Math.abs(days)}d overdue`;
+  if (days === 0) return "Due today";
+  if (days === 1) return "Due tomorrow";
+  return `${days}d remaining`;
+}
+
+/**
+ * Lightweight hover/focus tooltip rendered into a portal so it isn't clipped
+ * by the overview table's `overflow-x-auto` wrapper.
+ */
+function HoverTip({
+  label,
+  className,
+  children,
+}: {
+  label: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number }>({
+    top: 0,
+    left: 0,
+  });
+  const anchorRef = useRef<HTMLSpanElement | null>(null);
+
+  useLayoutEffect(() => {
+    if (!open || !anchorRef.current) return;
+    const rect = anchorRef.current.getBoundingClientRect();
+    setPos({ top: rect.bottom + 6, left: rect.left + rect.width / 2 });
+  }, [open]);
+
+  return (
+    <span
+      ref={anchorRef}
+      className={className}
+      onPointerEnter={() => setOpen(true)}
+      onPointerLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+    >
+      {children}
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <span
+            role="tooltip"
+            className="pointer-events-none fixed z-[90] -translate-x-1/2 whitespace-nowrap border border-border-strong bg-surface-elevated px-2 py-1 font-display text-[10px] font-bold uppercase tracking-wide text-foreground shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
+            style={{ top: pos.top, left: pos.left }}
+          >
+            {label}
+          </span>,
+          document.body,
+        )}
+    </span>
+  );
+}
+
+function DueCell({ dueDate }: { dueDate: string | null }) {
+  if (!dueDate) return <span className="text-xs text-muted">—</span>;
+  const days = daysUntilDue(dueDate);
+  const tone =
+    days < 0 ? "text-danger" : days <= 2 ? "text-[#EAB308]" : "text-foreground";
+  return (
+    <HoverTip
+      label={dueHoverLabel(days)}
+      className={`inline-flex items-center gap-1.5 text-xs ${tone}`}
+    >
+      <Calendar className="size-3 text-muted" />
+      <span className="tabular-nums">{formatDueDate(dueDate)}</span>
+    </HoverTip>
+  );
 }
 
 function countTaskProgress(tasks: { statusCategory: string }[]) {
@@ -361,6 +471,27 @@ function FastTrackDrawer({
               <dd className="mt-1 inline-flex items-center gap-1.5 text-foreground">
                 <Calendar className="size-3.5 text-muted" />
                 {formatDate(item.updated)}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
+                Due
+              </dt>
+              <dd
+                className={[
+                  "mt-1 inline-flex items-center gap-1.5",
+                  item.dueDate && daysUntilDue(item.dueDate) < 0
+                    ? "text-danger"
+                    : "text-foreground",
+                ].join(" ")}
+                title={
+                  item.dueDate
+                    ? dueTooltip(item.dueDate, daysUntilDue(item.dueDate))
+                    : undefined
+                }
+              >
+                <Calendar className="size-3.5 text-muted" />
+                {formatDueDate(item.dueDate)}
               </dd>
             </div>
           </dl>
@@ -694,7 +825,7 @@ export function FastTrackView({
         <BrandTexture variant="hero" />
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-4">
-            <span className="flex size-9 shrink-0 items-center justify-center border border-bbb text-bbb">
+            <span className="flex size-9 shrink-0 items-center justify-center border border-bbb bg-bbb/10 text-bbb">
               <Rocket className="size-4" />
             </span>
             <div className="min-w-0">
@@ -888,7 +1019,7 @@ export function FastTrackView({
       )}
 
       <div className="overflow-x-auto border border-border bg-surface">
-        <table className="w-full min-w-[880px] text-left">
+        <table className="w-full min-w-[1020px] text-left">
           <thead>
             <tr className="border-b border-border">
               {SORT_COLUMNS.map((column) => (
@@ -905,7 +1036,7 @@ export function FastTrackView({
           <tbody>
             {sorted.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-xs text-muted">
+                <td colSpan={7} className="px-4 py-10 text-center text-xs text-muted">
                   {boardItems.length === 0
                     ? "No Fast-Track epics yet."
                     : "No Fast-Track work matches the current filters."}
@@ -1018,6 +1149,9 @@ export function FastTrackView({
                         {item.reporter ?? "—"}
                       </span>
                     </td>
+                    <td className="px-4 py-2.5">
+                      <DueCell dueDate={item.dueDate} />
+                    </td>
                     <td className="px-4 py-3">
                       {item.url && item.jiraKey ? (
                         <a
@@ -1100,6 +1234,11 @@ export function FastTrackView({
                             <User className="size-3 text-muted" />
                             {task.reporter ?? "—"}
                           </span>
+                        </div>
+                      </td>
+                      <td className="p-0">
+                        <div className={`${nestClass} px-4`}>
+                          <DueCell dueDate={task.dueDate} />
                         </div>
                       </td>
                       <td className="p-0">
@@ -1201,6 +1340,7 @@ export function FastTrackView({
                   description: created.description,
                   created: new Date().toISOString(),
                   updated: new Date().toISOString(),
+                  dueDate: null,
                   url: created.url,
                   jiraKey: created.key,
                   issueType: "Task",

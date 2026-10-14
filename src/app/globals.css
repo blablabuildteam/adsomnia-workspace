@@ -497,11 +497,23 @@ html.light .jira-chip {
 
 html.light .brand-texture {
   mix-blend-mode: multiply;
-  filter: grayscale(1) contrast(1.1) brightness(0.72);
+  /* Lift the midtones so the texture reads as a soft wash instead of a
+     grimy smear against white. */
+  filter: grayscale(1) contrast(0.95) brightness(1.02);
 }
 
 html.light .brand-texture--hero {
-  opacity: 0.16;
+  opacity: 0.1;
+  /* Replace the dark-ending internal ramp (ends at #000000, which multiplies
+     to black against a white body) with a gentle gray fade so the hero reads
+     as atmosphere rather than a muddy band. */
+  background-image: linear-gradient(
+      to bottom,
+      #ffffff 0%,
+      #d4d4d4 55%,
+      #9a9a9a 96%
+    ),
+    url("/brand/texture.jpg");
 }
 
 html.light .brand-texture--page {
