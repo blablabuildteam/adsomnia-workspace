@@ -58,6 +58,9 @@ const DEFAULT_ALLOWED_GOOGLE_DOMAINS = [
   "godai.nl",
 ] as const;
 
+/** Individual accounts outside the domain list. GOOGLE_ALLOWED_EMAILS is unioned in. */
+const DEFAULT_ALLOWED_GOOGLE_EMAILS = ["merijn@mediamailings.com"] as const;
+
 /**
  * Known leadership emails, including Godai aliases of Adsomnia admins.
  * LOGIN_*_EMAIL env values are unioned in (comma-separated lists allowed).
@@ -95,11 +98,25 @@ export function getAllowedGoogleDomains(): string[] {
   return [...new Set([...DEFAULT_ALLOWED_GOOGLE_DOMAINS, ...fromEnv])];
 }
 
+/** Specific Google accounts allowed even when their domain is not. */
+export function getAllowedGoogleEmails(): string[] {
+  const fromEnv = parseCommaSeparated(process.env.GOOGLE_ALLOWED_EMAILS || "");
+  return [...new Set([...DEFAULT_ALLOWED_GOOGLE_EMAILS, ...fromEnv])];
+}
+
 export function isEmailDomainAllowed(email: string): boolean {
   const at = email.lastIndexOf("@");
   if (at === -1) return false;
   const domain = email.slice(at + 1).toLowerCase();
   return getAllowedGoogleDomains().includes(domain);
+}
+
+/** Domain allowlist, or an exact address on the email allowlist. */
+export function isGoogleLoginAllowed(email: string): boolean {
+  const normalized = email.toLowerCase().trim();
+  if (!normalized) return false;
+  if (getAllowedGoogleEmails().includes(normalized)) return true;
+  return isEmailDomainAllowed(normalized);
 }
 
 /**

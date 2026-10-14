@@ -131,7 +131,7 @@ The inbox at `/feedback` is **leadership-only**. Any signed-in workspace user ca
 ### Google Workspace login (current)
 
 - **Continue with Google** on `/login` uses a dedicated OAuth Web client (`GOOGLE_LOGIN_*`) — separate from Drive Picker
-- Callback verifies the Google ID token, checks `GOOGLE_ALLOWED_DOMAINS`, matches or **creates** a `users` row (`team` for new accounts), then calls `createSession()`
+- Callback verifies the Google ID token, checks `GOOGLE_ALLOWED_DOMAINS` or an exact address in `GOOGLE_ALLOWED_EMAILS`, matches or **creates** a `users` row (`team` for new accounts), then calls `createSession()`
 - Non-leadership users without a completed profile are redirected to `/complete-profile` (first name, last name, optional job title) before accessing the workspace
 - Profile details are editable from the sidebar (bottom left)
 - Password login remains available as fallback for seeded accounts
@@ -286,6 +286,7 @@ Each stage gate (Validation → Scoping, Scoping → Go/No-Go, etc.) will have i
 | `GOOGLE_LOGIN_CLIENT_ID` | Server | Google login | Dedicated login OAuth Client ID |
 | `GOOGLE_LOGIN_CLIENT_SECRET` | Server | Google login | Dedicated login OAuth Client secret |
 | `GOOGLE_ALLOWED_DOMAINS` | Server | Google login | Comma-separated allowed email domains (`adsomnia.com`, `blablabuild.com`, `godai.nl`) |
+| `GOOGLE_ALLOWED_EMAILS` | Server | Google login | Comma-separated exact emails allowed outside those domains (`merijn@mediamailings.com`) |
 | `JIRA_ADSOMNIA_HOST` | Server | Jira | Adsomnia Jira Cloud host (connect first) |
 | `JIRA_ADSOMNIA_EMAIL` | Server | Jira | Service/admin email for Adsomnia API token |
 | `JIRA_ADSOMNIA_API_TOKEN` | Server | Jira | Adsomnia Atlassian API token |

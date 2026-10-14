@@ -10,7 +10,7 @@ import {
 } from "@/lib/session";
 import {
   exchangeGoogleLoginCode,
-  isEmailDomainAllowed,
+  isGoogleLoginAllowed,
   isGoogleLoginConfigured,
   isLeadershipEmail,
   type GoogleLoginProfile,
@@ -76,7 +76,7 @@ export async function GET(request: Request) {
       return loginErrorRedirect(origin, "google_email_unverified");
     }
 
-    if (!isEmailDomainAllowed(profile.email)) {
+    if (!isGoogleLoginAllowed(profile.email)) {
       return loginErrorRedirect(origin, "google_domain_not_allowed");
     }
 

@@ -14,7 +14,7 @@ const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
   google_missing_code: "Google sign-in returned an incomplete response.",
   google_email_unverified: "Verify your Google email address, then try again.",
   google_domain_not_allowed:
-    "That Google account domain is not allowed for this workspace.",
+    "That Google account is not allowed for this workspace.",
 };
 
 type LoginFormProps = {
