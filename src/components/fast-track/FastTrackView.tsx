@@ -477,21 +477,26 @@ function FastTrackDrawer({
               <dt className="font-display text-[10px] font-bold uppercase tracking-wide text-muted">
                 Due
               </dt>
-              <dd
-                className={[
-                  "mt-1 inline-flex items-center gap-1.5",
-                  item.dueDate && daysUntilDue(item.dueDate) < 0
-                    ? "text-danger"
-                    : "text-foreground",
-                ].join(" ")}
-                title={
-                  item.dueDate
-                    ? dueTooltip(item.dueDate, daysUntilDue(item.dueDate))
-                    : undefined
-                }
-              >
-                <Calendar className="size-3.5 text-muted" />
-                {formatDueDate(item.dueDate)}
+              <dd className="mt-1">
+                {item.dueDate ? (
+                  <HoverTip
+                    label={dueHoverLabel(daysUntilDue(item.dueDate))}
+                    className={[
+                      "inline-flex items-center gap-1.5",
+                      daysUntilDue(item.dueDate) < 0
+                        ? "text-danger"
+                        : "text-foreground",
+                    ].join(" ")}
+                  >
+                    <Calendar className="size-3.5 text-muted" />
+                    {formatDueDate(item.dueDate)}
+                  </HoverTip>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 text-foreground">
+                    <Calendar className="size-3.5 text-muted" />
+                    —
+                  </span>
+                )}
               </dd>
             </div>
           </dl>
