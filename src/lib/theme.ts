@@ -17,3 +17,10 @@ export function parseThemePreference(value: unknown): ThemePreference {
 export function themeCookieMaxAge(): number {
   return 60 * 60 * 24 * 365;
 }
+
+/** Public share links always render in light mode. */
+export function isSharePath(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const path = value.split("?")[0] ?? value;
+  return path === "/share" || path.startsWith("/share/");
+}

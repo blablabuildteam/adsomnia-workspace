@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { Libre_Franklin, Sen } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { getCurrentUser } from "@/lib/session";
-import { THEME_COOKIE, parseThemePreference } from "@/lib/theme";
+import { THEME_COOKIE, isSharePath, parseThemePreference } from "@/lib/theme";
 import "./globals.css";
 
 const sen = Sen({
@@ -29,16 +29,23 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [user, cookieStore] = await Promise.all([getCurrentUser(), cookies()]);
+  const [user, cookieStore, headerStore] = await Promise.all([
+    getCurrentUser(),
+    cookies(),
+    headers(),
+  ]);
   const theme = parseThemePreference(
     user?.themePreference ?? cookieStore.get(THEME_COOKIE)?.value,
   );
+  const documentTheme = isSharePath(headerStore.get("x-pathname"))
+    ? "light"
+    : theme;
 
   return (
     <html
       lang="en"
-      className={`${sen.variable} ${libreFranklin.variable} h-full overflow-x-hidden antialiased${theme === "light" ? " light" : ""}`}
-      style={{ colorScheme: theme }}
+      className={`${sen.variable} ${libreFranklin.variable} h-full overflow-x-hidden antialiased${documentTheme === "light" ? " light" : ""}`}
+      style={{ colorScheme: documentTheme }}
       suppressHydrationWarning
     >
       <body className="flex min-h-full min-w-0 flex-col overflow-x-hidden">
