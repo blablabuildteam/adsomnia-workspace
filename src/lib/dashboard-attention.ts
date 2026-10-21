@@ -14,9 +14,9 @@ function stageName(stageId: string): string {
 
 const EARLY_STAGES = new Set(["idea", "validation", "scoping", "go-nogo"]);
 
-const HIDDEN_DASHBOARD_STATUSES = new Set(["draft", "on-hold", "rejected"]);
+const HIDDEN_DASHBOARD_STATUSES = new Set(["rejected"]);
 
-/** Dashboard surfaces active pipeline work only — not drafts, holds, or rejects. */
+/** Dashboard matches Overview: drafts and holds show, rejects don't. */
 export function visibleOnDashboard(item: InitiativeWithUsers): boolean {
   return !item.archivedAt && !HIDDEN_DASHBOARD_STATUSES.has(item.status);
 }
