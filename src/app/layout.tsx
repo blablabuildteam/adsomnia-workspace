@@ -18,10 +18,21 @@ const libreFranklin = Libre_Franklin({
   weight: ["400", "500", "600", "700"],
 });
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
+
 export const metadata: Metadata = {
+  // Link previews (Slack, WhatsApp) need absolute image URLs; on Vercel,
+  // Next falls back to the deployment URL when no app URL is configured.
+  ...(appUrl ? { metadataBase: new URL(appUrl) } : {}),
   title: "Adsomnia Workspace — Production Framework",
   description:
     "Concept previews for the Adsomnia Workspace System — dashboard, initiative intake, initiative tracking, and the Production Framework process map.",
+  openGraph: {
+    type: "website",
+    siteName: "Adsomnia Workspace",
+    title: "Adsomnia Workspace — Production Framework",
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export default async function RootLayout({
