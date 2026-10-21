@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { refreshProductionOverview } from "@/app/(workspace)/pipeline/production/actions";
 import { AddProductionProjectModal } from "@/components/production/AddProductionProjectModal";
-import { ProductionDetailDrawer } from "@/components/production/ProductionDetailDrawer";
+import { ProductionDetailModal } from "@/components/production/ProductionDetailModal";
 import { ProductionProjectCard } from "@/components/production/ProductionProjectCard";
 import { ProductionTimelineView } from "@/components/production/ProductionTimelineView";
 import { invalidateProductionEpicTaskCache } from "@/components/production/useProductionEpicTasks";
@@ -48,6 +48,8 @@ type Props = {
   canArchive: boolean;
   canAdjustPriority: boolean;
   canAddProject: boolean;
+  /** Public share path per project id. */
+  sharePaths: Record<number, string>;
   initialSelectedId?: number | null;
 };
 
@@ -57,6 +59,7 @@ export function ProductionOverview({
   canArchive,
   canAdjustPriority,
   canAddProject,
+  sharePaths,
   initialSelectedId = null,
 }: Props) {
   const router = useRouter();
@@ -79,11 +82,17 @@ export function ProductionOverview({
   const [addOpen, setAddOpen] = useState(false);
   const [refreshing, startRefresh] = useTransition();
 
+  /** Keeps `?project=` in sync so the open project can be linked directly. */
+  function selectProject(id: number | null) {
+    setSelectedId(id);
+    const url = new URL(window.location.href);
+    if (id == null) url.searchParams.delete("project");
+    else url.searchParams.set("project", String(id));
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+  }
+
   function closeDrawer() {
-    setSelectedId(null);
-    if (initialSelectedId != null) {
-      router.replace("/pipeline/production", { scroll: false });
-    }
+    selectProject(null);
   }
 
   const counts = useMemo(() => {
@@ -357,7 +366,7 @@ export function ProductionOverview({
               >
                 <ProductionProjectCard
                   project={project}
-                  onOpen={setSelectedId}
+                  onOpen={selectProject}
                 />
               </div>
             ))}
@@ -365,13 +374,14 @@ export function ProductionOverview({
         ) : (
           <ProductionTimelineView
             projects={filtered}
-            onOpen={setSelectedId}
+            onOpen={selectProject}
           />
         )}
       </section>
 
-      <ProductionDetailDrawer
+      <ProductionDetailModal
         project={selected}
+        sharePath={selected ? sharePaths[selected.id] : undefined}
         canArchive={canArchive}
         canAdjustPriority={canAdjustPriority}
         canEditTools={canAddProject}
@@ -391,7 +401,7 @@ export function ProductionOverview({
           onCreated={(id) => {
             setAddOpen(false);
             setArchiveView(false);
-            setSelectedId(id);
+            selectProject(id);
             router.refresh();
           }}
         />

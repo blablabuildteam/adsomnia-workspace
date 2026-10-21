@@ -265,6 +265,55 @@ export async function jiraSpaceStillExists(
   }
 }
 
+/** Jira's project search accepts up to 50 keys per request. */
+const PROJECT_SEARCH_KEY_LIMIT = 50;
+
+/**
+ * Batched `jiraSpaceStillExists`: one project search per 50 keys instead of
+ * one request per project. A key Jira does not return is reported as `false`;
+ * keys in a failed request are `null` so callers keep them visible.
+ */
+export async function jiraSpacesStillExist(
+  instance: JiraInstance,
+  projectKeys: string[],
+): Promise<Map<string, boolean | null>> {
+  const unique = [
+    ...new Set(projectKeys.map((key) => key.trim().toUpperCase()).filter(Boolean)),
+  ];
+  const out = new Map<string, boolean | null>();
+  if (unique.length === 0) return out;
+
+  const config = getInstanceConfig(instance);
+  if (!config) {
+    for (const key of unique) out.set(key, null);
+    return out;
+  }
+  const client = createClient(config);
+
+  const chunks: string[][] = [];
+  for (let i = 0; i < unique.length; i += PROJECT_SEARCH_KEY_LIMIT) {
+    chunks.push(unique.slice(i, i + PROJECT_SEARCH_KEY_LIMIT));
+  }
+  await Promise.all(
+    chunks.map(async (keys) => {
+      try {
+        const page = await client.projects.searchProjects({
+          keys,
+          maxResults: PROJECT_SEARCH_KEY_LIMIT,
+          status: ["live", "archived"],
+        });
+        const found = new Set(
+          (page.values ?? []).map((project) => (project.key ?? "").toUpperCase()),
+        );
+        for (const key of keys) out.set(key, found.has(key));
+      } catch {
+        for (const key of keys) out.set(key, null);
+      }
+    }),
+  );
+  return out;
+}
+
 function createClient(config: JiraConfig) {
   return createCloudClient({
     host: normalizeHost(config.host),
@@ -1130,12 +1179,6 @@ function projectKeyFromIssueKey(issueKey: string): string {
   return (dash > 0 ? issueKey.slice(0, dash) : issueKey).toUpperCase();
 }
 
-function jqlProjectInList(projectKeys: string[]): string {
-  return projectKeys
-    .map((key) => `"${key.replace(/"/g, '\\"')}"`)
-    .join(", ");
-}
-
 function mapEpicIssue(
   issue: { key?: string; fields?: IssueFields },
 ): JiraEpicSummary & { progress: JiraEpicTaskProgress } {
@@ -1152,8 +1195,6 @@ function mapEpicIssue(
     progress: emptyProgress(key),
   };
 }
-
-const PROJECT_PROGRESS_CHUNK = 12;
 
 const CHILD_COUNT_FIELDS = ["status", "parent", "customfield_10014"];
 const CHILD_TASK_FIELDS = [
@@ -1180,10 +1221,119 @@ function toEpicTask(
   };
 }
 
+/** Jira's enhanced search returns at most 100 issues per page when fields are requested. */
+const SEARCH_PAGE_SIZE = 100;
+const KEY_SLICE_SIZE = 100;
+const KEY_SLICE_CONCURRENCY = 6;
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const index = next;
+      next += 1;
+      results[index] = await fn(items[index]);
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, worker),
+  );
+  return results;
+}
+
+function issueNumber(issueKey: string | undefined): number {
+  if (!issueKey) return 0;
+  const value = Number.parseInt(issueKey.slice(issueKey.lastIndexOf("-") + 1), 10);
+  return Number.isFinite(value) ? value : 0;
+}
+
 /**
- * One epic search + one child-issue search per Jira site, covering many
- * software projects. Production Overview uses this so adding boards does not
- * multiply Jira round-trips.
+ * Every non-epic issue in one project. Search pages are token-chained, so a
+ * single query pays one round-trip per 100 issues. Splitting by issue-key
+ * range (KEY-1..100, KEY-101..200, ...) lets the slices load in parallel,
+ * keeping big projects at roughly two round-trips.
+ */
+async function searchProjectChildIssues(
+  client: SearchClient,
+  projectKey: string,
+  fields: string[],
+): Promise<{ key?: string; fields?: IssueFields }[]> {
+  const safeKey = projectKey.replace(/"/g, '\\"');
+  const newest = await client.issueSearch.searchAndReconsileIssuesUsingJqlPost({
+    jql: `project = "${safeKey}" ORDER BY key DESC`,
+    maxResults: 1,
+    fields: ["summary"],
+  });
+  const highest = issueNumber(newest.issues?.[0]?.key);
+  if (highest === 0) return [];
+
+  const slices: [number, number][] = [];
+  for (let from = 1; from <= highest; from += KEY_SLICE_SIZE) {
+    slices.push([from, Math.min(from + KEY_SLICE_SIZE - 1, highest)]);
+  }
+  const pages = await mapWithConcurrency(slices, KEY_SLICE_CONCURRENCY, ([from, to]) =>
+    searchIssues(
+      client,
+      `project = "${safeKey}" AND issuetype != Epic AND issuekey >= "${safeKey}-${from}" AND issuekey <= "${safeKey}-${to}" ORDER BY key ASC`,
+      fields,
+      SEARCH_PAGE_SIZE,
+    ),
+  );
+  return pages.flat();
+}
+
+async function loadProjectEpicProgress(
+  client: SearchClient,
+  projectKey: string,
+  includeTasks: boolean,
+): Promise<(JiraEpicSummary & { progress: JiraEpicTaskProgress })[]> {
+  const safeKey = projectKey.replace(/"/g, '\\"');
+  const [epicIssues, childIssues] = await Promise.all([
+    searchIssues(
+      client,
+      `project = "${safeKey}" AND issuetype = Epic ORDER BY created ASC`,
+      ["summary", "status", "duedate", "customfield_10015"],
+      SEARCH_PAGE_SIZE,
+    ),
+    searchProjectChildIssues(
+      client,
+      projectKey,
+      includeTasks ? CHILD_TASK_FIELDS : CHILD_COUNT_FIELDS,
+    ),
+  ]);
+
+  const epics: (JiraEpicSummary & { progress: JiraEpicTaskProgress })[] = [];
+  const byKey = new Map<string, JiraEpicSummary & { progress: JiraEpicTaskProgress }>();
+  for (const issue of epicIssues) {
+    const epic = mapEpicIssue(issue);
+    if (!epic.key) continue;
+    byKey.set(epic.key, epic);
+    epics.push(epic);
+  }
+
+  for (const issue of childIssues) {
+    const fields = issue.fields ?? {};
+    const epicKey = parentEpicKey(fields);
+    if (!epicKey) continue;
+    const epic = byKey.get(epicKey);
+    if (!epic) continue;
+    const category = statusCategoryKey(fields);
+    addStatusCount(epic.progress, category);
+    if (includeTasks) {
+      epic.progress.tasks.push(toEpicTask(issue, category));
+    }
+  }
+  return epics;
+}
+
+/**
+ * Epic progress for several Jira projects on one site. Each project loads in
+ * parallel, so the slowest project sets the wait rather than the sum of all.
  */
 export async function getProjectsEpicProgress(
   instance: JiraInstance,
@@ -1200,12 +1350,7 @@ export async function getProjectsEpicProgress(
         .filter(Boolean),
     ),
   ];
-  const out = new Map<
-    string,
-    (JiraEpicSummary & { progress: JiraEpicTaskProgress })[]
-  >();
-  for (const key of unique) out.set(key, []);
-  if (unique.length === 0) return out;
+  if (unique.length === 0) return new Map();
 
   const config = getInstanceConfig(instance);
   if (!config) {
@@ -1213,52 +1358,13 @@ export async function getProjectsEpicProgress(
   }
   const client = createClient(config);
 
-  for (let i = 0; i < unique.length; i += PROJECT_PROGRESS_CHUNK) {
-    const chunk = unique.slice(i, i + PROJECT_PROGRESS_CHUNK);
-    const inList = jqlProjectInList(chunk);
-    const [epicIssues, childIssues] = await Promise.all([
-      searchIssues(
-        client,
-        `project in (${inList}) AND issuetype = Epic ORDER BY created ASC`,
-        ["summary", "status", "duedate", "customfield_10015"],
-      ),
-      searchIssues(
-        client,
-        `project in (${inList}) AND issuetype != Epic ORDER BY created ASC`,
-        includeTasks ? CHILD_TASK_FIELDS : CHILD_COUNT_FIELDS,
-        200,
-        10,
-      ),
-    ]);
-
-    const byKey = new Map<
-      string,
-      JiraEpicSummary & { progress: JiraEpicTaskProgress }
-    >();
-    for (const issue of epicIssues) {
-      const epic = mapEpicIssue(issue);
-      if (!epic.key) continue;
-      byKey.set(epic.key, epic);
-      const projectKey = projectKeyFromIssueKey(epic.key);
-      const list = out.get(projectKey);
-      if (list) list.push(epic);
-    }
-
-    for (const issue of childIssues) {
-      const fields = issue.fields ?? {};
-      const epicKey = parentEpicKey(fields);
-      if (!epicKey) continue;
-      const epic = byKey.get(epicKey);
-      if (!epic) continue;
-      const category = statusCategoryKey(fields);
-      addStatusCount(epic.progress, category);
-      if (includeTasks) {
-        epic.progress.tasks.push(toEpicTask(issue, category));
-      }
-    }
-  }
-
-  return out;
+  const entries = await Promise.all(
+    unique.map(
+      async (key) =>
+        [key, await loadProjectEpicProgress(client, key, includeTasks)] as const,
+    ),
+  );
+  return new Map(entries);
 }
 
 /**
@@ -1276,13 +1382,10 @@ export async function getProjectEpicTasks(
   }
 
   const client = createClient(config);
-  const safeKey = projectKey.replace(/"/g, '\\"');
-  const childIssues = await searchIssues(
+  const childIssues = await searchProjectChildIssues(
     client,
-    `project = "${safeKey}" AND issuetype != Epic ORDER BY created ASC`,
+    projectKey,
     CHILD_TASK_FIELDS,
-    200,
-    10,
   );
 
   const byEpic = new Map<string, JiraEpicTask[]>();

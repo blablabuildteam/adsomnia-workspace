@@ -270,46 +270,41 @@ export function ProductionDetailModal({
     </form>
   );
 
-  const actions = (
-    <>
-      {!project.addedManually && (
-        <Link
-          href={`/workstreams/${project.id}`}
-          className="mt-5 inline-flex w-full items-center justify-center gap-2 border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90"
-        >
-          Open full workstream
-          <ArrowUpRight className="size-3.5" />
-        </Link>
+  const actions = !project.addedManually && (
+    <Link
+      href={`/workstreams/${project.id}`}
+      className="mt-5 inline-flex w-full items-center justify-center gap-2 border border-foreground bg-foreground px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-background transition-opacity hover:opacity-90"
+    >
+      Open full workstream
+      <ArrowUpRight className="size-3.5" />
+    </Link>
+  );
+
+  const archiveButton = canArchive && (
+    <button
+      type="button"
+      onClick={() => (archived ? runArchive(false) : setConfirmArchive(true))}
+      disabled={archiving}
+      title={archiveError ?? undefined}
+      className={[
+        "inline-flex shrink-0 items-center gap-2 border px-3 py-2 font-display text-[10px] font-bold uppercase tracking-wide transition-colors disabled:opacity-50",
+        archiveError
+          ? "border-danger text-danger"
+          : "border-border text-muted hover:border-foreground hover:text-foreground",
+      ].join(" ")}
+    >
+      {archived ? (
+        <>
+          <ArchiveRestore className="size-4" />
+          {archiving ? "Restoring…" : "Restore"}
+        </>
+      ) : (
+        <>
+          <Archive className="size-4" />
+          Archive
+        </>
       )}
-      {canArchive && (
-        <button
-          type="button"
-          onClick={() =>
-            archived ? runArchive(false) : setConfirmArchive(true)
-          }
-          disabled={archiving}
-          className={[
-            "inline-flex w-full items-center justify-center gap-2 border border-border px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-muted transition-colors hover:border-foreground hover:text-foreground disabled:opacity-50",
-            project.addedManually ? "mt-5" : "mt-2",
-          ].join(" ")}
-        >
-          {archived ? (
-            <>
-              <ArchiveRestore className="size-3.5" />
-              {archiving ? "Restoring…" : "Restore"}
-            </>
-          ) : (
-            <>
-              <Archive className="size-3.5" />
-              Archive project
-            </>
-          )}
-        </button>
-      )}
-      {archiveError && (
-        <p className="mt-2 text-[12px] text-danger">{archiveError}</p>
-      )}
-    </>
+    </button>
   );
 
   return (
@@ -321,7 +316,7 @@ export function ProductionDetailModal({
         onClick={onClose}
       />
       <div
-        className="workspace-content relative z-10 flex h-full w-full max-w-6xl flex-col border border-border-strong bg-surface shadow-[0_16px_48px_rgba(0,0,0,0.8)] animate-fade-in sm:h-auto sm:max-h-full"
+        className="workspace-content relative z-10 flex h-full w-full max-w-7xl flex-col border border-border-strong bg-surface shadow-[0_16px_48px_rgba(0,0,0,0.8)] animate-fade-in sm:h-auto sm:max-h-full"
         role="dialog"
         aria-modal="true"
         aria-labelledby="production-detail-title"
@@ -350,6 +345,7 @@ export function ProductionDetailModal({
           titleId="production-detail-title"
           headerActions={
             <>
+              {archiveButton}
               {sharePath && <ShareButton path={sharePath} />}
               <button
                 type="button"
@@ -390,6 +386,9 @@ export function ProductionDetailModal({
           {project.title} will move to On Hold in Production & Reporting. You
           can restore it later.
         </p>
+        {archiveError && (
+          <p className="mt-3 text-[12px] text-danger">{archiveError}</p>
+        )}
       </Modal>
     </div>
   );

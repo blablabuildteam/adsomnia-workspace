@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { ProductionOverview } from "@/components/production/ProductionOverview";
 import { getProductionOverview } from "@/lib/production/load";
+import { createProductionSharePath } from "@/lib/share";
 import {
   canAddProductionProject,
   canAdjustProductionPriority,
@@ -25,6 +26,12 @@ export default async function PipelineProductionPage({
   ]);
   const parsed = Number.parseInt(params.project ?? "", 10);
   const initialSelectedId = Number.isFinite(parsed) ? parsed : null;
+  const sharePaths = Object.fromEntries(
+    [...data.active, ...data.archived].map((project) => [
+      project.id,
+      createProductionSharePath(project.id),
+    ]),
+  );
 
   return (
     <ProductionOverview
@@ -33,6 +40,7 @@ export default async function PipelineProductionPage({
       canArchive={Boolean(user && canManageOnboarding(user))}
       canAdjustPriority={Boolean(user && canAdjustProductionPriority(user))}
       canAddProject={Boolean(user && canAddProductionProject(user))}
+      sharePaths={sharePaths}
       initialSelectedId={initialSelectedId}
     />
   );

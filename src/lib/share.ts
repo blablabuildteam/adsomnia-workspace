@@ -14,6 +14,34 @@ export function createSharePath(initiativeId: number): string {
   return `/share/${initiativeId}.${hmacFor(initiativeId)}`;
 }
 
+function hmacForProduction(initiativeId: number): string {
+  return createHmac("sha256", SECRET)
+    .update(`production:${initiativeId}`)
+    .digest("base64url");
+}
+
+/** Unguessable public path for a Production project detail view. */
+export function createProductionSharePath(initiativeId: number): string {
+  return `/share/production/${initiativeId}.${hmacForProduction(initiativeId)}`;
+}
+
+/** Returns the initiative id when the Production share token is valid. */
+export function verifyProductionShareToken(token: string): number | null {
+  const dot = token.lastIndexOf(".");
+  if (dot <= 0) return null;
+
+  const id = Number.parseInt(token.slice(0, dot), 10);
+  const mac = token.slice(dot + 1);
+  if (!Number.isFinite(id) || id < 1 || !mac) return null;
+
+  const expected = hmacForProduction(id);
+  const given = Buffer.from(mac);
+  const want = Buffer.from(expected);
+  if (given.length !== want.length) return null;
+  if (!timingSafeEqual(given, want)) return null;
+  return id;
+}
+
 export type FastTrackShareSubject =
   | { jiraKey: string }
   | { initiativeId: number };
