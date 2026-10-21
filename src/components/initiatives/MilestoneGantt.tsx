@@ -331,7 +331,8 @@ export function MilestoneGantt({
                 const left = ((start - minTime) / range) * 100;
                 const width = Math.max(((end - start) / range) * 100, 1.5);
                 const color = milestoneColor(m, i);
-                const label = m.milestone || m.epic || `Milestone ${i + 1}`;
+                const label =
+                  m.epic.trim() || m.milestone.trim() || `Milestone ${i + 1}`;
 
                 return (
                   <div key={m.id} className="relative flex h-7 items-center">
@@ -443,7 +444,7 @@ export function MilestoneGantt({
                   className="flex items-center gap-1.5 text-[10px] text-muted"
                 >
                   <span className="size-2" style={{ backgroundColor: c }} />
-                  {m.milestone.trim() || m.epic.trim() || `Milestone ${i + 1}`}
+                  {m.epic.trim() || m.milestone.trim() || `Milestone ${i + 1}`}
                 </span>
               );
             })}
