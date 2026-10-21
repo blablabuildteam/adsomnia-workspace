@@ -1,6 +1,7 @@
 "use client";
 
-import { ListTree } from "lucide-react";
+import { useState } from "react";
+import { ListTree, XCircle } from "lucide-react";
 import { STAGES, getStageColor } from "@/data/workflow";
 import { WorkspaceChip } from "@/components/WorkspaceChip";
 import { BrandTexture } from "@/components/ui/BrandTexture";
@@ -14,6 +15,10 @@ type OverviewProps = {
 };
 
 export function OverviewView({ initiatives }: OverviewProps) {
+  const [showRejected, setShowRejected] = useState(false);
+  const rejectedCount = initiatives.filter(
+    (item) => item.status === "rejected" && !item.archivedAt,
+  ).length;
   const totalActive = initiatives.filter(
     (item) =>
       item.status !== "rejected" && item.status !== "on-hold" && !item.archivedAt,
@@ -70,9 +75,28 @@ export function OverviewView({ initiatives }: OverviewProps) {
             </div>
           );
         })}
+        <button
+          type="button"
+          onClick={() => setShowRejected((value) => !value)}
+          aria-pressed={showRejected}
+          className={[
+            "ml-auto inline-flex items-center gap-1.5 border px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-wide transition-colors",
+            showRejected
+              ? "border-foreground bg-foreground text-background"
+              : "border-border text-muted hover:text-foreground",
+          ].join(" ")}
+        >
+          <XCircle className="size-3.5" />
+          Show Rejected
+          <span className="tabular-nums opacity-60">{rejectedCount}</span>
+        </button>
       </div>
 
-      <PhaseList initiatives={initiatives} className="flex-1" />
+      <PhaseList
+        initiatives={initiatives}
+        showRejected={showRejected}
+        className="flex-1"
+      />
 
       <div className="mt-4 border-t border-border pt-4">
         <p className="text-xs text-muted">

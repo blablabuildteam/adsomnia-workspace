@@ -37,7 +37,9 @@ function WorkstreamRow({
           {initiative.submitter.name}
         </p>
       </div>
-      <StatusBadge status={initiative.status} />
+      <StatusBadge
+        status={initiative.archivedAt ? "on-hold" : initiative.status}
+      />
       <ArrowRight className="size-4 shrink-0 text-muted transition-transform group-hover:translate-x-1" />
     </Link>
   );
@@ -118,16 +120,18 @@ function PhaseSection({
 
 type Props = {
   initiatives: InitiativeWithUsers[];
+  showRejected?: boolean;
   className?: string;
 };
 
-export function PhaseList({ initiatives, className }: Props) {
+export function PhaseList({ initiatives, showRejected = false, className }: Props) {
   const itemsByStage = new Map<string, InitiativeWithUsers[]>();
   for (const stage of STAGES) {
     itemsByStage.set(stage.id, []);
   }
   for (const item of initiatives) {
-    if (item.archivedAt) continue;
+    // Archived workstreams are On Hold, so they stay listed in their phase.
+    if (!showRejected && !item.archivedAt && item.status === "rejected") continue;
     itemsByStage.get(item.currentStage)?.push(item);
   }
   for (const items of itemsByStage.values()) {
