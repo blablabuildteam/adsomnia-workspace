@@ -32,6 +32,7 @@ const ACTION_LABELS: Record<string, string> = {
   production_restored: "restored a workstream from On Hold",
   workstream_archived: "archived a workstream to On Hold",
   workstream_restored: "restored a workstream from On Hold",
+  workstream_renamed: "renamed the workstream",
 };
 
 export function formatActivityLabel(action: string): string {

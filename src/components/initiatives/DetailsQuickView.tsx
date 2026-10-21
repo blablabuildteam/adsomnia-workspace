@@ -98,7 +98,7 @@ function Hero({
   );
 }
 
-/** Narrative column — label + up to 3 lines of text. */
+/** Narrative column — label + full text. */
 function Narrative({
   label,
   text,
@@ -112,7 +112,7 @@ function Narrative({
       <span className="font-display text-[9px] font-bold uppercase tracking-[0.25em] text-foreground/30">
         {label}
       </span>
-      <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-foreground/80">
+      <p className="mt-1.5 whitespace-pre-line text-xs leading-relaxed text-foreground/80">
         {text}
       </p>
     </div>
@@ -122,8 +122,10 @@ function Narrative({
 /** Score bars for Speed / Cost / Growth. Falls back to text for legacy notes. */
 function BusinessValueVisual({
   value,
+  className,
 }: {
   value: ValidationData["businessValue"];
+  className?: string;
 }) {
   if (!value) return null;
   if (typeof value === "string") {
@@ -132,7 +134,14 @@ function BusinessValueVisual({
   if (!isBusinessValueData(value) || value.types.length === 0) return null;
 
   return (
-    <div className="min-w-0 py-4 first:pl-0 last:pr-0 sm:px-5">
+    <div
+      className={[
+        "min-w-0 py-4 first:pl-0 last:pr-0 sm:px-5",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <span className="font-display text-[9px] font-bold uppercase tracking-[0.25em] text-foreground/30">
         Business Value
       </span>
@@ -350,10 +359,13 @@ export function DetailsQuickView({
   ).length;
   const hasValidationSnapshot =
     hasValidation && !hasScoping && validationSnapshotCount > 0;
+  // Score bars sit in the stats row above so the narrative keeps its full copy.
+  const showValueInStats =
+    hasBusinessValueVisual && (hasValidationSnapshot || hasScoping);
   const narrativeCount = [
     initiative.problemStatement,
     solutionText,
-    hasBusinessValueVisual || impactText,
+    !showValueInStats && (hasBusinessValueVisual || impactText),
     audience,
   ].filter(Boolean).length;
 
@@ -378,11 +390,17 @@ export function DetailsQuickView({
         <div
           className={[
             "grid divide-y divide-foreground/10 border-t border-foreground/10 sm:divide-y-0 sm:divide-x",
-            validationSnapshotCount === 3
-              ? "sm:grid-cols-3"
-              : validationSnapshotCount === 2
-                ? "sm:grid-cols-2"
-                : "",
+            showValueInStats
+              ? validationSnapshotCount === 3
+                ? "sm:grid-cols-2 lg:grid-cols-4"
+                : validationSnapshotCount === 2
+                  ? "sm:grid-cols-3"
+                  : "sm:grid-cols-2"
+              : validationSnapshotCount === 3
+                ? "sm:grid-cols-3"
+                : validationSnapshotCount === 2
+                  ? "sm:grid-cols-2"
+                  : "",
           ].join(" ")}
         >
           {adsomnia && (
@@ -408,12 +426,20 @@ export function DetailsQuickView({
               sub="Lead party"
             />
           )}
+          {showValueInStats && (
+            <BusinessValueVisual value={vd?.businessValue} />
+          )}
         </div>
       )}
 
       {/* Hero stats — from Scoping onward. Consensus priority leads; t-shirt sizing drops out. */}
       {hasScoping && (
-        <div className="grid divide-y divide-foreground/10 border-t border-foreground/10 sm:grid-cols-2 sm:divide-y-0 sm:divide-x lg:grid-cols-4">
+        <div
+          className={[
+            "grid divide-y divide-foreground/10 border-t border-foreground/10 sm:grid-cols-2 sm:divide-y-0 sm:divide-x",
+            showValueInStats ? "lg:grid-cols-6" : "lg:grid-cols-4",
+          ].join(" ")}
+        >
           <Hero
             label="Consensus Priority"
             value={consensus ?? "TBD"}
@@ -463,6 +489,12 @@ export function DetailsQuickView({
               teamCost?.usesAssumedRates ? "assumed rates" : undefined
             }
           />
+          {showValueInStats && (
+            <BusinessValueVisual
+              value={vd?.businessValue}
+              className="sm:col-span-2"
+            />
+          )}
         </div>
       )}
 
@@ -480,7 +512,7 @@ export function DetailsQuickView({
         >
           <Narrative label="Problem" text={initiative.problemStatement} />
           <Narrative label={solutionLabel} text={solutionText} />
-          {hasBusinessValueVisual ? (
+          {showValueInStats ? null : hasBusinessValueVisual ? (
             <BusinessValueVisual value={vd?.businessValue} />
           ) : (
             <Narrative label="Expected Impact" text={impactText} />

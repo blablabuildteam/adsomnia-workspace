@@ -49,6 +49,7 @@ import {
   type OnboardingTaskId,
 } from "@/lib/validation-data";
 import {
+  IDEA_FIELD_LIMITS,
   readIdeaFields,
   validateIdeaFields,
   validateValidationNarratives,
@@ -2594,6 +2595,56 @@ export async function setWorkstreamArchived(
     headline: archived
       ? `archived this workstream to On Hold in ${stageName}`
       : `restored this workstream in ${stageName}`,
+  });
+
+  revalidatePath(`/workstreams/${initiativeId}`);
+  for (const path of ARCHIVE_PATHS) revalidatePath(path);
+  return { success: true };
+}
+
+/** Leadership-only rename; the title shows everywhere the workstream is listed. */
+export async function renameWorkstream(
+  initiativeId: number,
+  rawTitle: string,
+): Promise<ArchiveWorkstreamResult> {
+  const user = await getCurrentUser();
+  if (!user || !canApprove(user)) {
+    return { error: "Only leadership can rename a workstream." };
+  }
+
+  const title = rawTitle.replace(/\s+/g, " ").trim();
+  if (!title) return { error: "Title can't be empty." };
+  if (title.length > IDEA_FIELD_LIMITS.title.max) {
+    return {
+      error: `Title can be at most ${IDEA_FIELD_LIMITS.title.max} characters.`,
+    };
+  }
+
+  const [row] = await db
+    .select({
+      id: initiatives.id,
+      title: initiatives.title,
+      submitterId: initiatives.submitterId,
+    })
+    .from(initiatives)
+    .where(eq(initiatives.id, initiativeId))
+    .limit(1);
+
+  if (!row || !canViewInitiative(user, row)) {
+    return { error: "Workstream not found." };
+  }
+  if (row.title === title) return { success: true };
+
+  await db
+    .update(initiatives)
+    .set({ title, updatedAt: new Date() })
+    .where(eq(initiatives.id, initiativeId));
+
+  await db.insert(activityLog).values({
+    initiativeId,
+    userId: user.id,
+    action: "workstream_renamed",
+    details: { from: row.title, to: title, by: user.name },
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);

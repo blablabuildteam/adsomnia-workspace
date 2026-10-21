@@ -33,6 +33,7 @@ import type { WorkstreamAccessPanel } from "@/lib/workstream-access";
 import { CurrentPhaseBar } from "./CurrentPhaseBar";
 import { FloatingDetailBar } from "./FloatingDetailBar";
 import { ArchiveWorkstreamButton } from "./ArchiveWorkstreamButton";
+import { EditableWorkstreamTitle } from "./EditableWorkstreamTitle";
 import {
   createDefaultOnboardingData,
   getOnboardingProgress,
@@ -479,9 +480,11 @@ export function InitiativeDetailView({
               <DownloadPdfButton />
             </div>
           </div>
-          <h1 className="font-display mt-4 text-3xl font-extrabold uppercase leading-tight tracking-tight sm:text-4xl">
-            {initiative.title}
-          </h1>
+          <EditableWorkstreamTitle
+            initiativeId={initiative.id}
+            title={initiative.title}
+            canEdit={canUserApprove && !shareToken}
+          />
           {initiative.archivedAt && (
             <p
               className="mt-4 border px-4 py-3 font-display text-[11px] font-bold uppercase tracking-wide"

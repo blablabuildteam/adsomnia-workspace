@@ -32,6 +32,7 @@ import {
   isBusinessValueComplete,
   isBusinessValueData,
   parseImpactScore,
+  PRIORITY_META,
   type ValidationData,
 } from "@/lib/validation-data";
 
@@ -324,7 +325,10 @@ function ValidationCard({ item, hasFeedback }: { item: InitiativeWithUsers; hasF
                 </span>
               ) : null}
               {vd?.priority ? (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-muted">
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-muted"
+                  style={{ color: PRIORITY_META[vd.priority]?.color }}
+                >
                   <Flag className="size-3" />
                   {vd.priority}
                 </span>
@@ -553,7 +557,9 @@ export function ValidationStageView({ initiatives, feedbackIds = [] }: Props) {
                       : "border-border text-muted hover:border-foreground hover:text-foreground",
                   ].join(" ")}
                 >
-                  {priority}
+                  <span style={{ color: PRIORITY_META[priority]?.color }}>
+                    {priority}
+                  </span>
                   <span
                     className={[
                       "ml-1.5 tabular-nums",
