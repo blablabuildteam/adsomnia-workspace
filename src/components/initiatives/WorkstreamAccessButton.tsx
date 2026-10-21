@@ -166,6 +166,28 @@ export function WorkstreamAccessButton({
     });
   }
 
+  function setOwnerLevel(owner: WorkstreamAccessEntry, level: WorkstreamAccessLevel) {
+    setError(null);
+    const previousEntries = entries;
+    const nextLevel = level === "edit" ? "edit" : (owner.defaultLevel ?? "view");
+    setEntries((current) =>
+      current.map((entry) =>
+        entry.userId === owner.userId ? { ...entry, level: nextLevel } : entry,
+      ),
+    );
+
+    startTransition(async () => {
+      const result =
+        level === "edit"
+          ? await grantWorkstreamAccess(initiativeId, owner.userId, "edit")
+          : await removeWorkstreamAccess(initiativeId, owner.userId);
+      if (result.error) {
+        setEntries(previousEntries);
+        setError(result.error);
+      }
+    });
+  }
+
   function removeGrant(userId: string) {
     setError(null);
     const removed = entries.find((entry) => entry.userId === userId);
@@ -290,6 +312,17 @@ export function WorkstreamAccessButton({
                     >
                       <X className="size-3.5" />
                     </button>
+                  </span>
+                ) : entry.kind === "owner" && entry.defaultLevel ? (
+                  <span className="shrink-0">
+                    <LevelSwitch
+                      level={entry.level}
+                      disabled={
+                        pending ||
+                        (entry.defaultLevel === "edit" && entry.level === "edit")
+                      }
+                      onChange={(level) => setOwnerLevel(entry, level)}
+                    />
                   </span>
                 ) : (
                   <span className="shrink-0 border border-border px-1.5 py-0.5 font-display text-[9px] font-bold uppercase tracking-wide text-muted">

@@ -74,8 +74,8 @@ export async function grantWorkstreamAccess(
 
   const target = await loadTarget(userId);
   if (!target) return { error: "That person does not have a workspace account." };
-  if (target.id === loaded.initiative.submitterId) {
-    return { error: "The owner already has access to this workstream." };
+  if (target.id === loaded.initiative.submitterId && level !== "edit") {
+    return { error: "The owner already has view access to this workstream." };
   }
   if (target.role === "leadership" || target.role === "assistant") {
     return { error: "That account already has access to every workstream." };

@@ -6,7 +6,6 @@ import {
   canEditIdeaDetails,
   canEditScoping,
   canEditValidation,
-  isCreator,
   seesAllWorkstreams,
   type InitiativeAccess,
   type PermissionUser,
@@ -24,6 +23,8 @@ export type WorkstreamAccessEntry = {
   email: string;
   level: WorkstreamAccessLevel;
   kind: WorkstreamAccessKind;
+  /** Owner only: the level the stage rules give them without an edit grant. */
+  defaultLevel?: WorkstreamAccessLevel;
 };
 
 export type WorkstreamAccessCandidate = {
@@ -83,9 +84,10 @@ export async function loadInitiativeAccess(
     currentStage: existing.currentStage ?? "",
     status: existing.status ?? "",
   };
-  if (isCreator(user, access) || seesAllWorkstreams(user)) {
+  if (seesAllWorkstreams(user)) {
     return access;
   }
+  // The owner can also hold an edit grant, which keeps edit rights past Initiative.
   access.memberAccess = await getWorkstreamAccessLevel(user.id, initiativeId);
   return access;
 }
@@ -182,7 +184,17 @@ export async function getWorkstreamAccessPanel(
   const owner = byId.get(initiative.submitterId);
   if (owner) {
     listed.add(owner.id);
-    entries.push(toEntry(owner, contentLevel(owner, access), "owner"));
+    const defaultLevel = contentLevel(owner, access);
+    const ownerGrant = grants.find((grant) => grant.userId === owner.id);
+    const entry = toEntry(
+      owner,
+      ownerGrant?.level === "edit" ? "edit" : defaultLevel,
+      "owner",
+    );
+    if (owner.role !== "leadership" && owner.role !== "assistant") {
+      entry.defaultLevel = defaultLevel;
+    }
+    entries.push(entry);
   }
 
   for (const person of directory) {
