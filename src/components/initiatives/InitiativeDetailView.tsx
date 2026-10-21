@@ -460,22 +460,17 @@ export function InitiativeDetailView({
       <div className="mx-auto w-full max-w-[1200px] px-4 pb-40 pt-4 sm:px-6 sm:pt-6 lg:pb-48">
         {/* Header */}
         <header className={`mb-6 ${ENTER_CLASS}`} style={enterStyle(0)}>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="font-display text-xs font-bold uppercase tracking-[0.2em] text-muted">
-                  {initiative.ticketId}
-                </span>
-                <span
-                  className="font-display text-[10px] font-bold uppercase tracking-wide"
-                  style={{ color: stageInk(initiative.currentStage) }}
-                >
-                  {stage?.name ?? initiative.currentStage}
-                </span>
-              </div>
-              <h1 className="font-display mt-3 text-3xl font-extrabold uppercase leading-tight tracking-tight sm:text-4xl">
-                {initiative.title}
-              </h1>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="font-display text-xs font-bold uppercase tracking-[0.2em] text-muted">
+                {initiative.ticketId}
+              </span>
+              <span
+                className="font-display text-[10px] font-bold uppercase tracking-wide"
+                style={{ color: stageInk(initiative.currentStage) }}
+              >
+                {stage?.name ?? initiative.currentStage}
+              </span>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {accessButton}
@@ -484,6 +479,9 @@ export function InitiativeDetailView({
               <DownloadPdfButton />
             </div>
           </div>
+          <h1 className="font-display mt-4 text-3xl font-extrabold uppercase leading-tight tracking-tight sm:text-4xl">
+            {initiative.title}
+          </h1>
           {initiative.archivedAt && (
             <p
               className="mt-4 border px-4 py-3 font-display text-[11px] font-bold uppercase tracking-wide"
@@ -649,7 +647,13 @@ export function InitiativeDetailView({
                         feedback={displayedValidationDecision}
                         resubmitting={validationAwaitingDecision}
                         canResubmit={validationCanResubmit}
-                        canFastTrack={canUserApprove && !initiative.isFastTrack}
+                        canFastTrack={
+                          canUserApprove &&
+                          !initiative.isFastTrack &&
+                          // The Business Case Review panel offers Fast-Track
+                          // while a decision is pending.
+                          !(validationAwaitingDecision && !validationCanResubmit)
+                        }
                         showFormPrefill={showFormPrefill}
                       />
                     </form>
