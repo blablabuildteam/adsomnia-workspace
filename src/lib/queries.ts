@@ -149,7 +149,7 @@ function ownerVisibility(user: PermissionUser): SQL | undefined {
   );
 }
 
-function whereVisible(
+export function whereVisible(
   user: PermissionUser,
   ...conditions: SQL[]
 ): SQL | undefined {

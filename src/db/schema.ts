@@ -25,6 +25,12 @@ export const workstreamAccessLevelEnum = pgEnum("workstream_access_level", [
   "edit",
 ]);
 
+/** `depends-on` points from the dependent workstream to the one it waits on. */
+export const workstreamLinkKindEnum = pgEnum("workstream_link_kind", [
+  "related",
+  "depends-on",
+]);
+
 export const themePreferenceEnum = pgEnum("theme_preference", [
   "dark",
   "light",
@@ -141,6 +147,39 @@ export const workstreamAccess = pgTable(
       table.userId,
     ),
     userIdIdx: index("workstream_access_user_id_idx").on(table.userId),
+  }),
+);
+
+/**
+ * Two workstreams connected to each other. Each pair is stored once and shows
+ * on both pages. `related` pairs are stored with the lower id first.
+ */
+export const workstreamLinks = pgTable(
+  "workstream_links",
+  {
+    id: serial("id").primaryKey(),
+    fromInitiativeId: integer("from_initiative_id")
+      .notNull()
+      .references(() => initiatives.id, { onDelete: "cascade" }),
+    toInitiativeId: integer("to_initiative_id")
+      .notNull()
+      .references(() => initiatives.id, { onDelete: "cascade" }),
+    kind: workstreamLinkKindEnum("kind").notNull().default("related"),
+    createdById: uuid("created_by_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    pairUnique: unique("workstream_links_pair_unique").on(
+      table.fromInitiativeId,
+      table.toInitiativeId,
+    ),
+    toIdx: index("workstream_links_to_initiative_id_idx").on(
+      table.toInitiativeId,
+    ),
   }),
 );
 

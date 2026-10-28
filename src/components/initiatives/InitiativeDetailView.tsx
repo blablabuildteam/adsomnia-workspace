@@ -36,10 +36,12 @@ import { DownloadPdfButton } from "./DownloadPdfButton";
 import { ShareButton } from "./ShareButton";
 import { WorkstreamAccessButton } from "./WorkstreamAccessButton";
 import type { WorkstreamAccessPanel } from "@/lib/workstream-access";
+import type { WorkstreamLinksPanel } from "@/lib/workstream-links";
 import { CurrentPhaseBar } from "./CurrentPhaseBar";
 import { FloatingDetailBar } from "./FloatingDetailBar";
 import { ArchiveWorkstreamButton } from "./ArchiveWorkstreamButton";
 import { EditableWorkstreamTitle } from "./EditableWorkstreamTitle";
+import { ConnectedWorkstreams, LinkWorkstreamButton } from "./WorkstreamLinks";
 import {
   createDefaultOnboardingData,
   getOnboardingProgress,
@@ -191,6 +193,8 @@ type Props = {
   canContribute?: boolean;
   /** Leadership and assistants can open the access panel. */
   accessPanel?: WorkstreamAccessPanel | null;
+  /** Workstreams linked to this one. Share links omit this. */
+  linksPanel?: WorkstreamLinksPanel | null;
 };
 
 export function InitiativeDetailView({
@@ -216,6 +220,7 @@ export function InitiativeDetailView({
   hasEditGrant = false,
   canContribute = true,
   accessPanel = null,
+  linksPanel = null,
 }: Props) {
   const stage = STAGES.find(
     (s) => s.id === initiative.currentStage,
@@ -433,6 +438,8 @@ export function InitiativeDetailView({
       size="md"
     />
   ) : null;
+  // Anyone who can change the workstream can link it; everyone sees the links.
+  const canLinkWorkstreams = Boolean(linksPanel) && canContribute && !shareToken;
   const archiveActionBar = canArchive && (
     <ArchiveWorkstreamButton
       initiativeId={initiative.id}
@@ -484,6 +491,9 @@ export function InitiativeDetailView({
               </span>
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              {canLinkWorkstreams && (
+                <LinkWorkstreamButton initiativeId={initiative.id} />
+              )}
               {accessButton}
               {archiveAction}
               {sharePath && <ShareButton path={sharePath} />}
@@ -495,6 +505,14 @@ export function InitiativeDetailView({
             title={initiative.title}
             canEdit={canUserApprove && !shareToken}
           />
+          {linksPanel && (
+            <ConnectedWorkstreams
+              initiativeId={initiative.id}
+              links={linksPanel.links}
+              hiddenCount={linksPanel.hiddenCount}
+              canEdit={canLinkWorkstreams}
+            />
+          )}
           {initiative.archivedAt && (
             <p
               className="mt-4 border px-4 py-3 font-display text-[11px] font-bold uppercase tracking-wide"

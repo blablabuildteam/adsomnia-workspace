@@ -35,6 +35,8 @@ const ACTION_LABELS: Record<string, string> = {
   workstream_archived: "archived a workstream to On Hold",
   workstream_restored: "restored a workstream from On Hold",
   workstream_renamed: "renamed the workstream",
+  workstream_linked: "linked a workstream",
+  workstream_unlinked: "unlinked a workstream",
 };
 
 export function formatActivityLabel(action: string): string {

@@ -38,6 +38,7 @@ type Props = {
   fastTrackError?: string | null;
   firstName: string;
   role: string;
+  linkMap?: Record<number, number[]>;
 };
 
 export function LeadershipDashboard({
@@ -47,6 +48,7 @@ export function LeadershipDashboard({
   fastTrackError,
   firstName,
   role,
+  linkMap = {},
 }: Props) {
   const items = rawItems.filter((item) => !item.archivedAt);
   const inProduction = items.filter((item) => item.currentStage === "production");
@@ -136,7 +138,7 @@ export function LeadershipDashboard({
       <section className="mb-10">
         <SectionHeading
           kicker="All phases"
-          trailing={<KanbanFullscreen initiatives={items} />}
+          trailing={<KanbanFullscreen initiatives={items} linkMap={linkMap} />}
         >
           Pipeline
         </SectionHeading>

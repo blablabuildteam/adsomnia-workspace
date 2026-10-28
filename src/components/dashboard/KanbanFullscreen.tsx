@@ -7,9 +7,10 @@ import type { InitiativeWithUsers } from "@/lib/queries";
 
 type Props = {
   initiatives: InitiativeWithUsers[];
+  linkMap?: Record<number, number[]>;
 };
 
-export function KanbanFullscreen({ initiatives }: Props) {
+export function KanbanFullscreen({ initiatives, linkMap }: Props) {
   const [open, setOpen] = useState(false);
   const titleId = useId();
 
@@ -69,7 +70,7 @@ export function KanbanFullscreen({ initiatives }: Props) {
             </button>
           </header>
           <div className="min-h-0 flex-1 overflow-auto px-4 py-4 sm:px-6">
-            <KanbanBoard initiatives={initiatives} className="h-full min-h-[70vh]" />
+            <KanbanBoard initiatives={initiatives} linkMap={linkMap} className="h-full min-h-[70vh]" />
           </div>
         </div>
       ) : null}

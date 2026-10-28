@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
-import { ArrowDown, ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowDown, ArrowRight, Link2 } from "lucide-react";
 import { STAGES, getStageColor } from "@/data/workflow";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import {
@@ -13,35 +16,79 @@ function updatedAtMs(value: Date | string): number {
   return (value instanceof Date ? value : new Date(value)).getTime();
 }
 
+/** Workstream whose connections are highlighted, and the ids connected to it. */
+type LinkFocus = {
+  focusedId: number | null;
+  connectedIds: Set<number>;
+  linkMap: Record<number, number[]>;
+  onToggle: (id: number) => void;
+};
+
 function WorkstreamRow({
   initiative,
+  links,
 }: {
   initiative: InitiativeWithUsers;
+  links: LinkFocus;
 }) {
+  const linkCount = links.linkMap[initiative.id]?.length ?? 0;
+  const focused = links.focusedId === initiative.id;
+  const connected = links.connectedIds.has(initiative.id);
+  const dimmed = links.focusedId != null && !focused && !connected;
+
   return (
-    <Link
-      href={`/workstreams/${initiative.id}`}
-      className="group relative flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-hover"
+    <div
+      className={[
+        "flex items-stretch transition-opacity",
+        dimmed ? "opacity-35" : "",
+        focused || connected ? "bg-hover-strong" : "",
+      ].join(" ")}
     >
-      <CornerTicks className={hoverTicks} />
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-display text-[10px] font-bold uppercase tracking-wider text-muted">
-            {initiative.ticketId}
-          </span>
-          <span className="truncate text-sm font-medium group-hover:text-foreground">
-            {initiative.title}
-          </span>
+      <Link
+        href={`/workstreams/${initiative.id}`}
+        className="group relative flex min-w-0 flex-1 items-center gap-4 px-4 py-3.5 transition-colors hover:bg-hover"
+      >
+        <CornerTicks className={hoverTicks} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-display text-[10px] font-bold uppercase tracking-wider text-muted">
+              {initiative.ticketId}
+            </span>
+            <span className="truncate text-sm font-medium group-hover:text-foreground">
+              {initiative.title}
+            </span>
+          </div>
+          <p className="mt-0.5 truncate text-xs text-muted">
+            {initiative.submitter.name}
+          </p>
         </div>
-        <p className="mt-0.5 truncate text-xs text-muted">
-          {initiative.submitter.name}
-        </p>
-      </div>
-      <StatusBadge
-        status={initiative.archivedAt ? "on-hold" : initiative.status}
-      />
-      <ArrowRight className="size-4 shrink-0 text-muted transition-transform group-hover:translate-x-1" />
-    </Link>
+        <StatusBadge
+          status={initiative.archivedAt ? "on-hold" : initiative.status}
+        />
+        <ArrowRight className="size-4 shrink-0 text-muted transition-transform group-hover:translate-x-1" />
+      </Link>
+      {linkCount > 0 && (
+        <button
+          type="button"
+          aria-pressed={focused}
+          onClick={() => links.onToggle(initiative.id)}
+          title={
+            focused
+              ? "Stop highlighting connected workstreams"
+              : `Highlight ${linkCount} connected workstream${linkCount === 1 ? "" : "s"}`
+          }
+          className={[
+            "flex shrink-0 items-center gap-1 border-l border-border px-3 font-display text-[10px] font-bold tabular-nums transition-colors",
+            focused
+              ? "bg-foreground text-background"
+              : "text-muted hover:text-foreground",
+          ].join(" ")}
+        >
+          <Link2 className="size-3.5" />
+          {linkCount}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -52,6 +99,7 @@ function PhaseSection({
   purpose,
   items,
   accentColor,
+  links,
 }: {
   stageName: string;
   stageNumber: number;
@@ -59,6 +107,7 @@ function PhaseSection({
   purpose: string;
   items: InitiativeWithUsers[];
   accentColor: string;
+  links: LinkFocus;
 }) {
   const href = STAGE_HREF[stageId];
 
@@ -109,7 +158,7 @@ function PhaseSection({
               key={initiative.id}
               className={index > 0 ? "border-t border-border" : undefined}
             >
-              <WorkstreamRow initiative={initiative} />
+              <WorkstreamRow initiative={initiative} links={links} />
             </li>
           ))}
         </ul>
@@ -120,11 +169,36 @@ function PhaseSection({
 
 type Props = {
   initiatives: InitiativeWithUsers[];
+  /** Linked workstream ids per workstream. */
+  linkMap?: Record<number, number[]>;
   showRejected?: boolean;
   className?: string;
 };
 
-export function PhaseList({ initiatives, showRejected = false, className }: Props) {
+export function PhaseList({
+  initiatives,
+  linkMap = {},
+  showRejected = false,
+  className,
+}: Props) {
+  const [focusedId, setFocusedId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (focusedId == null) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setFocusedId(null);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [focusedId]);
+
+  const links: LinkFocus = {
+    focusedId,
+    connectedIds: new Set(focusedId == null ? [] : (linkMap[focusedId] ?? [])),
+    linkMap,
+    onToggle: (id) => setFocusedId((current) => (current === id ? null : id)),
+  };
+
   const itemsByStage = new Map<string, InitiativeWithUsers[]>();
   for (const stage of STAGES) {
     itemsByStage.set(stage.id, []);
@@ -157,6 +231,7 @@ export function PhaseList({ initiatives, showRejected = false, className }: Prop
               purpose={stage.purpose}
               items={items}
               accentColor={accentColor}
+              links={links}
             />
             {last ? null : (
               <div

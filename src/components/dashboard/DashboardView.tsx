@@ -24,6 +24,8 @@ type DashboardProps = {
     role: WorkspaceRole;
   };
   grants?: { initiativeId: number; level: WorkstreamAccessLevel }[];
+  /** Linked workstream ids per workstream, for the Kanban link counts. */
+  linkMap?: Record<number, number[]>;
 };
 
 export function DashboardView({
@@ -34,6 +36,7 @@ export function DashboardView({
   feedbackIds,
   user,
   grants = [],
+  linkMap = {},
 }: DashboardProps) {
   const active = initiatives.filter(visibleOnDashboard);
 
@@ -46,6 +49,7 @@ export function DashboardView({
         fastTrackError={fastTrackError}
         firstName={user.firstName}
         role={user.role}
+        linkMap={linkMap}
       />
     );
   }

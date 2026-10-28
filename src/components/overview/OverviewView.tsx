@@ -12,9 +12,11 @@ import type { InitiativeWithUsers } from "@/lib/queries";
 
 type OverviewProps = {
   initiatives: InitiativeWithUsers[];
+  /** Linked workstream ids per workstream, limited to ones on this board. */
+  linkMap?: Record<number, number[]>;
 };
 
-export function OverviewView({ initiatives }: OverviewProps) {
+export function OverviewView({ initiatives, linkMap = {} }: OverviewProps) {
   const [showRejected, setShowRejected] = useState(false);
   const rejectedCount = initiatives.filter(
     (item) => item.status === "rejected" && !item.archivedAt,
@@ -94,6 +96,7 @@ export function OverviewView({ initiatives }: OverviewProps) {
 
       <PhaseList
         initiatives={initiatives}
+        linkMap={linkMap}
         showRejected={showRejected}
         className="flex-1"
       />
@@ -102,6 +105,7 @@ export function OverviewView({ initiatives }: OverviewProps) {
         <p className="text-xs text-muted">
           <span className="font-bold">Tip:</span> Click a workstream to open
           its detail view. Phase names jump to that stage&apos;s pipeline page.
+          The link count highlights a workstream&apos;s connected workstreams.
         </p>
       </div>
     </div>

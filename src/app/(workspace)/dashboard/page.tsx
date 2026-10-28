@@ -3,6 +3,7 @@ import { loadFastTrackOverview, type FastTrackItem } from "@/lib/fast-track";
 import { withoutDeletedJiraSpaces } from "@/lib/production/load";
 import { seesAllWorkstreams } from "@/lib/permissions";
 import { listUserWorkstreamGrants } from "@/lib/workstream-access";
+import { getWorkstreamLinkMap } from "@/lib/workstream-links";
 import {
   getAllInitiatives,
   getInitiativeIdsWithLatestDecision,
@@ -36,6 +37,9 @@ export default async function DashboardPage() {
     ]);
 
   const items = await withoutDeletedJiraSpaces(rawItems);
+  const linkMap = seesAllWorkstreams(user)
+    ? await getWorkstreamLinkMap(items.map((item) => item.id))
+    : {};
   const feedbackIds = [
     ...ideaFeedback,
     ...validationFeedback,
@@ -54,6 +58,7 @@ export default async function DashboardPage() {
       feedbackIds={feedbackIds}
       user={{ id: user.id, firstName, role: user.role }}
       grants={grants}
+      linkMap={linkMap}
     />
   );
 }

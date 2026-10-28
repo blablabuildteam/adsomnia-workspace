@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Link2 } from "lucide-react";
 import { STAGES, getStageColor } from "@/data/workflow";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import type { InitiativeWithUsers } from "@/lib/queries";
@@ -39,7 +39,13 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function InitiativeCard({ initiative }: { initiative: InitiativeWithUsers }) {
+function InitiativeCard({
+  initiative,
+  linkCount,
+}: {
+  initiative: InitiativeWithUsers;
+  linkCount: number;
+}) {
   return (
     <Link
       href={dashboardItemHref(initiative)}
@@ -55,9 +61,18 @@ function InitiativeCard({ initiative }: { initiative: InitiativeWithUsers }) {
       <p className="mt-2 text-sm font-medium leading-snug group-hover:text-foreground">
         {initiative.title}
       </p>
-      <p className="mt-1.5 text-[11px] text-muted">
-        by {initiative.submitter.name}
-      </p>
+      <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-muted">
+        <span>by {initiative.submitter.name}</span>
+        {linkCount > 0 && (
+          <span
+            className="inline-flex items-center gap-1 font-display text-[10px] font-bold tabular-nums"
+            title={`${linkCount} connected workstream${linkCount === 1 ? "" : "s"}`}
+          >
+            <Link2 className="size-3" />
+            {linkCount}
+          </span>
+        )}
+      </div>
     </Link>
   );
 }
@@ -67,11 +82,13 @@ function StageColumn({
   stageNumber,
   items,
   accentColor,
+  linkMap,
 }: {
   stageName: string;
   stageNumber: number;
   items: InitiativeWithUsers[];
   accentColor: string;
+  linkMap: Record<number, number[]>;
 }) {
   return (
     <div className="flex min-w-[260px] flex-1 flex-col border border-border bg-surface">
@@ -98,7 +115,11 @@ function StageColumn({
       </div>
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
         {items.map((init) => (
-          <InitiativeCard key={init.id} initiative={init} />
+          <InitiativeCard
+            key={init.id}
+            initiative={init}
+            linkCount={linkMap[init.id]?.length ?? 0}
+          />
         ))}
         {items.length === 0 && (
           <p className="py-6 text-center text-xs text-muted">No initiatives</p>
@@ -110,10 +131,12 @@ function StageColumn({
 
 type Props = {
   initiatives: InitiativeWithUsers[];
+  /** Linked workstream ids per workstream. */
+  linkMap?: Record<number, number[]>;
   className?: string;
 };
 
-export function KanbanBoard({ initiatives, className }: Props) {
+export function KanbanBoard({ initiatives, linkMap = {}, className }: Props) {
   const byStage = (stageId: string) =>
     initiatives.filter((item) => item.currentStage === stageId && !item.archivedAt);
 
@@ -128,6 +151,7 @@ export function KanbanBoard({ initiatives, className }: Props) {
               stageNumber={stage.number}
               items={byStage(stage.id)}
               accentColor={accentColor}
+              linkMap={linkMap}
             />
             {idx < STAGES.length - 1 && (
               <div className="flex shrink-0 items-center justify-center px-1">
