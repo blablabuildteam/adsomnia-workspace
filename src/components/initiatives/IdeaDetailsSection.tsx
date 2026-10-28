@@ -70,7 +70,7 @@ const FIELD_META: {
 type Props = {
   initiativeId: number;
   values: IdeaFields;
-  /** Creator or leadership during Initiative; leadership only during Validation. */
+  /** Creator or leadership during Initiative; leadership afterwards (plus edit grants in Validation). */
   canEdit: boolean;
   /** True when the initiative can be resubmitted (after feedback or on hold). */
   canResubmit?: boolean;

@@ -19,8 +19,14 @@ import {
 } from "./GoNoGoApprovalPanel";
 import { WorkstreamChat } from "./WorkstreamChat";
 import { WorkstreamAttachments } from "./WorkstreamAttachments";
-import { ValidationPhaseSection } from "./ValidationPhaseSection";
-import { ScopingPhaseSection } from "./ScopingPhaseSection";
+import {
+  RevisableValidationSection,
+  ValidationPhaseSection,
+} from "./ValidationPhaseSection";
+import {
+  RevisableScopingSection,
+  ScopingPhaseSection,
+} from "./ScopingPhaseSection";
 import { SetupPhaseSection } from "./SetupPhaseSection";
 import { OnboardingPhaseSection } from "./OnboardingPhaseSection";
 import { DetailsQuickView } from "./DetailsQuickView";
@@ -242,7 +248,11 @@ export function InitiativeDetailView({
 
   const showApprovalPanel = ideaAwaitingDecision || !!displayedIdeaDecision;
 
+  // Leadership can reopen a phase the workstream already left to correct it.
+  const canRevisePastPhases = canUserApprove && !shareToken;
+
   const canEditIdea =
+    (initiative.currentStage !== "idea" && canRevisePastPhases) ||
     (initiative.currentStage === "idea" &&
       (initiative.status === "rejected"
         ? isCreator || hasEditGrant
@@ -660,6 +670,12 @@ export function InitiativeDetailView({
                         showFormPrefill={showFormPrefill}
                       />
                     </form>
+                  ) : currentNum > 2 && canRevisePastPhases ? (
+                    <RevisableValidationSection
+                      initiativeId={initiative.id}
+                      data={initiative.validationData}
+                      feedback={displayedValidationDecision}
+                    />
                   ) : (
                     <ValidationPhaseSection
                       initiativeId={initiative.id}
@@ -712,6 +728,13 @@ export function InitiativeDetailView({
                         showFormPrefill={showFormPrefill}
                       />
                     </form>
+                  ) : currentNum > 3 && canRevisePastPhases ? (
+                    <RevisableScopingSection
+                      initiativeId={initiative.id}
+                      data={initiative.scopingData}
+                      validationData={initiative.validationData}
+                      feedback={displayedGoNoGoDecision}
+                    />
                   ) : (
                     <ScopingPhaseSection
                       initiativeId={initiative.id}

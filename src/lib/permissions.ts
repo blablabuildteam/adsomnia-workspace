@@ -12,6 +12,7 @@
  *   is still in Initiative. In Validation they can view the workstream;
  *   leadership fills the business case. An edit grant lets them change the
  *   workstream the same way the creator or leadership can change its content.
+ *   Once a phase is behind the workstream, only leadership may revise it.
  * - `production` — reserved; treated as team for write access today.
  * - Product Feedback inbox and the user directory are leadership-only.
  */
@@ -54,6 +55,32 @@ function isCreatorOrLeadership(
   initiative: Pick<InitiativeAccess, "submitterId">,
 ): boolean {
   return isCreator(user, initiative) || isLeadership(user);
+}
+
+const PHASE_ORDER = [
+  "idea",
+  "validation",
+  "scoping",
+  "go-nogo",
+  "setup",
+  "onboarding",
+  "production",
+] as const;
+
+/** True when the workstream has moved on from `phase`. */
+export function isPhasePast(currentStage: string, phase: string): boolean {
+  const current = PHASE_ORDER.indexOf(currentStage as (typeof PHASE_ORDER)[number]);
+  const target = PHASE_ORDER.indexOf(phase as (typeof PHASE_ORDER)[number]);
+  return current !== -1 && target !== -1 && current > target;
+}
+
+/** Leadership may correct a phase the workstream already left without changing its status. */
+function canRevisePastPhase(
+  user: PermissionUser,
+  initiative: Pick<InitiativeAccess, "currentStage">,
+  phase: string,
+): boolean {
+  return isLeadership(user) && isPhasePast(initiative.currentStage, phase);
 }
 
 function hasEditGrant(
@@ -226,6 +253,7 @@ export function canEditIdeaDetails(
   user: PermissionUser,
   initiative: InitiativeAccess,
 ): boolean {
+  if (canRevisePastPhase(user, initiative, "idea")) return true;
   if (initiative.currentStage === "validation") {
     return isLeadership(user) || hasEditGrant(initiative);
   }
@@ -238,12 +266,13 @@ export function canEditIdeaDetails(
 
 /**
  * Leadership fills and revises the business case. An edit grant can as well.
- * The submitter can view it.
+ * The submitter can view it. After Validation, leadership can still correct it.
  */
 export function canEditValidation(
   user: PermissionUser,
   initiative: InitiativeAccess,
 ): boolean {
+  if (canRevisePastPhase(user, initiative, "validation")) return true;
   if (initiative.currentStage !== "validation") return false;
   return isLeadership(user) || hasEditGrant(initiative);
 }
@@ -277,12 +306,13 @@ export function canResubmitValidation(
 
 /**
  * Scoping is a production-planning phase. Creator or leadership may draft it;
- * other team members can only view.
+ * other team members can only view. After Scoping, leadership can still correct it.
  */
 export function canEditScoping(
   user: PermissionUser,
   initiative: InitiativeAccess,
 ): boolean {
+  if (canRevisePastPhase(user, initiative, "scoping")) return true;
   const inScoping = initiative.currentStage === "scoping";
   const goNoGoFeedback =
     initiative.currentStage === "go-nogo" &&

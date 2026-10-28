@@ -106,7 +106,7 @@ export type IdeaUpdateResult = {
   success?: boolean;
 };
 
-/** Creator or leadership updates initiative details. Validation edits are leadership-only. */
+/** Creator or leadership updates initiative details. After Initiative, leadership-only. */
 export async function updateIdeaDetails(
   initiativeId: number,
   _prev: IdeaUpdateResult,
@@ -130,18 +130,12 @@ export async function updateIdeaDetails(
   if (!existing) {
     return { error: "Initiative not found." };
   }
-  if (existing.currentStage !== "idea" && existing.currentStage !== "validation") {
-    return {
-      error:
-        "Initiative details can only be edited during the Initiative or Validation stage.",
-    };
-  }
 
   if (!canEditIdeaDetails(user, await loadInitiativeAccess(user, initiativeId, existing))) {
     return {
       error:
-        existing.currentStage === "validation"
-          ? "Only leadership can edit initiative details during Validation."
+        existing.currentStage !== "idea"
+          ? "Only leadership can edit initiative details after the Initiative stage."
           : existing.status === "rejected"
             ? "Only the initiative owner can edit a rejected submission."
             : "Only the creator or leadership can edit this initiative.",
@@ -176,8 +170,7 @@ export async function updateIdeaDetails(
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
-  revalidatePath("/dashboard");
-  revalidatePath("/pipeline/initiatives");
+  for (const path of ARCHIVE_PATHS) revalidatePath(path);
   return { success: true };
 }
 
@@ -825,10 +818,11 @@ export async function saveValidationData(
     return {
       error:
         existing.currentStage !== "validation"
-          ? "Validation details can only be edited during the Validation stage."
+          ? "Only leadership can edit Validation after it is complete."
           : "Only leadership can edit this business case.",
     };
   }
+  const revisingPastPhase = existing.currentStage !== "validation";
 
   const data = parseValidationFormData(formData);
   const lengthError = validateValidationNarratives(data, "save");
@@ -838,8 +832,9 @@ export async function saveValidationData(
 
   // Only transition from "approved" to "draft" on first save;
   // preserve on-hold / rejected status until explicit resubmission.
+  // Revising a past phase never touches the status of the live phase.
   const statusUpdate =
-    existing?.status === "approved"
+    !revisingPastPhase && existing?.status === "approved"
       ? { status: "draft" as const }
       : {};
 
@@ -855,13 +850,12 @@ export async function saveValidationData(
   await db.insert(activityLog).values({
     initiativeId,
     userId: user.id,
-    action: "validation_saved",
+    action: revisingPastPhase ? "validation_revised" : "validation_saved",
     details: { updatedBy: user.name },
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
-  revalidatePath("/pipeline/initiatives");
-  revalidatePath("/pipeline/validation");
+  for (const path of ARCHIVE_PATHS) revalidatePath(path);
   return { success: true };
 }
 
@@ -1000,14 +994,22 @@ export async function saveScopingData(
       error:
         existing.currentStage !== "scoping" &&
         existing.currentStage !== "go-nogo"
-          ? "Scoping can only be edited during Scoping or after a Go / No-Go return."
+          ? "Only leadership can edit Scoping after it is complete."
           : "Only the creator or leadership can edit scoping.",
     };
   }
 
   const data = parseScopingFormData(formData);
+  // Revising a past phase never touches the status of the live phase.
+  // A Go / No-Go return (feedback or on hold) reopens Scoping; anything else is a revision.
+  const goNoGoReturn =
+    existing.currentStage === "go-nogo" &&
+    (existing.status === "draft" || existing.status === "on-hold");
+  const revisingPastPhase = existing.currentStage !== "scoping" && !goNoGoReturn;
   const preserveStatus =
-    existing.status === "on-hold" || existing.status === "rejected";
+    revisingPastPhase ||
+    existing.status === "on-hold" ||
+    existing.status === "rejected";
 
   await db
     .update(initiatives)
@@ -1021,13 +1023,12 @@ export async function saveScopingData(
   await db.insert(activityLog).values({
     initiativeId,
     userId: user.id,
-    action: "scoping_saved",
+    action: revisingPastPhase ? "scoping_revised" : "scoping_saved",
     details: { updatedBy: user.name },
   });
 
   revalidatePath(`/workstreams/${initiativeId}`);
-  revalidatePath("/pipeline/scoping");
-  revalidatePath("/pipeline/go-nogo");
+  for (const path of ARCHIVE_PATHS) revalidatePath(path);
   return { success: true };
 }
 

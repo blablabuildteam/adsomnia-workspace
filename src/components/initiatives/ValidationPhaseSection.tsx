@@ -27,6 +27,7 @@ import {
   StickyNote,
   type LucideIcon,
 } from "lucide-react";
+import { PhaseEditButton, PhaseRevisionActions } from "./PhaseRevision";
 import {
   saveValidationData,
   submitValidationForApproval,
@@ -209,9 +210,11 @@ function FieldLabel({
 function BusinessCaseHeader({
   onPrefill,
   showFormPrefill = false,
+  onEdit,
 }: {
   onPrefill?: () => void;
   showFormPrefill?: boolean;
+  onEdit?: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3">
@@ -236,6 +239,7 @@ function BusinessCaseHeader({
           <FlaskConical className="size-3.5" />
         </button>
       )}
+      {onEdit && <PhaseEditButton onClick={onEdit} />}
     </div>
   );
 }
@@ -316,7 +320,39 @@ type Props = {
   /** Leadership can send the workstream to Fast-Track from the draft footer. */
   canFastTrack?: boolean;
   showFormPrefill?: boolean;
+  /** Read-only view shows an Edit button that reopens the finished phase. */
+  onRevise?: () => void;
+  /** Reopened past phase: Save Changes and Cancel only. */
+  onRevisionDone?: () => void;
 };
+
+/**
+ * Validation after the workstream moved on: read-only until leadership hits
+ * Edit, then a save-only form that leaves the live phase's status alone.
+ */
+export function RevisableValidationSection(
+  props: Omit<Props, "readOnly" | "onRevise" | "onRevisionDone">,
+) {
+  const [revising, setRevising] = useState(false);
+  if (!revising) {
+    return (
+      <ValidationPhaseSection
+        {...props}
+        readOnly
+        onRevise={() => setRevising(true)}
+      />
+    );
+  }
+  return (
+    <form>
+      <ValidationPhaseSection
+        {...props}
+        feedback={null}
+        onRevisionDone={() => setRevising(false)}
+      />
+    </form>
+  );
+}
 
 function getValidationGaps(input: {
   businessValueTypes: BusinessValueType[];
@@ -405,7 +441,10 @@ export function ValidationPhaseSection({
   canResubmit = false,
   canFastTrack = false,
   showFormPrefill = false,
+  onRevise,
+  onRevisionDone,
 }: Props) {
+  const revising = onRevisionDone != null;
   const boundSave = saveValidationData.bind(null, initiativeId);
   const boundSubmit = submitValidationForApproval.bind(null, initiativeId);
   const boundResubmit = resubmitValidation.bind(null, initiativeId);
@@ -429,6 +468,10 @@ export function ValidationPhaseSection({
     fastTrackState.error;
   const saved = saveState.success;
   const [submissionUpdated, setSubmissionUpdated] = useState(false);
+
+  useEffect(() => {
+    if (saveState.success) onRevisionDone?.();
+  }, [saveState, onRevisionDone]);
 
   useEffect(() => {
     if (submitState.success && resubmitting) {
@@ -532,7 +575,7 @@ export function ValidationPhaseSection({
   if (readOnly) {
     return (
       <>
-        <BusinessCaseHeader />
+        <BusinessCaseHeader onEdit={onRevise} />
         <ValidationReadOnly data={data} feedback={feedback} />
       </>
     );
@@ -879,6 +922,15 @@ export function ValidationPhaseSection({
         )}
 
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
+          {revising ? (
+            <PhaseRevisionActions
+              saveAction={saveAction}
+              pending={pending}
+              savePending={savePending}
+              onCancel={onRevisionDone}
+            />
+          ) : (
+          <>
           {canFastTrack && (
             <button
               type="button"
@@ -966,6 +1018,8 @@ export function ValidationPhaseSection({
                     : "Submit for Approval"}
               </span>
             </button>
+          )}
+          </>
           )}
         </div>
       </div>

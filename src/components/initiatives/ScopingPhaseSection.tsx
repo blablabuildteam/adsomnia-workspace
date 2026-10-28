@@ -32,6 +32,7 @@ import {
   Flag,
   type LucideIcon,
 } from "lucide-react";
+import { PhaseEditButton, PhaseRevisionActions } from "./PhaseRevision";
 import {
   saveScopingData,
   submitScopingForApproval,
@@ -862,10 +863,12 @@ function ScopingHeader({
   onPrefill,
   sections,
   showFormPrefill = false,
+  onEdit,
 }: {
   onPrefill?: () => void;
   sections: { done: boolean; label: string }[];
   showFormPrefill?: boolean;
+  onEdit?: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3">
@@ -893,6 +896,7 @@ function ScopingHeader({
           <FlaskConical className="size-3.5" />
         </button>
       )}
+      {onEdit && <PhaseEditButton onClick={onEdit} />}
     </div>
   );
 }
@@ -954,7 +958,39 @@ type Props = {
   /** Leadership feedback shown above the form when the scope was bounced back. */
   feedback?: GoNoGoDecision | null;
   showFormPrefill?: boolean;
+  /** Read-only view shows an Edit button that reopens the finished phase. */
+  onRevise?: () => void;
+  /** Reopened past phase: Save Changes and Cancel only. */
+  onRevisionDone?: () => void;
 };
+
+/**
+ * Scoping after the workstream moved on: read-only until leadership hits
+ * Edit, then a save-only form that leaves the live phase's status alone.
+ */
+export function RevisableScopingSection(
+  props: Omit<Props, "readOnly" | "onRevise" | "onRevisionDone">,
+) {
+  const [revising, setRevising] = useState(false);
+  if (!revising) {
+    return (
+      <ScopingPhaseSection
+        {...props}
+        readOnly
+        onRevise={() => setRevising(true)}
+      />
+    );
+  }
+  return (
+    <form>
+      <ScopingPhaseSection
+        {...props}
+        feedback={null}
+        onRevisionDone={() => setRevising(false)}
+      />
+    </form>
+  );
+}
 
 function sameImpactState(
   a: ReturnType<typeof resolveBusinessValueState>,
@@ -1056,7 +1092,10 @@ export function ScopingPhaseSection({
   canResubmit = false,
   feedback = null,
   showFormPrefill = false,
+  onRevise,
+  onRevisionDone,
 }: Props) {
+  const revising = onRevisionDone != null;
   const boundSave = saveScopingData.bind(null, initiativeId);
   const boundSubmit = submitScopingForApproval.bind(null, initiativeId);
   const boundResubmit = resubmitScoping.bind(null, initiativeId);
@@ -1080,6 +1119,10 @@ export function ScopingPhaseSection({
   useEffect(() => {
     if (saveState.success) setSavedAt(new Date());
   }, [saveState]);
+
+  useEffect(() => {
+    if (saveState.success) onRevisionDone?.();
+  }, [saveState, onRevisionDone]);
 
   useEffect(() => {
     if (submitState.success && resubmitting) setSubmissionUpdated(true);
@@ -1299,7 +1342,7 @@ export function ScopingPhaseSection({
   if (readOnly) {
     return (
       <>
-        <ScopingHeader sections={sections} />
+        <ScopingHeader sections={sections} onEdit={onRevise} />
         <ScopingReadOnly
           data={data}
           maxHours={maxHours}
@@ -1702,6 +1745,15 @@ export function ScopingPhaseSection({
 
         {/* ─── Actions ─────────────────────────────────────── */}
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
+          {revising ? (
+            <PhaseRevisionActions
+              saveAction={saveAction}
+              pending={pending}
+              savePending={savePending}
+              onCancel={onRevisionDone}
+            />
+          ) : (
+          <>
           {saved && savedAt && (
             <span className="mr-auto inline-flex items-center gap-1.5 text-xs text-success">
               <Check className="animate-check-pop size-3.5" />
@@ -1790,6 +1842,8 @@ export function ScopingPhaseSection({
                     : "Submit for Go/No-Go"}
               </span>
             </button>
+          )}
+          </>
           )}
         </div>
       </div>
