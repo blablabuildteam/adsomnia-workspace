@@ -42,14 +42,13 @@ const hoverTicks =
 const stage = STAGES.find((s) => s.id === "validation")!;
 const stageColor = getStageColor(stage.id);
 
-type FilterKey = "all" | "in-progress" | "review" | "feedback" | "approved" | "on-hold" | "rejected";
+type FilterKey = "all" | "in-progress" | "review" | "feedback" | "on-hold" | "rejected";
 
 const FILTERS: { key: FilterKey; label: string; color: string }[] = [
   { key: "all", label: "All", color: "var(--foreground)" },
   { key: "in-progress", label: "In Progress", color: "var(--warning)" },
   { key: "review", label: "Review", color: "var(--info)" },
   { key: "feedback", label: "Feedback", color: "var(--feedback)" },
-  { key: "approved", label: "Approved", color: "var(--success)" },
   { key: "on-hold", label: "On Hold", color: "var(--hn-ink)" },
   { key: "rejected", label: "Rejected", color: "var(--danger)" },
 ];
@@ -370,24 +369,18 @@ export function ValidationStageView({ initiatives, feedbackIds = [] }: Props) {
   );
 
   const feedbackSet = new Set(feedbackIds);
+  // Once approved, the initiative moves to Scoping and only shows there.
   const inStage = initiatives.filter((i) => i.currentStage === "validation");
-  const approvedToScoping = initiatives.filter(
-    (i) =>
-      i.currentStage === "scoping" && i.status === "approved" && !i.archivedAt,
-  );
-
-  const allItems = [...inStage, ...approvedToScoping];
+  const allItems = inStage;
 
   const statusFiltered =
     activeFilter === "all"
       ? allItems
-      : activeFilter === "approved"
-        ? approvedToScoping
-        : inStage.filter(
-            (i) =>
-              getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
-              activeFilter,
-          );
+      : inStage.filter(
+          (i) =>
+            getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+            activeFilter,
+        );
 
   const counts: Record<FilterKey, number> = {
     all: allItems.length,
@@ -406,7 +399,6 @@ export function ValidationStageView({ initiatives, feedbackIds = [] }: Props) {
         getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
         "feedback",
     ).length,
-    approved: approvedToScoping.length,
     "on-hold": inStage.filter(
       (i) =>
         getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
