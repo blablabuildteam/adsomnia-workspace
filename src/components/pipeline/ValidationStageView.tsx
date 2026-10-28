@@ -25,6 +25,7 @@ import { STAGES, getPhaseProgressFill, getStageColor, PARTIES } from "@/data/wor
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStageHeader } from "@/components/pipeline/PipelineStageHeader";
 import type { InitiativeWithUsers } from "@/lib/queries";
+import { isParkedOnHold } from "@/lib/workstream-status";
 import {
   BUSINESS_VALUE_TYPES,
   IMPACT_MAX,
@@ -223,7 +224,7 @@ function ValidationCard({ item, hasFeedback }: { item: InitiativeWithUsers; hasF
           <StatusBadge
             status={item.status}
             hasFeedback={hasFeedback}
-            archived={Boolean(item.archivedAt)}
+            archived={isParkedOnHold(item)}
           />
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <div
@@ -378,7 +379,7 @@ export function ValidationStageView({ initiatives, feedbackIds = [] }: Props) {
       ? allItems
       : inStage.filter(
           (i) =>
-            getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+            getEffectiveStatus(i.status, i.id, feedbackSet, isParkedOnHold(i)) ===
             activeFilter,
         );
 
@@ -386,27 +387,27 @@ export function ValidationStageView({ initiatives, feedbackIds = [] }: Props) {
     all: allItems.length,
     "in-progress": inStage.filter(
       (i) =>
-        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        getEffectiveStatus(i.status, i.id, feedbackSet, isParkedOnHold(i)) ===
         "in-progress",
     ).length,
     review: inStage.filter(
       (i) =>
-        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        getEffectiveStatus(i.status, i.id, feedbackSet, isParkedOnHold(i)) ===
         "review",
     ).length,
     feedback: inStage.filter(
       (i) =>
-        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        getEffectiveStatus(i.status, i.id, feedbackSet, isParkedOnHold(i)) ===
         "feedback",
     ).length,
     "on-hold": inStage.filter(
       (i) =>
-        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        getEffectiveStatus(i.status, i.id, feedbackSet, isParkedOnHold(i)) ===
         "on-hold",
     ).length,
     rejected: inStage.filter(
       (i) =>
-        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        getEffectiveStatus(i.status, i.id, feedbackSet, isParkedOnHold(i)) ===
         "rejected",
     ).length,
   };

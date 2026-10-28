@@ -11,6 +11,7 @@ import {
   hoverTicks,
 } from "@/components/dashboard/shared";
 import type { InitiativeWithUsers } from "@/lib/queries";
+import { isParkedOnHold } from "@/lib/workstream-status";
 
 function updatedAtMs(value: Date | string): number {
   return (value instanceof Date ? value : new Date(value)).getTime();
@@ -63,7 +64,7 @@ function WorkstreamRow({
           </p>
         </div>
         <StatusBadge
-          status={initiative.archivedAt ? "on-hold" : initiative.status}
+          status={isParkedOnHold(initiative) ? "on-hold" : initiative.status}
         />
         <ArrowRight className="size-4 shrink-0 text-muted transition-transform group-hover:translate-x-1" />
       </Link>
@@ -204,8 +205,8 @@ export function PhaseList({
     itemsByStage.set(stage.id, []);
   }
   for (const item of initiatives) {
-    // Archived workstreams are On Hold, so they stay listed in their phase.
-    if (!showRejected && !item.archivedAt && item.status === "rejected") continue;
+    // Archived workstreams are On Hold and stay listed; Rejected ones follow the toggle.
+    if (!showRejected && item.status === "rejected") continue;
     itemsByStage.get(item.currentStage)?.push(item);
   }
   for (const items of itemsByStage.values()) {

@@ -20,6 +20,7 @@ import { STAGES, getPhaseProgressFill, getStageColor, PARTIES } from "@/data/wor
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStageHeader } from "@/components/pipeline/PipelineStageHeader";
 import type { InitiativeWithUsers } from "@/lib/queries";
+import { isParkedOnHold } from "@/lib/workstream-status";
 import {
   PRIORITY_META,
   consensusPriority,
@@ -49,7 +50,7 @@ function matchesScopingFilter(
   item: Pick<InitiativeWithUsers, "status" | "archivedAt">,
   filter: Exclude<FilterKey, "all">,
 ): boolean {
-  if (item.archivedAt || item.status === "on-hold") {
+  if (isParkedOnHold(item) || item.status === "on-hold") {
     return filter === "on-hold";
   }
   if (filter === "on-hold") return false;
@@ -301,7 +302,7 @@ function ScopingCard({ item }: { item: InitiativeWithUsers }) {
           <span className="font-display shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted">
             {item.ticketId}
           </span>
-          <StatusBadge status={item.status} archived={Boolean(item.archivedAt)} />
+          <StatusBadge status={item.status} archived={isParkedOnHold(item)} />
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <div
               className="h-1.5 min-w-0 flex-1 bg-border"

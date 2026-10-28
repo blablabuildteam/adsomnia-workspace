@@ -21,6 +21,7 @@ import { STAGES, getStageColor } from "@/data/workflow";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStageHeader } from "@/components/pipeline/PipelineStageHeader";
 import type { InitiativeWithUsers } from "@/lib/queries";
+import { isParkedOnHold } from "@/lib/workstream-status";
 
 const hoverTicks = "opacity-0 transition-opacity duration-300 group-hover:opacity-100";
 
@@ -97,7 +98,7 @@ function InitiativeCard({ item, hasFeedback }: { item: InitiativeWithUsers; hasF
           <StatusBadge
             status={item.status}
             hasFeedback={hasFeedback}
-            archived={Boolean(item.archivedAt)}
+            archived={isParkedOnHold(item)}
           />
         </div>
         <div className="flex items-center gap-2 text-[10px] text-muted/70">
@@ -212,9 +213,9 @@ export function InitiativesStageView({ initiatives, feedbackIds = [] }: Props) {
       .length,
     feedback: feedbackItems.length,
     approved: approvedAwaitingValidation.length,
-    "on-hold": inIdeaStage.filter((i) => i.archivedAt || i.status === "on-hold")
+    "on-hold": inIdeaStage.filter((i) => isParkedOnHold(i) || i.status === "on-hold")
       .length,
-    rejected: inIdeaStage.filter((i) => !i.archivedAt && i.status === "rejected")
+    rejected: inIdeaStage.filter((i) => i.status === "rejected")
       .length,
   };
 
@@ -226,8 +227,8 @@ export function InitiativesStageView({ initiatives, feedbackIds = [] }: Props) {
         : activeFilter === "approved"
           ? approvedAwaitingValidation
           : activeFilter === "on-hold"
-            ? inIdeaStage.filter((i) => i.archivedAt || i.status === "on-hold")
-            : inIdeaStage.filter((i) => !i.archivedAt && i.status === activeFilter);
+            ? inIdeaStage.filter((i) => isParkedOnHold(i) || i.status === "on-hold")
+            : inIdeaStage.filter((i) => !isParkedOnHold(i) && i.status === activeFilter);
 
   return (
     <div className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">

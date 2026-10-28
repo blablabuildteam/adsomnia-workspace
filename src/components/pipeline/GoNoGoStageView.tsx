@@ -20,6 +20,7 @@ import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStageHeader } from "@/components/pipeline/PipelineStageHeader";
 import type { InitiativeWithUsers } from "@/lib/queries";
 import { PRIORITY_META, consensusPriority, type ScopingData } from "@/lib/validation-data";
+import { isParkedOnHold } from "@/lib/workstream-status";
 import { formatEuro, summarizeTeamCost } from "@/data/role-rates";
 
 const hoverTicks =
@@ -287,7 +288,7 @@ function GoNoGoCard({ item, hasFeedback }: { item: InitiativeWithUsers; hasFeedb
           <StatusBadge
             status={item.status}
             hasFeedback={hasFeedback}
-            archived={Boolean(item.archivedAt)}
+            archived={isParkedOnHold(item)}
           />
           {tShirtSize && (
             <span className="shrink-0 border border-border px-1.5 py-0.5 font-display text-[10px] font-bold text-muted">
@@ -451,7 +452,7 @@ export function GoNoGoStageView({ initiatives, feedbackIds = [] }: Props) {
       ? inStage
       : inStage.filter(
           (i) =>
-            getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+            getEffectiveStatus(i.status, i.id, feedbackSet, isParkedOnHold(i)) ===
             activeFilter,
         );
 
@@ -459,27 +460,27 @@ export function GoNoGoStageView({ initiatives, feedbackIds = [] }: Props) {
     all: inStage.length,
     awaiting: inStage.filter(
       (i) =>
-        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        getEffectiveStatus(i.status, i.id, feedbackSet, isParkedOnHold(i)) ===
         "awaiting",
     ).length,
     feedback: inStage.filter(
       (i) =>
-        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        getEffectiveStatus(i.status, i.id, feedbackSet, isParkedOnHold(i)) ===
         "feedback",
     ).length,
     "on-hold": inStage.filter(
       (i) =>
-        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        getEffectiveStatus(i.status, i.id, feedbackSet, isParkedOnHold(i)) ===
         "on-hold",
     ).length,
     approved: inStage.filter(
       (i) =>
-        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        getEffectiveStatus(i.status, i.id, feedbackSet, isParkedOnHold(i)) ===
         "approved",
     ).length,
     rejected: inStage.filter(
       (i) =>
-        getEffectiveStatus(i.status, i.id, feedbackSet, Boolean(i.archivedAt)) ===
+        getEffectiveStatus(i.status, i.id, feedbackSet, isParkedOnHold(i)) ===
         "rejected",
     ).length,
   };

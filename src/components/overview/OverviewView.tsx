@@ -19,7 +19,7 @@ type OverviewProps = {
 export function OverviewView({ initiatives, linkMap = {} }: OverviewProps) {
   const [showRejected, setShowRejected] = useState(false);
   const rejectedCount = initiatives.filter(
-    (item) => item.status === "rejected" && !item.archivedAt,
+    (item) => item.status === "rejected",
   ).length;
   const totalActive = initiatives.filter(
     (item) =>

@@ -350,7 +350,7 @@ export function ConnectedWorkstreams({
               <StageTag stageId={link.currentStage} />
               {(link.archived || link.status === "rejected") && (
                 <span className="shrink-0 font-display text-[9px] font-bold uppercase tracking-wide text-muted">
-                  {link.archived ? "On Hold" : "Rejected"}
+                  {link.status === "rejected" ? "Rejected" : "On Hold"}
                 </span>
               )}
             </Link>

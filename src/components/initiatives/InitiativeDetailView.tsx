@@ -37,6 +37,7 @@ import { ShareButton } from "./ShareButton";
 import { WorkstreamAccessButton } from "./WorkstreamAccessButton";
 import type { WorkstreamAccessPanel } from "@/lib/workstream-access";
 import type { WorkstreamLinksPanel } from "@/lib/workstream-links";
+import { isParkedOnHold } from "@/lib/workstream-status";
 import { CurrentPhaseBar } from "./CurrentPhaseBar";
 import { FloatingDetailBar } from "./FloatingDetailBar";
 import { ArchiveWorkstreamButton } from "./ArchiveWorkstreamButton";
@@ -513,7 +514,7 @@ export function InitiativeDetailView({
               canEdit={canLinkWorkstreams}
             />
           )}
-          {initiative.archivedAt && (
+          {isParkedOnHold(initiative) && (
             <p
               className="mt-4 border px-4 py-3 font-display text-[11px] font-bold uppercase tracking-wide"
               style={{ borderColor: "var(--hn-ink)", color: "var(--hn-ink)" }}

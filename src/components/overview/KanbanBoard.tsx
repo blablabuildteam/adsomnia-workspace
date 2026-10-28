@@ -3,6 +3,7 @@ import { ChevronRight, Link2 } from "lucide-react";
 import { STAGES, getStageColor } from "@/data/workflow";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import type { InitiativeWithUsers } from "@/lib/queries";
+import { isParkedOnHold } from "@/lib/workstream-status";
 import { dashboardItemHref } from "@/components/dashboard/shared";
 
 const hoverTicks =
@@ -138,7 +139,7 @@ type Props = {
 
 export function KanbanBoard({ initiatives, linkMap = {}, className }: Props) {
   const byStage = (stageId: string) =>
-    initiatives.filter((item) => item.currentStage === stageId && !item.archivedAt);
+    initiatives.filter((item) => item.currentStage === stageId && !isParkedOnHold(item));
 
   return (
     <div className={["flex gap-1 overflow-x-auto pb-4", className].filter(Boolean).join(" ")}>
