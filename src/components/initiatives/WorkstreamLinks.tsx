@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { Link2, Lock, X } from "lucide-react";
 
 import {
@@ -78,12 +79,15 @@ export function LinkWorkstreamButton({
           Link
         </span>
       </button>
-      {open && (
-        <LinkWorkstreamDialog
-          initiativeId={initiativeId}
-          onClose={() => setOpen(false)}
-        />
-      )}
+      {/* The header's entry animation leaves a transform that would trap a fixed modal. */}
+      {open &&
+        createPortal(
+          <LinkWorkstreamDialog
+            initiativeId={initiativeId}
+            onClose={() => setOpen(false)}
+          />,
+          document.body,
+        )}
     </div>
   );
 }
