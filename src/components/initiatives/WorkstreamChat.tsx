@@ -3,10 +3,12 @@
 import {
   useActionState,
   useEffect,
+  useEffectEvent,
   useMemo,
   useOptimistic,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 import { MessageCircle, Send, X } from "lucide-react";
 import {
@@ -119,6 +121,13 @@ type Props = {
   dockAbovePhaseBar?: boolean;
   currentStage: string;
   isFastTrack?: boolean;
+  /** Controlled open state, for docks that share space with other panels. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Rendered just above the chat button, e.g. the personal to-do button. */
+  launcherSlot?: ReactNode;
+  /** Hide the latest-remark preview while another panel is open. */
+  hidePreview?: boolean;
 };
 
 export function WorkstreamChat({
@@ -133,9 +142,18 @@ export function WorkstreamChat({
   dockAbovePhaseBar = false,
   currentStage,
   isFastTrack = false,
+  open: openProp,
+  onOpenChange,
+  launcherSlot,
+  hidePreview = false,
 }: Props) {
   const isGuestMode = Boolean(shareToken) && !currentUserId;
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  function setOpen(next: boolean) {
+    if (openProp === undefined) setOpenState(next);
+    onOpenChange?.(next);
+  }
   const [guestName, setGuestName] = useState("");
   const [guestNameDraft, setGuestNameDraft] = useState("");
   const [guestNameReady, setGuestNameReady] = useState(false);
@@ -254,12 +272,14 @@ export function WorkstreamChat({
     textareaRef.current?.focus();
   }, [open, thread.length]);
 
+  const closeOnEscape = useEffectEvent(() => setOpen(false));
+
   useEffect(() => {
     if (!open) return;
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
         if (mentionOpenRef.current) return;
-        setOpen(false);
+        closeOnEscape();
       }
     }
     document.addEventListener("keydown", onKey);
@@ -613,7 +633,7 @@ export function WorkstreamChat({
       )}
 
       <div className="flex flex-col items-end gap-3">
-        {latest && showLatestPreview ? (
+        {latest && showLatestPreview && !hidePreview ? (
           <button
             key={latestId}
             type="button"
@@ -643,9 +663,11 @@ export function WorkstreamChat({
           </button>
         ) : null}
 
+        {launcherSlot}
+
         <button
           type="button"
-          onClick={() => setOpen((prev) => !prev)}
+          onClick={() => setOpen(!open)}
           className="relative flex size-14 items-center justify-center border border-foreground bg-background text-foreground transition-colors hover:bg-foreground hover:text-background"
           aria-expanded={open}
           aria-controls="workstream-chat-panel"

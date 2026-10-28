@@ -183,6 +183,35 @@ export const workstreamLinks = pgTable(
   }),
 );
 
+/**
+ * Private to-dos one person keeps on a workstream. They are not tied to a
+ * phase; `stage` only records which phase the to-do was written in.
+ */
+export const workstreamTodos = pgTable(
+  "workstream_todos",
+  {
+    id: serial("id").primaryKey(),
+    initiativeId: integer("initiative_id")
+      .notNull()
+      .references(() => initiatives.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    body: varchar("body", { length: 500 }).notNull(),
+    stage: stageEnum("stage").notNull(),
+    doneAt: timestamp("done_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    initiativeUserIdx: index("workstream_todos_initiative_user_idx").on(
+      table.initiativeId,
+      table.userId,
+    ),
+  }),
+);
+
 /** Files, Drive docs, and links dropped on a workstream (including share-link guests). */
 export const workstreamAttachments = pgTable("workstream_attachments", {
   id: serial("id").primaryKey(),

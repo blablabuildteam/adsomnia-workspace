@@ -18,6 +18,8 @@ import {
   type GoNoGoDecision,
 } from "./GoNoGoApprovalPanel";
 import { WorkstreamChat } from "./WorkstreamChat";
+import { WorkstreamDock } from "./WorkstreamDock";
+import type { WorkstreamTodo } from "@/lib/workstream-todos";
 import { WorkstreamAttachments } from "./WorkstreamAttachments";
 import {
   RevisableValidationSection,
@@ -196,6 +198,8 @@ type Props = {
   accessPanel?: WorkstreamAccessPanel | null;
   /** Workstreams linked to this one. Share links omit this. */
   linksPanel?: WorkstreamLinksPanel | null;
+  /** The viewer's own to-dos on this workstream. Share links omit this. */
+  todos?: WorkstreamTodo[] | null;
 };
 
 export function InitiativeDetailView({
@@ -222,6 +226,7 @@ export function InitiativeDetailView({
   canContribute = true,
   accessPanel = null,
   linksPanel = null,
+  todos = null,
 }: Props) {
   const stage = STAGES.find(
     (s) => s.id === initiative.currentStage,
@@ -864,7 +869,23 @@ export function InitiativeDetailView({
         )}
 
       </div>
-      {showChat && (
+      {showChat && todos && (
+        <WorkstreamDock
+          todos={todos}
+          initiativeId={initiative.id}
+          comments={comments}
+          activity={activity}
+          mentionablePeople={mentionablePeople}
+          currentUserName={currentUserName}
+          currentUserId={currentUserId}
+          canComment={canComment}
+          shareToken={shareToken}
+          dockAbovePhaseBar={currentNum >= 4}
+          currentStage={initiative.currentStage}
+          isFastTrack={initiative.isFastTrack}
+        />
+      )}
+      {showChat && !todos && (
         <WorkstreamChat
           initiativeId={initiative.id}
           comments={comments}

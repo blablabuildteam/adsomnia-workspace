@@ -27,6 +27,7 @@ import {
 import { getWorkstreamLinksPanel } from "@/lib/workstream-links";
 import { createSharePath } from "@/lib/share";
 import { listWorkstreamAttachments } from "@/lib/workstream-attachments";
+import { listWorkstreamTodos } from "@/lib/workstream-todos";
 import type { ApprovalDecision } from "@/components/initiatives/ApprovalPanel";
 import type { ValidationDecision } from "@/components/initiatives/ValidationApprovalPanel";
 import type { GoNoGoDecision } from "@/components/initiatives/GoNoGoApprovalPanel";
@@ -82,6 +83,7 @@ export default async function InitiativePage({ params }: Props) {
     attachments,
     accessPanel,
     linksPanel,
+    todos,
   ] = await Promise.all([
       getCommentsForInitiative(initiative.id),
       getActivityForInitiative(initiative.id),
@@ -92,6 +94,7 @@ export default async function InitiativePage({ params }: Props) {
         ? getWorkstreamAccessPanel(initiative.id)
         : Promise.resolve(null),
       getWorkstreamLinksPanel(user, initiative.id),
+      listWorkstreamTodos(initiative.id, user.id),
     ]);
   const canUserApprove = user ? canApprove(user) : false;
   const canUserManageSetup = user ? canManageSetup(user) : false;
@@ -154,6 +157,7 @@ export default async function InitiativePage({ params }: Props) {
       canContribute={canModifyWorkstream(user, access)}
       accessPanel={accessPanel}
       linksPanel={linksPanel}
+      todos={todos}
     />
   );
 }

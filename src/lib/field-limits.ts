@@ -17,6 +17,9 @@ export const FEEDBACK_FIELD_LIMITS = {
   description: { min: 20, max: 2000 },
 } as const;
 
+/** Personal to-dos on a workstream. */
+export const TODO_BODY_MAX = 500;
+
 export const FAST_TRACK_FIELD_LIMITS = {
   title: { max: 255 },
   description: { max: 2000 },
