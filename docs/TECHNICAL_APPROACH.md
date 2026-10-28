@@ -286,7 +286,7 @@ Each stage gate (Validation → Scoping, Scoping → Go/No-Go, etc.) will have i
 | `GOOGLE_LOGIN_CLIENT_ID` | Server | Google login | Dedicated login OAuth Client ID |
 | `GOOGLE_LOGIN_CLIENT_SECRET` | Server | Google login | Dedicated login OAuth Client secret |
 | `GOOGLE_ALLOWED_DOMAINS` | Server | Google login | Comma-separated allowed email domains (`adsomnia.com`, `blablabuild.com`, `godai.nl`) |
-| `GOOGLE_ALLOWED_EMAILS` | Server | Google login | Comma-separated exact emails allowed outside those domains (`merijn@mediamailings.com`) |
+| `GOOGLE_ALLOWED_EMAILS` | Server | Google login | Comma-separated exact emails allowed outside those domains (`merijn@mediamailings.com`, `hzhang@harlemnext.com`) |
 | `JIRA_ADSOMNIA_HOST` | Server | Jira | Adsomnia Jira Cloud host (connect first) |
 | `JIRA_ADSOMNIA_EMAIL` | Server | Jira | Service/admin email for Adsomnia API token |
 | `JIRA_ADSOMNIA_API_TOKEN` | Server | Jira | Adsomnia Atlassian API token |

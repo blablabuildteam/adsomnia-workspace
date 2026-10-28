@@ -59,7 +59,10 @@ const DEFAULT_ALLOWED_GOOGLE_DOMAINS = [
 ] as const;
 
 /** Individual accounts outside the domain list. GOOGLE_ALLOWED_EMAILS is unioned in. */
-const DEFAULT_ALLOWED_GOOGLE_EMAILS = ["merijn@mediamailings.com"] as const;
+const DEFAULT_ALLOWED_GOOGLE_EMAILS = [
+  "merijn@mediamailings.com",
+  "hzhang@harlemnext.com",
+] as const;
 
 /**
  * Known leadership emails, including Godai aliases of Adsomnia admins.
