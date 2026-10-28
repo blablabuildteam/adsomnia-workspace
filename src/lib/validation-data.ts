@@ -535,7 +535,7 @@ export function setupTaskIdToDataKey(taskId: SetupTaskId): keyof SetupData {
 }
 
 export function suggestedDriveName(title: string, ticketId: string): string {
-  return `${title} - ${ticketId}`;
+  return ticketId.trim() ? `${ticketId.trim()} - ${title}` : title;
 }
 
 export const RECOMMENDED_DRIVE_FOLDERS: {

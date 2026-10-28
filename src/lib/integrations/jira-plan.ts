@@ -11,14 +11,14 @@ export const JIRA_ISSUE_SUMMARY_MAX = 255;
 
 export function suggestedJiraName(title: string, ticketId: string): string {
   const trimmedTitle = title.trim();
-  const suffix = ticketId.trim() ? ` - ${ticketId.trim()}` : "";
-  const combined = `${trimmedTitle}${suffix}`;
+  const prefix = ticketId.trim() ? `${ticketId.trim()} - ` : "";
+  const combined = `${prefix}${trimmedTitle}`;
   if (combined.length <= JIRA_PROJECT_NAME_MAX) return combined;
   const titleBudget = Math.max(
     JIRA_PROJECT_NAME_MIN,
-    JIRA_PROJECT_NAME_MAX - suffix.length,
+    JIRA_PROJECT_NAME_MAX - prefix.length,
   );
-  return `${trimmedTitle.slice(0, titleBudget).trimEnd()}${suffix}`.slice(
+  return `${prefix}${trimmedTitle.slice(0, titleBudget).trimEnd()}`.slice(
     0,
     JIRA_PROJECT_NAME_MAX,
   );
