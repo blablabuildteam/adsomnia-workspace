@@ -20,7 +20,7 @@ import { STAGES, getPhaseProgressFill, getStageColor, PARTIES } from "@/data/wor
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStageHeader } from "@/components/pipeline/PipelineStageHeader";
 import type { InitiativeWithUsers } from "@/lib/queries";
-import { isParkedOnHold } from "@/lib/workstream-status";
+import { isParkedOnHold, withoutRejected } from "@/lib/workstream-status";
 import {
   PRIORITY_META,
   consensusPriority,
@@ -488,14 +488,15 @@ export function ScopingStageView({ initiatives }: Props) {
     useState<LeadPartyFilter | null>(null);
 
   const inStage = initiatives.filter((i) => i.currentStage === "scoping");
+  const allItems = withoutRejected(inStage);
 
   const statusFiltered =
     activeFilter === "all"
-      ? inStage
+      ? allItems
       : inStage.filter((i) => matchesScopingFilter(i, activeFilter));
 
   const counts: Record<FilterKey, number> = {
-    all: inStage.length,
+    all: allItems.length,
     "in-progress": inStage.filter((i) =>
       matchesScopingFilter(i, "in-progress"),
     ).length,

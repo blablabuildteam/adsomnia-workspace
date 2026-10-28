@@ -20,7 +20,7 @@ import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStageHeader } from "@/components/pipeline/PipelineStageHeader";
 import type { InitiativeWithUsers } from "@/lib/queries";
 import { PRIORITY_META, consensusPriority, type ScopingData } from "@/lib/validation-data";
-import { isParkedOnHold } from "@/lib/workstream-status";
+import { isParkedOnHold, withoutRejected } from "@/lib/workstream-status";
 import { formatEuro, summarizeTeamCost } from "@/data/role-rates";
 
 const hoverTicks =
@@ -446,10 +446,11 @@ export function GoNoGoStageView({ initiatives, feedbackIds = [] }: Props) {
 
   const feedbackSet = new Set(feedbackIds);
   const inStage = initiatives.filter((i) => i.currentStage === "go-nogo");
+  const allItems = withoutRejected(inStage);
 
   const statusFiltered =
     activeFilter === "all"
-      ? inStage
+      ? allItems
       : inStage.filter(
           (i) =>
             getEffectiveStatus(i.status, i.id, feedbackSet, isParkedOnHold(i)) ===
@@ -457,7 +458,7 @@ export function GoNoGoStageView({ initiatives, feedbackIds = [] }: Props) {
         );
 
   const counts: Record<FilterKey, number> = {
-    all: inStage.length,
+    all: allItems.length,
     awaiting: inStage.filter(
       (i) =>
         getEffectiveStatus(i.status, i.id, feedbackSet, isParkedOnHold(i)) ===

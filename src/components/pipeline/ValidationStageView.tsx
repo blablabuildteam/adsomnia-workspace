@@ -25,7 +25,7 @@ import { STAGES, getPhaseProgressFill, getStageColor, PARTIES } from "@/data/wor
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStageHeader } from "@/components/pipeline/PipelineStageHeader";
 import type { InitiativeWithUsers } from "@/lib/queries";
-import { isParkedOnHold } from "@/lib/workstream-status";
+import { isParkedOnHold, withoutRejected } from "@/lib/workstream-status";
 import {
   BUSINESS_VALUE_TYPES,
   IMPACT_MAX,
@@ -372,7 +372,7 @@ export function ValidationStageView({ initiatives, feedbackIds = [] }: Props) {
   const feedbackSet = new Set(feedbackIds);
   // Once approved, the initiative moves to Scoping and only shows there.
   const inStage = initiatives.filter((i) => i.currentStage === "validation");
-  const allItems = inStage;
+  const allItems = withoutRejected(inStage);
 
   const statusFiltered =
     activeFilter === "all"

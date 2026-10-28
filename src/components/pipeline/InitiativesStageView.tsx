@@ -21,7 +21,7 @@ import { STAGES, getStageColor } from "@/data/workflow";
 import { CornerTicks } from "@/components/ui/CornerTicks";
 import { PipelineStageHeader } from "@/components/pipeline/PipelineStageHeader";
 import type { InitiativeWithUsers } from "@/lib/queries";
-import { isParkedOnHold } from "@/lib/workstream-status";
+import { isParkedOnHold, withoutRejected } from "@/lib/workstream-status";
 
 const hoverTicks = "opacity-0 transition-opacity duration-300 group-hover:opacity-100";
 
@@ -205,7 +205,7 @@ export function InitiativesStageView({ initiatives, feedbackIds = [] }: Props) {
     (i) => !i.archivedAt && i.status === "draft" && feedbackSet.has(i.id),
   );
 
-  const allItems = [...inIdeaStage, ...approvedAwaitingValidation];
+  const allItems = [...withoutRejected(inIdeaStage), ...approvedAwaitingValidation];
 
   const counts: Record<FilterKey, number> = {
     all: allItems.length,
