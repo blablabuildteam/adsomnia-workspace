@@ -6,7 +6,7 @@
  *   admins). Approve, hold, set up projects, run onboarding.
  * - `assistant` — read access to every workstream and the full Fast Track
  *   board (Daria, assisting Coen). No approval, setup, or onboarding actions.
- * - `team` — every other allowed-domain account (Adsomnia, Godai, blablabuild).
+ * - `team` — every other allowed-domain account (Adsomnia, Godai, blablabuild, Harlem Next).
  *   Submit initiatives and follow their own items, plus any workstream they
  *   were explicitly added to. They may edit their own details while the item
  *   is still in Initiative. In Validation they can view the workstream;

@@ -7,8 +7,8 @@ Sign in with Google on `/login`. Uses a dedicated OAuth Web client (not the Driv
 | Piece | Meaning |
 |-------|---------|
 | **OAuth client** | Separate Web application credentials for login (`GOOGLE_LOGIN_CLIENT_ID` / `SECRET`) |
-| **Domain allowlist** | `GOOGLE_ALLOWED_DOMAINS` — comma-separated (e.g. `adsomnia.com,blablabuild.com,godai.nl`). Those domains are also allowed in code. |
-| **Email allowlist** | `GOOGLE_ALLOWED_EMAILS` — comma-separated exact addresses outside those domains. `merijn@mediamailings.com` and `hzhang@harlemnext.com` are also allowed in code. Does not open the rest of the domain. |
+| **Domain allowlist** | `GOOGLE_ALLOWED_DOMAINS` — comma-separated (e.g. `adsomnia.com,blablabuild.com,godai.nl,harlemnext.com`). Those domains are also allowed in code. |
+| **Email allowlist** | `GOOGLE_ALLOWED_EMAILS` — comma-separated exact addresses outside those domains. `merijn@mediamailings.com` is also allowed in code. Does not open the rest of the domain. |
 | **User match** | Allowed Google accounts are matched or **created** on first login (`team` by default) |
 | **Profile signup** | Users missing first name, last name, or job title are sent to `/complete-profile` before the workspace (required after Google or password login) |
 | **Admins** | Emails in `LOGIN_*_EMAIL` (Adsomnia Sietse/Oleg/Jasper/Coen + Godai `sietse@godai.nl` / `jesper@godai.nl` + blablabuild Xennith/Kevin) are assigned `leadership` on Google login (create or promote) |
@@ -61,8 +61,8 @@ Example `.env.local` entries:
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 GOOGLE_LOGIN_CLIENT_ID=
 GOOGLE_LOGIN_CLIENT_SECRET=
-GOOGLE_ALLOWED_DOMAINS=adsomnia.com,blablabuild.com,godai.nl
-GOOGLE_ALLOWED_EMAILS=merijn@mediamailings.com,hzhang@harlemnext.com
+GOOGLE_ALLOWED_DOMAINS=adsomnia.com,blablabuild.com,godai.nl,harlemnext.com
+GOOGLE_ALLOWED_EMAILS=merijn@mediamailings.com
 ```
 
 Sync to Vercel with `npm run env:sync-vercel` after the keys are in `.env.local`.

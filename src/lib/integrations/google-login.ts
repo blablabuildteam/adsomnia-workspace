@@ -56,12 +56,12 @@ const DEFAULT_ALLOWED_GOOGLE_DOMAINS = [
   "adsomnia.com",
   "blablabuild.com",
   "godai.nl",
+  "harlemnext.com",
 ] as const;
 
 /** Individual accounts outside the domain list. GOOGLE_ALLOWED_EMAILS is unioned in. */
 const DEFAULT_ALLOWED_GOOGLE_EMAILS = [
   "merijn@mediamailings.com",
-  "hzhang@harlemnext.com",
 ] as const;
 
 /**
