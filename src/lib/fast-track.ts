@@ -3,6 +3,7 @@ import {
   fastTrackIssueStillExists,
   getFastTrackBoardUrl,
   getFastTrackIssue,
+  isJiraConnectionError,
   listFastTrackChildIssues,
   listFastTrackIssues,
   type FastTrackJiraIssue,
@@ -186,10 +187,14 @@ export async function loadFastTrackOverview(
     jiraIssues = await listFastTrackIssues();
   } catch (error) {
     console.error("Fast-Track Jira list failed:", error);
-    fetchError =
-      error instanceof Error
-        ? error.message
-        : "Could not load Fast-Track work from Jira.";
+    if (isJiraConnectionError(error)) {
+      fetchError = `${error.message} Workspace Fast-Track items below may be incomplete (no live Jira status, assignee, or child tasks) until this is fixed.`;
+    } else {
+      fetchError =
+        error instanceof Error
+          ? error.message
+          : "Could not load Fast-Track work from Jira.";
+    }
   }
 
   const jiraByKey = new Map(
@@ -210,6 +215,8 @@ export async function loadFastTrackOverview(
       .map((item) => item.fastTrackJiraKey)
       .filter((key): key is string => Boolean(key)),
   );
+  // Only drop items as "deleted in Jira" when the board fetch itself succeeded.
+  // A dead token returns empty search + 404s that look like deletions.
   const removedFromJira = new Set<string>();
   if (!fetchError) {
     const missingKeys = [

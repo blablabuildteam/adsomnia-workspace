@@ -37,6 +37,7 @@ export default async function PipelineProductionPage({
     <ProductionOverview
       projects={data.active}
       archived={data.archived}
+      jiraError={data.jiraError}
       canArchive={Boolean(user && canManageOnboarding(user))}
       canAdjustPriority={Boolean(user && canAdjustProductionPriority(user))}
       canAddProject={Boolean(user && canAddProductionProject(user))}

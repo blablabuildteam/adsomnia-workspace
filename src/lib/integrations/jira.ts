@@ -288,6 +288,20 @@ export async function jiraSpacesStillExist(
     for (const key of unique) out.set(key, null);
     return out;
   }
+
+  // Dead tokens can return an empty project search (HTTP 200). Treat that as
+  // "unknown" so local Production projects stay visible and the caller can
+  // surface an auth error instead of quietly dropping everything.
+  try {
+    await assertJiraAuthenticated(instance);
+  } catch (error) {
+    if (isJiraConnectionError(error)) {
+      for (const key of unique) out.set(key, null);
+      return out;
+    }
+    throw error;
+  }
+
   const client = createClient(config);
 
   const chunks: string[][] = [];
@@ -378,6 +392,62 @@ function requireClient(instance: JiraInstance) {
     throw new Error(`Jira instance "${instance}" is not configured.`);
   }
   return { config, client: createClient(config) };
+}
+
+/** Thrown when a Jira site rejects or cannot use the configured API token. */
+export class JiraConnectionError extends Error {
+  readonly instance: JiraInstance;
+
+  constructor(instance: JiraInstance, message: string) {
+    super(message);
+    this.name = "JiraConnectionError";
+    this.instance = instance;
+  }
+}
+
+export function isJiraConnectionError(
+  error: unknown,
+): error is JiraConnectionError {
+  return error instanceof JiraConnectionError;
+}
+
+/**
+ * Confirms the configured API token can authenticate.
+ *
+ * A dead token often still returns HTTP 200 with empty search/project results,
+ * which looks identical to an empty board. Callers must check this before
+ * treating missing issues or spaces as deleted.
+ */
+export async function assertJiraAuthenticated(
+  instance: JiraInstance,
+): Promise<void> {
+  const config = getInstanceConfig(instance);
+  const label = INSTANCE_LABELS[instance];
+  if (!config) {
+    throw new JiraConnectionError(
+      instance,
+      `Jira (${label}) is not configured.`,
+    );
+  }
+
+  const result = await jiraJson<{ displayName?: string; accountId?: string }>(
+    config,
+    "/rest/api/3/myself",
+  );
+
+  if (result.status === 401 || result.status === 403) {
+    throw new JiraConnectionError(
+      instance,
+      `Jira (${label}) authentication failed. The API token is expired, revoked, or wrong — boards that use this site will look empty or incomplete until a valid token is set in Vercel.`,
+    );
+  }
+
+  if (!result.ok) {
+    throw new JiraConnectionError(
+      instance,
+      `Jira (${label}) could not be reached (HTTP ${result.status}).`,
+    );
+  }
 }
 
 function asProjectKey(value: unknown, fallback: string): string {
@@ -1521,6 +1591,7 @@ function isFastTrackIssueKey(issueKey: string): boolean {
 }
 
 export async function listFastTrackIssues(): Promise<FastTrackJiraIssue[]> {
+  await assertJiraAuthenticated(FAST_TRACK_JIRA_INSTANCE);
   const { client, config } = requireClient(FAST_TRACK_JIRA_INSTANCE);
   const fields = FAST_TRACK_ISSUE_FIELDS;
   let issues: { key?: string; fields?: IssueFields }[];

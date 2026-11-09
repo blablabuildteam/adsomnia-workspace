@@ -1,8 +1,10 @@
 import { unstable_cache, updateTag } from "next/cache";
 import {
+  assertJiraAuthenticated,
   getAvailableInstances,
   getProjectEpicTasks,
   getProjectsEpicProgress,
+  isJiraConnectionError,
   jiraSpacesStillExist,
   type JiraEpicSummary,
   type JiraEpicTaskProgress,
@@ -362,7 +364,42 @@ async function loadEpicProgress(
 export type ProductionOverviewData = {
   active: ProductionProject[];
   archived: ProductionProject[];
+  /** Set when a linked Jira site rejects the API token (or is unreachable). */
+  jiraError: string | null;
 };
+
+async function collectProductionJiraErrors(
+  items: InitiativeWithUsers[],
+): Promise<string | null> {
+  const instances = new Set<JiraInstance>();
+  for (const item of items) {
+    const target = resolveJiraTarget(item.setupData?.jira);
+    if (target.instance) instances.add(target.instance);
+  }
+  if (instances.size === 0) return null;
+
+  const errors: string[] = [];
+  await Promise.all(
+    [...instances].map(async (instance) => {
+      try {
+        await assertJiraAuthenticated(instance);
+      } catch (error) {
+        if (isJiraConnectionError(error)) {
+          errors.push(error.message);
+          return;
+        }
+        errors.push(
+          error instanceof Error
+            ? error.message
+            : `Jira (${instance}) could not be reached.`,
+        );
+      }
+    }),
+  );
+
+  if (errors.length === 0) return null;
+  return `${errors.join(" ")} Local Production projects stay listed, but Jira progress may be missing until this is fixed.`;
+}
 
 export async function getProductionOverview(
   user: PermissionUser,
@@ -372,11 +409,12 @@ export async function getProductionOverview(
 
   // The space check and progress load run side by side; a deleted space's
   // progress request simply fails and is dropped with the project.
-  const [initiatives, progress] = await Promise.all([
+  const [initiatives, progress, jiraError] = await Promise.all([
     withoutDeletedJiraSpaces(items),
     Promise.all(
       items.map(async (item) => [item.id, await loadEpicProgress(item)] as const),
     ),
+    collectProductionJiraErrors(items),
   ]);
   const progressByItem = new Map(progress);
 
@@ -389,7 +427,7 @@ export async function getProductionOverview(
   const archived = [...projects]
     .filter((project) => project.archivedAt)
     .sort((a, b) => (b.archivedAt ?? "").localeCompare(a.archivedAt ?? ""));
-  return { active, archived };
+  return { active, archived, jiraError };
 }
 
 export async function getProductionEpicTasks(

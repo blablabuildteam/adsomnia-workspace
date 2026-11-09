@@ -51,6 +51,8 @@ type Props = {
   /** Public share path per project id. */
   sharePaths: Record<number, string>;
   initialSelectedId?: number | null;
+  /** Shown when a linked Jira site rejects the API token. */
+  jiraError?: string | null;
 };
 
 export function ProductionOverview({
@@ -61,6 +63,7 @@ export function ProductionOverview({
   canAddProject,
   sharePaths,
   initialSelectedId = null,
+  jiraError = null,
 }: Props) {
   const router = useRouter();
   const initialSelected =
@@ -156,6 +159,18 @@ export function ProductionOverview({
   return (
     <div className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <PipelineStageHeader stage={stage} />
+
+      {jiraError && (
+        <div
+          role="alert"
+          className="mb-4 border border-danger/40 bg-danger/10 px-4 py-3 text-danger"
+        >
+          <p className="font-display text-xs font-bold uppercase tracking-wide">
+            Jira connection problem
+          </p>
+          <p className="mt-1 text-xs leading-relaxed">{jiraError}</p>
+        </div>
+      )}
 
       <div className="mb-4 flex items-center gap-2 overflow-x-auto border-b border-border pb-px">
         <Filter className="mr-1 size-3.5 shrink-0 text-muted/60" />

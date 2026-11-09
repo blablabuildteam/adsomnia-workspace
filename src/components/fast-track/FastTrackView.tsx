@@ -612,9 +612,15 @@ export function FastTrackView({
       </header>
 
       {fetchError && (
-        <p className="mb-4 border border-danger/40 bg-danger/10 px-4 py-3 text-xs text-danger">
-          {fetchError}
-        </p>
+        <div
+          role="alert"
+          className="mb-4 border border-danger/40 bg-danger/10 px-4 py-3 text-danger"
+        >
+          <p className="font-display text-xs font-bold uppercase tracking-wide">
+            Jira connection problem
+          </p>
+          <p className="mt-1 text-xs leading-relaxed">{fetchError}</p>
+        </div>
       )}
 
       <div className="mb-4 flex items-center gap-2 overflow-x-auto border-b border-border pb-px">
