@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, use, useEffect, useState } from "react";
 import { FeedbackButton } from "@/components/feedback/FeedbackButton";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
-import { JiraTokenReminderModal } from "./JiraTokenReminderModal";
+import { JiraStatusNotice } from "./JiraStatusNotice";
 import type { SidebarProfileUser } from "./SidebarProfile";
 import type { JiraTokenReminder } from "@/lib/integrations/jira-token-reminder";
+import type { JiraHealthIssue } from "@/lib/integrations/jira-health";
 
 const STORAGE_KEY = "adsomnia-sidebar-collapsed";
 
@@ -13,9 +14,18 @@ type Props = {
   user: SidebarProfileUser;
   children: React.ReactNode;
   jiraTokenReminder?: JiraTokenReminder | null;
+  /** Jira sites that fail right now; resolves after the page has rendered. */
+  jiraHealth: Promise<JiraHealthIssue[]>;
+  canManageJira: boolean;
 };
 
-export function WorkspaceShell({ user, children, jiraTokenReminder }: Props) {
+export function WorkspaceShell({
+  user,
+  children,
+  jiraTokenReminder = null,
+  jiraHealth,
+  canManageJira,
+}: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
@@ -52,9 +62,28 @@ export function WorkspaceShell({ user, children, jiraTokenReminder }: Props) {
         {children}
       </main>
       <FeedbackButton />
-      {jiraTokenReminder ? (
-        <JiraTokenReminderModal reminder={jiraTokenReminder} />
-      ) : null}
+      <Suspense fallback={null}>
+        <JiraStatusFromServer
+          health={jiraHealth}
+          reminder={jiraTokenReminder}
+          canManage={canManageJira}
+        />
+      </Suspense>
     </div>
+  );
+}
+
+function JiraStatusFromServer({
+  health,
+  reminder,
+  canManage,
+}: {
+  health: Promise<JiraHealthIssue[]>;
+  reminder: JiraTokenReminder | null;
+  canManage: boolean;
+}) {
+  const issues = use(health);
+  return (
+    <JiraStatusNotice issues={issues} reminder={reminder} canManage={canManage} />
   );
 }

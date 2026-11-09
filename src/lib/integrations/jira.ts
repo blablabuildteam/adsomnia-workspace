@@ -394,14 +394,23 @@ function requireClient(instance: JiraInstance) {
   return { config, client: createClient(config) };
 }
 
+/** Why a Jira site could not be used: bad token, missing config, or no answer. */
+export type JiraConnectionErrorKind = "auth" | "not_configured" | "unreachable";
+
 /** Thrown when a Jira site rejects or cannot use the configured API token. */
 export class JiraConnectionError extends Error {
   readonly instance: JiraInstance;
+  readonly kind: JiraConnectionErrorKind;
 
-  constructor(instance: JiraInstance, message: string) {
+  constructor(
+    instance: JiraInstance,
+    message: string,
+    kind: JiraConnectionErrorKind = "unreachable",
+  ) {
     super(message);
     this.name = "JiraConnectionError";
     this.instance = instance;
+    this.kind = kind;
   }
 }
 
@@ -427,18 +436,28 @@ export async function assertJiraAuthenticated(
     throw new JiraConnectionError(
       instance,
       `Jira (${label}) is not configured.`,
+      "not_configured",
     );
   }
 
-  const result = await jiraJson<{ displayName?: string; accountId?: string }>(
-    config,
-    "/rest/api/3/myself",
-  );
+  let result: { ok: boolean; status: number };
+  try {
+    result = await jiraJson<{ displayName?: string; accountId?: string }>(
+      config,
+      "/rest/api/3/myself",
+    );
+  } catch {
+    throw new JiraConnectionError(
+      instance,
+      `Jira (${label}) could not be reached.`,
+    );
+  }
 
   if (result.status === 401 || result.status === 403) {
     throw new JiraConnectionError(
       instance,
-      `Jira (${label}) authentication failed. The API token is expired, revoked, or wrong — boards that use this site will look empty or incomplete until a valid token is set in Vercel.`,
+      `Jira (${label}) rejected the API token.`,
+      "auth",
     );
   }
 

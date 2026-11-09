@@ -398,7 +398,7 @@ async function collectProductionJiraErrors(
   );
 
   if (errors.length === 0) return null;
-  return `${errors.join(" ")} Local Production projects stay listed, but Jira progress may be missing until this is fixed.`;
+  return `${errors.join(" ")} Jira progress may be missing below.`;
 }
 
 export async function getProductionOverview(

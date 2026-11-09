@@ -188,7 +188,7 @@ export async function loadFastTrackOverview(
   } catch (error) {
     console.error("Fast-Track Jira list failed:", error);
     if (isJiraConnectionError(error)) {
-      fetchError = `${error.message} Workspace Fast-Track items below may be incomplete (no live Jira status, assignee, or child tasks) until this is fixed.`;
+      fetchError = `${error.message} Live Jira status, assignees and child tasks are missing below.`;
     } else {
       fetchError =
         error instanceof Error

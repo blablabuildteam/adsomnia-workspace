@@ -7,6 +7,7 @@ import {
 } from "@/lib/session";
 import { canSeeJiraTokenReminder } from "@/lib/permissions";
 import { getJiraTokenReminder } from "@/lib/integrations/jira-token-reminder";
+import { getJiraHealthIssues } from "@/lib/integrations/jira-health";
 import { loginPath, safeReturnPath } from "@/lib/return-path";
 import { WorkspaceShell } from "@/components/workspace/WorkspaceShell";
 
@@ -30,9 +31,10 @@ export default async function WorkspaceLayout({
     );
   }
 
-  const jiraTokenReminder = canSeeJiraTokenReminder(user)
-    ? getJiraTokenReminder()
-    : null;
+  const canManageJira = canSeeJiraTokenReminder(user);
+  const jiraTokenReminder = canManageJira ? getJiraTokenReminder() : null;
+  // Not awaited: the page renders right away and the notice streams in.
+  const jiraHealth = getJiraHealthIssues();
 
   return (
     <div className="app-atmosphere flex h-dvh min-h-0 flex-col overflow-hidden">
@@ -46,6 +48,8 @@ export default async function WorkspaceLayout({
           role: user.role,
         }}
         jiraTokenReminder={jiraTokenReminder}
+        jiraHealth={jiraHealth}
+        canManageJira={canManageJira}
       >
         {children}
       </WorkspaceShell>

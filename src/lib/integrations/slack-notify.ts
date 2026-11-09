@@ -584,3 +584,71 @@ export async function notifyChatMentions(
     console.error("Slack chat mention notify failed:", err);
   }
 }
+
+export type LeadershipAlertInput = {
+  header: string;
+  /** Slack mrkdwn body; escape user-supplied text with care. */
+  body: string;
+  /** Plain-text version for notifications and clients without blocks. */
+  fallback: string;
+  link?: { url: string; label: string };
+};
+
+/**
+ * DM Coen, Sietse and Oleg about a workspace-wide problem (e.g. Jira down).
+ * Returns how many people were reached. Never throws.
+ */
+export async function notifyLeadershipAlert(
+  input: LeadershipAlertInput,
+): Promise<number> {
+  try {
+    const home = await loadHomeSlack("leadership alert");
+    if (!home) return 0;
+
+    const people = await resolveReviewerUsers(["coen", "sietse", "oleg"]);
+    const sent = new Set<string>();
+
+    for (const person of people) {
+      const slackUserId = await resolveSlackUserId({
+        client: home.client,
+        teamId: home.teamId,
+        userId: person.id,
+        email: person.email,
+      });
+      if (!slackUserId || sent.has(slackUserId)) continue;
+      sent.add(slackUserId);
+
+      const blocks: KnownBlock[] = [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: input.header.slice(0, 150),
+            emoji: false,
+          },
+        },
+        { type: "section", text: { type: "mrkdwn", text: input.body } },
+      ];
+      if (input.link) {
+        blocks.push({
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `<${input.link.url}|${escapeMrkdwn(input.link.label)}>`,
+          },
+        });
+      }
+
+      await postDm({
+        client: home.client,
+        slackUserId,
+        text: input.fallback,
+        blocks,
+      });
+    }
+    return sent.size;
+  } catch (err) {
+    console.error("Slack leadership alert failed:", err);
+    return 0;
+  }
+}

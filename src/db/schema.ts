@@ -358,3 +358,15 @@ export const feedbackSubmissions = pgTable("feedback_submissions", {
     .notNull()
     .defaultNow(),
 });
+
+/**
+ * Last known state of a background alert (e.g. a Jira site's token health),
+ * so Slack alerts go out once when the state changes, not on every check.
+ */
+export const systemAlerts = pgTable("system_alerts", {
+  key: varchar("key", { length: 100 }).primaryKey(),
+  state: varchar("state", { length: 100 }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
